@@ -1557,6 +1557,45 @@ _sb.auth.getSession().then(({ data: { session } }) => {
   renderAuthHeader();
 });
 
+// Check for auth errors in URL hash (e.g. expired reset link)
+(function checkHashErrors() {
+  const hash = window.location.hash;
+  if (!hash) return;
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  const errorCode = params.get('error_code');
+  const errorDesc = params.get('error_description');
+  if (errorCode === 'otp_expired') {
+    // Clear the hash so it doesn't persist on refresh
+    history.replaceState(null, '', window.location.pathname);
+    // Show expired link modal
+    showExpiredLinkModal();
+  }
+})();
+
+function showExpiredLinkModal() {
+  const modal = document.getElementById('auth-modal');
+  const title = document.getElementById('auth-modal-title');
+  const body = document.getElementById('auth-modal-body');
+  title.textContent = 'Link Expired';
+  body.innerHTML = `
+    <div style="text-align:center;padding:12px 0 8px;">
+      <div style="font-size:40px;margin-bottom:16px;">⏱️</div>
+      <p style="color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:24px;">
+        That password reset link has expired or has already been used.<br>
+        Request a new one below.
+      </p>
+      <button class="auth-submit-btn" onclick="showAuthModal('forgot')" style="width:100%;">
+        Request New Reset Link
+      </button>
+      <div style="margin-top:16px;">
+        <a href="#" onclick="showAuthModal('signin');return false;" style="color:var(--text3);font-size:12px;">
+          Back to Sign In
+        </a>
+      </div>
+    </div>`;
+  modal.classList.add('open');
+}
+
 function renderAuthHeader() {
   const el = document.getElementById('auth-header');
   if (currentUser) {
