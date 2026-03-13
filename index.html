@@ -1529,6 +1529,8 @@
   </div>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Capture hash before Supabase clears it -->
+<script>const _initialHash = window.location.hash;</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <script>
@@ -1558,42 +1560,39 @@ _sb.auth.getSession().then(({ data: { session } }) => {
 });
 
 // Check for auth errors in URL hash (e.g. expired reset link)
+// Uses _initialHash captured before Supabase clears the hash
 (function checkHashErrors() {
-  const hash = window.location.hash;
-  if (!hash) return;
-  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  if (!_initialHash) return;
+  const params = new URLSearchParams(_initialHash.replace(/^#/, ''));
   const errorCode = params.get('error_code');
-  const errorDesc = params.get('error_description');
-  if (errorCode === 'otp_expired') {
-    // Clear the hash so it doesn't persist on refresh
+  if (errorCode === 'otp_expired' || errorCode === 'access_denied') {
     history.replaceState(null, '', window.location.pathname);
-    // Show expired link modal
-    showExpiredLinkModal();
+    // Wait for DOM to be ready before showing modal
+    window.addEventListener('DOMContentLoaded', showExpiredLinkModal);
+    if (document.readyState !== 'loading') showExpiredLinkModal();
   }
 })();
 
 function showExpiredLinkModal() {
-  const modal = document.getElementById('auth-modal');
-  const title = document.getElementById('auth-modal-title');
-  const body = document.getElementById('auth-modal-body');
-  title.textContent = 'Link Expired';
-  body.innerHTML = `
+  document.getElementById('auth-modal').classList.add('open');
+  document.querySelector('#auth-modal .modal').innerHTML = `
+    <button class="modal-close" onclick="closeAuthModal()">×</button>
     <div style="text-align:center;padding:12px 0 8px;">
       <div style="font-size:40px;margin-bottom:16px;">⏱️</div>
+      <div class="modal-title" style="margin-bottom:12px;">Link Expired</div>
       <p style="color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:24px;">
         That password reset link has expired or has already been used.<br>
-        Request a new one below.
+        Request a new one and try again.
       </p>
-      <button class="auth-submit-btn" onclick="showAuthModal('forgot')" style="width:100%;">
+      <button class="modal-btn modal-btn-primary" onclick="showAuthModal('forgot')" style="width:100%;">
         Request New Reset Link
       </button>
       <div style="margin-top:16px;">
-        <a href="#" onclick="showAuthModal('signin');return false;" style="color:var(--text3);font-size:12px;">
+        <a onclick="showAuthModal('signin')" style="color:var(--text3);font-size:12px;cursor:pointer;">
           Back to Sign In
         </a>
       </div>
     </div>`;
-  modal.classList.add('open');
 }
 
 function renderAuthHeader() {
