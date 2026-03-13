@@ -1620,11 +1620,26 @@ async function authSubmit() {
 
   if (error) {
     errEl.textContent = error.message;
+  } else if (_authMode === 'signup') {
+    // Show confirmation screen inside the modal
+    document.querySelector('.modal').innerHTML = `
+      <div style="text-align:center;padding:10px 0">
+        <div style="font-size:36px;margin-bottom:16px">✉️</div>
+        <div class="modal-title" style="margin-bottom:12px">Check Your Email</div>
+        <p style="color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:20px">
+          A confirmation link has been sent to<br>
+          <strong style="color:var(--text)">${document.getElementById('auth-email').value}</strong>
+        </p>
+        <p style="color:var(--text3);font-size:12px;line-height:1.6;margin-bottom:24px">
+          Click the link in the email to activate your account, then come back here to sign in.
+        </p>
+        <button class="modal-btn modal-btn-primary" onclick="closeAuthModal();showAuthModal('signin')">
+          OK — Take Me to Sign In
+        </button>
+      </div>`;
   } else {
     closeAuthModal();
-    showToast(_authMode === 'signup'
-      ? 'Account created! Check your email to confirm.'
-      : 'Signed in!', 'ok');
+    showToast('Signed in!', 'ok');
   }
 }
 
