@@ -1,0 +1,2143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimLetsFly — Sim Flight Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg0: #0a0d10;
+    --bg1: #0e1318;
+    --bg2: #131920;
+    --bg3: #1a2230;
+    --panel: #111720;
+    --border: #1e2d3d;
+    --border2: #243447;
+    --accent: #00b4d8;
+    --accent2: #0077a8;
+    --accent-glow: rgba(0,180,216,0.15);
+    --amber: #f4a261;
+    --amber-glow: rgba(244,162,97,0.15);
+    --green: #52b788;
+    --red: #e76f51;
+    --text: #c8d8e8;
+    --text2: #7a92a8;
+    --text3: #4a6070;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Barlow', sans-serif;
+    --cond: 'Barlow Condensed', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg0);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,180,216,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,180,216,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    font-family: var(--cond);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .status-bar {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 1px;
+  }
+
+  .status-bar span { color: var(--green); }
+
+  /* Auth buttons - HOOK FOR SUPABASE */
+  /* TODO: Replace these with Supabase auth UI */
+  .auth-btn {
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .auth-btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+
+  .auth-btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .auth-btn-solid {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: #000;
+  }
+
+  .auth-btn-solid:hover {
+    background: #00c8f0;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 14px 16px;
+  }
+
+  /* ── FILTER GRID ── */
+  .filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .filter-grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .badge-dep {
+    background: rgba(244,162,97,0.15);
+    color: var(--amber);
+    border: 1px solid rgba(244,162,97,0.3);
+  }
+
+  .badge-arr {
+    background: rgba(0,180,216,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(0,180,216,0.3);
+  }
+
+  .panel-title {
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .panel-body { padding: 10px 12px; }
+
+  /* ── RADIO GROUP ── */
+  .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+
+  .radio-opt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .radio-opt input[type="radio"] {
+    appearance: none;
+    width: 14px; height: 14px;
+    border: 1px solid var(--border2);
+    border-radius: 50%;
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s;
+  }
+
+  .radio-opt input[type="radio"]:checked {
+    border-color: var(--amber);
+    background: var(--amber);
+    box-shadow: 0 0 6px rgba(244,162,97,0.4);
+  }
+
+  .dep-panel .radio-opt input[type="radio"]:checked {
+    border-color: var(--amber);
+    background: var(--amber);
+    box-shadow: 0 0 6px rgba(244,162,97,0.4);
+  }
+
+  .arr-panel .radio-opt input[type="radio"]:checked {
+    border-color: var(--accent);
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(0,180,216,0.4);
+  }
+
+  .radio-opt label {
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text2);
+    cursor: pointer;
+  }
+
+  .radio-opt input[type="radio"]:checked + label { color: var(--text); }
+
+  /* ── COLLAPSIBLE SECTION ── */
+  .section {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    margin-bottom: 6px;
+    overflow: hidden;
+  }
+
+  .section-inner {
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* ── FORM ELEMENTS ── */
+  .field-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .field-row label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text3);
+    text-transform: uppercase;
+    white-space: nowrap;
+    min-width: 70px;
+  }
+
+  .field-row.col {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .field-row.col label { min-width: unset; margin-bottom: 4px; }
+
+  input[type="text"],
+  input[type="number"],
+  select {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    appearance: none;
+  }
+
+  input[type="text"]:focus,
+  input[type="number"]:focus,
+  select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+  }
+
+  input[type="text"]::placeholder { color: var(--text3); }
+
+  select option { background: var(--bg2); color: var(--text); }
+
+  .select-wrap { position: relative; }
+
+  .select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3);
+    pointer-events: none;
+    font-size: 11px;
+  }
+
+  .inline-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  /* ── CHECKBOX GRID ── */
+  .check-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+  }
+
+  .check-opt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background 0.1s;
+  }
+
+  .check-opt:hover { background: var(--bg3); }
+
+  .check-opt input[type="checkbox"] {
+    appearance: none;
+    width: 13px; height: 13px;
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .dep-panel .check-opt input[type="checkbox"]:checked {
+    background: var(--amber);
+    border-color: var(--amber);
+  }
+
+  .arr-panel .check-opt input[type="checkbox"]:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .check-opt label {
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    line-height: 1.2;
+  }
+
+  /* ── RANGE FIELDS ── */
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .range-row label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .range-row input[type="number"] { width: 80px; }
+
+  .range-sep {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  /* ── VALIDATE BUTTON ── */
+  .btn-validate {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 5px 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+
+  .btn-validate:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  /* ── FLIGHT CONTROLS ── */
+  .flight-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .speed-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 12px;
+  }
+
+  .speed-field label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text3);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .speed-field input {
+    width: 65px;
+    text-align: center;
+  }
+
+  .speed-field .unit {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+  }
+
+  /* ── LETS FLY BUTTON ── */
+  .btn-fly {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 32px;
+    font-family: var(--cond);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #00b4d8, #0077a8);
+    border: none;
+    color: #000;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-fly::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn-fly:hover::before { opacity: 1; }
+
+  .btn-fly:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(0,180,216,0.35);
+  }
+
+  .btn-fly:active { transform: translateY(0); }
+
+  .btn-fly:disabled {
+    background: var(--bg3);
+    color: var(--text3);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* ── RESULTS SECTION ── */
+  .results-area { display: none; }
+  .results-area.visible { display: block; }
+
+  .results-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0;
+  }
+
+  .tab-btn {
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px 24px;
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.15s;
+    border-bottom: none;
+  }
+
+  .tab-btn:first-child { border-radius: 4px 0 0 0; }
+  .tab-btn:last-child { border-radius: 0 4px 0 0; }
+
+  .tab-btn.active {
+    background: var(--panel);
+    color: var(--accent);
+    border-color: var(--border);
+    border-bottom: 1px solid var(--panel);
+    position: relative;
+    z-index: 1;
+  }
+
+  .results-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 0 4px 4px 4px;
+    display: none;
+  }
+
+  .results-panel.active { display: block; }
+
+  /* ── TEXT RESULTS ── */
+  .text-results {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 700px) {
+    .text-results { grid-template-columns: 1fr; }
+  }
+
+  .airport-card {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .airport-card-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .dep-card .airport-card-header {
+    background: rgba(244,162,97,0.08);
+    border-bottom: 1px solid rgba(244,162,97,0.2);
+  }
+
+  .arr-card .airport-card-header {
+    background: rgba(0,180,216,0.08);
+    border-bottom: 1px solid rgba(0,180,216,0.2);
+  }
+
+  .card-role {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .dep-card .card-role { color: var(--amber); }
+  .arr-card .card-role { color: var(--accent); }
+
+  .card-ident {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: 3px;
+  }
+
+  .card-airnav {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+
+  .card-airnav:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .card-body { padding: 14px; }
+
+  .card-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    border: 1px solid;
+  }
+
+  .tag-green { color: var(--green); border-color: rgba(82,183,136,0.3); background: rgba(82,183,136,0.08); }
+  .tag-amber { color: var(--amber); border-color: rgba(244,162,97,0.3); background: rgba(244,162,97,0.08); }
+  .tag-blue  { color: var(--accent); border-color: rgba(0,180,216,0.3); background: rgba(0,180,216,0.08); }
+  .tag-gray  { color: var(--text3); border-color: var(--border); background: var(--bg2); }
+
+  /* Flight summary strip */
+  .flight-summary {
+    grid-column: 1 / -1;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .summary-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+
+  .summary-value {
+    font-family: var(--mono);
+    font-size: 20px;
+    color: var(--accent);
+  }
+
+  .summary-unit {
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .flight-arrow {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--text3);
+  }
+
+  /* Action row */
+  .result-actions {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    font-family: var(--cond);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 7px 18px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid;
+  }
+
+  .action-btn-ghost {
+    background: transparent;
+    border-color: var(--border2);
+    color: var(--text2);
+  }
+
+  .action-btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* TODO: Hook Save button to Supabase */
+  .action-btn-save {
+    background: rgba(82,183,136,0.1);
+    border-color: rgba(82,183,136,0.3);
+    color: var(--green);
+  }
+
+  .action-btn-save:hover {
+    background: rgba(82,183,136,0.2);
+  }
+
+  /* TODO: Hook Share button to Supabase shareable link */
+  .action-btn-share {
+    background: rgba(0,180,216,0.1);
+    border-color: rgba(0,180,216,0.3);
+    color: var(--accent);
+  }
+
+  .action-btn-share:hover {
+    background: rgba(0,180,216,0.2);
+  }
+
+  .action-btn-hop {
+    background: rgba(244,162,97,0.12);
+    border-color: rgba(244,162,97,0.4);
+    color: var(--amber);
+    font-weight: 700;
+  }
+
+  .action-btn-hop:hover {
+    background: rgba(244,162,97,0.22);
+  }
+
+  /* ── FLIGHT PLAN LEG ── */
+  .plan-leg {
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr auto;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  .plan-leg:last-child { border-bottom: none; }
+  .plan-leg:hover { background: var(--bg2); }
+
+  .plan-leg-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+    padding: 12px 0;
+    border-right: 1px solid var(--border);
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .plan-leg-dep {
+    padding: 10px 14px;
+    border-right: 1px solid var(--border);
+  }
+
+  .plan-leg-arr {
+    padding: 10px 14px;
+    border-right: 1px solid var(--border);
+  }
+
+  .plan-leg-ident {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--text);
+    letter-spacing: 2px;
+  }
+
+  .plan-leg-name {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
+
+  .plan-leg-stats {
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .plan-leg-stat-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .plan-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .plan-stat-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1px;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+
+  .plan-stat-value {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .plan-leg-remove {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 0 14px;
+    font-size: 16px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+  }
+
+  .plan-leg-remove:hover { color: var(--red); }
+
+  .plan-leg-connector {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 14px 3px 42px;
+    background: var(--bg0);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .plan-connector-line {
+    flex: 1;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, var(--border2) 0, var(--border2) 4px, transparent 4px, transparent 8px);
+  }
+
+  .plan-connector-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  /* ── MAP RESULTS ── */
+  #map-container {
+    height: 460px;
+    background: #0d1520;
+    position: relative;
+  }
+
+  #map { width: 100%; height: 100%; }
+
+  .map-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(10,13,16,0.85);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 10px 14px;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+  }
+
+  .map-route-label {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  /* ── STATUS MSG ── */
+  #status-msg {
+    padding: 12px 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text3);
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+
+  #status-msg.visible { display: block; }
+  #status-msg.err { color: var(--red); }
+  #status-msg.ok { color: var(--green); }
+
+  /* Loading state */
+  .btn-fly.loading {
+    background: var(--bg3);
+    color: var(--text3);
+    cursor: wait;
+  }
+
+  /* Section divider labels */
+  .sec-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    text-transform: uppercase;
+    padding: 3px 0 2px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  /* Pilot notes */
+  .pilot-notes {
+    grid-column: 1 / -1;
+    padding: 10px 14px;
+  }
+
+  .pilot-notes textarea {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 3px;
+    resize: vertical;
+    min-height: 70px;
+  }
+
+  .pilot-notes textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .pilot-notes label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  /* Pulsing dot for LIVE */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .pulse-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+    margin-right: 4px;
+  }
+
+  /* Matching count badge */
+  .match-count {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--bg2);
+    color: var(--text3);
+    margin-left: auto;
+  }
+
+  /* Disabled state for sections */
+  .section-inner.disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">✈ SimLetsFly</div>
+    <div class="logo-sub">Sim Flight Finder v3.0</div>
+  </div>
+  <div class="header-right">
+    <div class="status-bar">
+      <span class="pulse-dot"></span>
+      DB: <span id="db-count">Loading...</span> airports
+    </div>
+    <!-- SUPABASE AUTH HOOK: Replace these buttons with Supabase auth UI component -->
+    <!-- import { Auth } from '@supabase/auth-ui-react' when migrating to React -->
+    <button class="auth-btn auth-btn-ghost" onclick="alert('TODO: Connect to Supabase Auth for login')">Sign In</button>
+    <button class="auth-btn auth-btn-solid" onclick="alert('TODO: Connect to Supabase Auth for signup')">Create Account</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ── FILTER PANELS ── -->
+  <div class="filter-grid">
+
+    <!-- DEPARTURE PANEL -->
+    <div class="panel dep-panel">
+      <div class="panel-header">
+        <div class="panel-badge badge-dep">DEP</div>
+        <div class="panel-title">Departure Airport</div>
+        <div class="match-count" id="dep-match">—</div>
+      </div>
+      <div class="panel-body">
+
+        <div class="radio-group">
+          <label class="radio-opt">
+            <input type="radio" name="dep-mode" value="specific" id="dep-specific" onchange="depModeChanged()">
+            <label for="dep-specific">Enter Specific Airport</label>
+          </label>
+          <label class="radio-opt">
+            <input type="radio" name="dep-mode" value="random" id="dep-random" checked onchange="depModeChanged()">
+            <label for="dep-random">Random — Match Criteria Below</label>
+          </label>
+        </div>
+
+        <!-- Specific Airport Input -->
+        <div class="section" id="dep-specific-section" style="display:none">
+          <div class="section-inner">
+            <div class="field-row">
+              <label>ICAO</label>
+              <input type="text" id="dep-ident" placeholder="e.g. KCLT" maxlength="6" 
+                oninput="this.value=this.value.toUpperCase(); if(this.value.length>=3) validateDep()">
+              <button class="btn-validate" onclick="validateDep()">Validate</button>
+            </div>
+            <div id="dep-validate-msg" style="font-family:var(--mono);font-size:10px;color:var(--text3);padding:2px 0;"></div>
+          </div>
+        </div>
+
+        <!-- Random Criteria -->
+        <div id="dep-random-section">
+          <div class="section">
+            <div class="section-inner">
+              <div class="sec-label">Location</div>
+              <div class="field-row col">
+                <label>Continent</label>
+                <div class="select-wrap">
+                  <select id="dep-continent" onchange="updateDepCountry()">
+                    <option value="">— Any —</option>
+                    <option>Africa</option><option>Antarctica</option><option>Asia</option>
+                    <option>Europe</option><option selected>North America</option>
+                    <option>Oceania</option><option>South America</option>
+                  </select>
+                </div>
+              </div>
+              <div class="inline-fields">
+                <div class="field-row col">
+                  <label>Country</label>
+                  <div class="select-wrap">
+                    <select id="dep-country" onchange="updateDepRegion()">
+                      <option value="">— Random —</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field-row col">
+                  <label>Region/State</label>
+                  <div class="select-wrap">
+                    <select id="dep-region">
+                      <option value="">— Random —</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-inner">
+              <div class="sec-label">Airport Type</div>
+              <div class="check-grid">
+                <label class="check-opt"><input type="checkbox" class="dep-type" value="Small Airport" checked><label>Small Airport</label></label>
+                <label class="check-opt"><input type="checkbox" class="dep-type" value="Medium Airport" checked><label>Medium Airport</label></label>
+                <label class="check-opt"><input type="checkbox" class="dep-type" value="Large Airport" checked><label>Large Airport</label></label>
+                <label class="check-opt"><input type="checkbox" class="dep-type" value="Seaplane Base"><label>Seaplane Base</label></label>
+                <label class="check-opt"><input type="checkbox" class="dep-type" value="Heliport"><label>Heliport</label></label>
+                <label class="check-opt"><input type="checkbox" class="dep-type" value="Closed Airport"><label>Closed Airport</label></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-inner">
+              <div class="sec-label">Runway Surface</div>
+              <div class="check-grid">
+                <label class="check-opt"><input type="checkbox" class="dep-rwy" value="hard" checked><label>Hard / Concrete</label></label>
+                <label class="check-opt"><input type="checkbox" class="dep-rwy" value="soft"><label>Soft / Grass</label></label>
+                <label class="check-opt"><input type="checkbox" class="dep-rwy" value="water"><label>Water Landings</label></label>
+                <label class="check-opt"><input type="checkbox" class="dep-rwy" value="heli"><label>Helipad</label></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-inner">
+              <div class="sec-label">Runway Length (ft)</div>
+              <div class="range-row">
+                <label>Min</label>
+                <input type="number" id="dep-rwy-min" placeholder="None" min="0" max="20000" style="width:90px">
+                <label>Max</label>
+                <input type="number" id="dep-rwy-max" placeholder="None" min="0" max="20000" style="width:90px">
+              </div>
+              <div class="sec-label" style="margin-top:8px">Fuel</div>
+              <div class="check-grid">
+                <label class="check-opt"><input type="checkbox" id="dep-avgas"><label>AV GAS</label></label>
+                <label class="check-opt"><input type="checkbox" id="dep-jeta"><label>JET A</label></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ARRIVAL PANEL -->
+    <div class="panel arr-panel">
+      <div class="panel-header">
+        <div class="panel-badge badge-arr">ARR</div>
+        <div class="panel-title">Arrival Airport</div>
+        <div class="match-count" id="arr-match">—</div>
+      </div>
+      <div class="panel-body">
+
+        <div class="field-row" style="margin-bottom:8px">
+          <label style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;white-space:nowrap">Range (nm)</label>
+          <input type="number" id="arr-min" value="100" min="1" style="width:80px;text-align:center">
+          <span class="range-sep">—</span>
+          <input type="number" id="arr-max" value="1000" min="1" style="width:80px;text-align:center">
+        </div>
+
+        <div class="section">
+          <div class="section-inner">
+            <div class="sec-label">Location</div>
+            <div class="field-row col">
+              <label>Continent</label>
+              <div class="select-wrap">
+                <select id="arr-continent" onchange="updateArrCountry()">
+                  <option value="">— Any —</option>
+                  <option>Africa</option><option>Antarctica</option><option>Asia</option>
+                  <option>Europe</option><option selected>North America</option>
+                  <option>Oceania</option><option>South America</option>
+                </select>
+              </div>
+            </div>
+            <div class="inline-fields">
+              <div class="field-row col">
+                <label>Country</label>
+                <div class="select-wrap">
+                  <select id="arr-country" onchange="updateArrRegion()">
+                    <option value="">— Random —</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-row col">
+                <label>Region/State</label>
+                <div class="select-wrap">
+                  <select id="arr-region">
+                    <option value="">— Random —</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-inner">
+            <div class="sec-label">Airport Type</div>
+            <div class="check-grid">
+              <label class="check-opt"><input type="checkbox" class="arr-type" value="Small Airport" checked><label>Small Airport</label></label>
+              <label class="check-opt"><input type="checkbox" class="arr-type" value="Medium Airport" checked><label>Medium Airport</label></label>
+              <label class="check-opt"><input type="checkbox" class="arr-type" value="Large Airport" checked><label>Large Airport</label></label>
+              <label class="check-opt"><input type="checkbox" class="arr-type" value="Seaplane Base"><label>Seaplane Base</label></label>
+              <label class="check-opt"><input type="checkbox" class="arr-type" value="Heliport"><label>Heliport</label></label>
+              <label class="check-opt"><input type="checkbox" class="arr-type" value="Closed Airport"><label>Closed Airport</label></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-inner">
+            <div class="sec-label">Runway Surface</div>
+            <div class="check-grid">
+              <label class="check-opt"><input type="checkbox" class="arr-rwy" value="hard" checked><label>Hard / Concrete</label></label>
+              <label class="check-opt"><input type="checkbox" class="arr-rwy" value="soft"><label>Soft / Grass</label></label>
+              <label class="check-opt"><input type="checkbox" class="arr-rwy" value="water"><label>Water Landings</label></label>
+              <label class="check-opt"><input type="checkbox" class="arr-rwy" value="heli"><label>Helipad</label></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-inner">
+            <div class="sec-label">Approach Systems</div>
+            <div class="check-grid">
+              <label class="check-opt"><input type="checkbox" id="arr-als"><label>ALS Lighting</label></label>
+              <label class="check-opt"><input type="checkbox" id="arr-vasi"><label>VASI</label></label>
+              <label class="check-opt"><input type="checkbox" id="arr-ils"><label>ILS</label></label>
+            </div>
+            <div class="sec-label" style="margin-top:8px">Runway Length (ft)</div>
+            <div class="range-row">
+              <label>Min</label>
+              <input type="number" id="arr-rwy-min" placeholder="None" min="0" max="20000" style="width:90px">
+              <label>Max</label>
+              <input type="number" id="arr-rwy-max" placeholder="None" min="0" max="20000" style="width:90px">
+            </div>
+            <div class="sec-label" style="margin-top:8px">Fuel</div>
+            <div class="check-grid">
+              <label class="check-opt"><input type="checkbox" id="arr-avgas"><label>AV GAS</label></label>
+              <label class="check-opt"><input type="checkbox" id="arr-jeta"><label>JET A</label></label>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FLIGHT CONTROLS ── -->
+  <div class="flight-controls">
+    <div class="speed-field">
+      <label>Cruise Speed</label>
+      <input type="number" id="cruise-speed" value="280" min="50" max="700" style="width:65px;text-align:center">
+      <div class="unit">kts</div>
+    </div>
+    <button class="btn-fly" id="btn-fly" onclick="findFlight()">✈ LET'S FLY!</button>
+  </div>
+
+  <!-- ── STATUS ── -->
+  <div id="status-msg"></div>
+
+  <!-- ── RESULTS ── -->
+  <div class="results-area" id="results-area">
+    <div class="results-tabs">
+      <button class="tab-btn active" onclick="switchTab('text')">Flight Details</button>
+      <button class="tab-btn" onclick="switchTab('map')">Map View</button>
+    </div>
+
+    <div class="results-panel active" id="tab-text">
+      <div class="text-results" id="text-results">
+        <!-- Filled by JS -->
+      </div>
+      <div class="result-actions">
+        <button class="action-btn action-btn-ghost" onclick="copyFlight()">Copy to Clipboard</button>
+        <!-- TODO: Wire to Supabase - saves flight to user's saved_flights table -->
+        <button class="action-btn action-btn-save" onclick="alert('TODO: Implement Supabase save flight for logged-in user')">Save Flight</button>
+        <!-- TODO: Wire to Supabase - generates shareable link via saved_flights with public=true -->
+        <button class="action-btn action-btn-share" onclick="alert('TODO: Implement Supabase shareable link generation')">Share Flight</button>
+        <button class="action-btn action-btn-ghost" onclick="openWeather()">Arrival Weather</button>
+        <div style="flex:1"></div>
+        <button class="action-btn action-btn-hop" id="btn-add-hop" onclick="addHop()" style="display:none">+ Add Hop</button>
+        <button class="action-btn action-btn-ghost" id="btn-next-hop" onclick="nextHop()" style="display:none">Next Hop →</button>
+      </div>
+    </div>
+
+    <div class="results-panel" id="tab-map">
+      <div id="map-container">
+        <div id="map"></div>
+        <div class="map-overlay" id="map-overlay" style="display:none">
+          <div class="map-route-label" id="map-route-label"></div>
+        </div>
+      </div>
+      <div class="result-actions">
+        <button class="action-btn action-btn-ghost" onclick="switchTab('text')">← Back to Details</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FLIGHT PLAN LOG ── -->
+  <div id="flightplan-area" style="display:none; margin-top:16px;">
+    <div class="panel">
+      <div class="panel-header" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="panel-badge" style="background:rgba(82,183,136,0.12);color:var(--green);border:1px solid rgba(82,183,136,0.3)">PLAN</div>
+          <div class="panel-title">Flight Plan</div>
+          <div class="match-count" id="plan-leg-count">0 legs</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="action-btn action-btn-ghost" onclick="copyPlan()" style="font-size:11px;padding:4px 12px">Copy Plan</button>
+          <button class="action-btn action-btn-ghost" onclick="clearPlan()" style="font-size:11px;padding:4px 12px;color:var(--red);border-color:rgba(231,111,81,0.3)">Clear</button>
+        </div>
+      </div>
+
+      <!-- Plan summary strip -->
+      <div id="plan-summary" style="display:flex;align-items:center;gap:24px;padding:8px 16px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <div class="summary-stat">
+          <div class="summary-label">Total Distance</div>
+          <div style="font-family:var(--mono);font-size:16px;color:var(--green)" id="plan-total-dist">0 <span style="font-size:10px;color:var(--text3)">nm</span></div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Total Est. Time</div>
+          <div style="font-family:var(--mono);font-size:16px;color:var(--green)" id="plan-total-time">0.0 <span style="font-size:10px;color:var(--text3)">hr</span></div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Legs</div>
+          <div style="font-family:var(--mono);font-size:16px;color:var(--green)" id="plan-leg-count2">0</div>
+        </div>
+        <div id="plan-route-strip" style="font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:1px;flex:1;text-align:right"></div>
+      </div>
+
+      <!-- Leg rows -->
+      <div id="plan-legs" style="padding:0"></div>
+    </div>
+  </div>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA & STATE
+// ═══════════════════════════════════════════════════════
+
+// SUPABASE HOOK: Replace this with Supabase DB query
+// const { data: airports } = await supabase.from('airports').select('*')
+let AIRPORTS = [];
+
+// Dropdown lookup data (continent → country → region)
+// SUPABASE HOOK: Could also be fetched from Supabase distinct values
+const LOOKUP = {"Africa":{"Algeria":["Adrar Province","Batna Province","Biskra Province","Blida Province","Boumerdès Province","Béchar Province","Béjaïa Province","Chlef Province","Constantine Province","Djelfa Province","El Bayadh Province","El Oued Province","El Tarf Province","Ghardaïa Province","Illizi Province","Jijel Province","Laghouat Province","M'Sila Province","Mascara Province","Mila Province","Mostaganem Province","Naama Province","Oran Province","Ouargla Province","Oum el Bouaghi Province","Relizane Province","Saïda Province","Sidi Bel Abbes Province","Sétif Province","Tamanghasset Province","Tiaret Province","Tindouf Province","Tipaza Province","Tlemcen Province","Tébessa Province"],"Angola":["Bengo Province","Benguela Province","Bié Province","Cabinda Province","Cuando Cubango Province","Cuanza Sul Province","Cunene Province","Huambo Province","Huíla Province","Luanda Province","Lunda Norte Province","Lunda Sul Province","Malanje Province","Moxico Province","Namibe Province","Uíge Province","Zaire Province"],"Benin":["Alibori","Atakora","Atlantique","Borgou","Collines","Donga","Zou"],"Botswana":["Central District","Ghanzi District","Kgalagadi District","Kweneng District","North-East District","North-West District","South-East District","Southern District"],"Burkina Faso":["Bale","Bougouriba","Boulgou","Comoe","Gnagna","Gourma","Houet","Kadiogo","Kenedougou","Kompienga","Kossi","Mouhoun","Oudalan","Poni","Seno","Sourou","Tapoa","Tui","Yatenga"],"Burundi":["Bujumbura Mairie Province","Kirundo Province","Rutana Province"],"Cameroon":["Adamaoua Region","Centre Region","East Region","Far North Region","Littoral Region","North Region","North-West Region","South Region","South-West Region","West Region"],"Cape Verde":["Barlavento Islands","Sotavento Islands"],"Central African Republic":["Bamingui-Bangoran","Basse-Kotto","Haut-Mbomou","Haute-Kotto","Mambéré-Kadéï","Mbomou","Nana-Grébizi","Nana-Mambéré","Ombella-M'Poko","Ouaka","Ouham","Ouham-Pendé","Vakaga"],"Chad":["Batha","Biltine","Borkou-Ennedi-Tibesti","Chari-Baguirmi","Guera","Kanem","Lac","Logone-Occidental","Mayo-Kebbi","Moyen-Chari","Ouaddai","Salamat","Tandjile"],"Comoros":["Anjouan Ndzouani","Grande Comore Ngazidja","Moheli Moili"],"Congo (Brazzaville)":["Bouenza Department","Cuvette Department","Kouilou Department","Likouala Department","Niari Department","Plateaux Department","Pool Department","Sangha Department"],"Congo (Kinshasa)":["Bandundu Province","Bas-Congo Province","Equateur Province","Kasai-Occidental Province","Kasai-Oriental Province","Katanga Province","Kinshasa Province","Maniema Province","Nord-Kivu Province","Orientale Province","Sud-Kivu Province"],"Côte d'Ivoire":["Bas-Sassandra","Denguélé","Dix-Huit Montagnes","Haut-Sassandra","Lacs","Lagunes","Moyen-Cavally","Moyen-Comoé","N'zi-Comoé","Savanes","Sud-Comoé","Vallée du Bandama","Worodouqou","Zanzan"],"Djibouti":["Ali Sabiah","Arta","Dikhil","Djibouti","Obock","Tadjoura"],"Egypt":["Alexandria Governorate","Aswan Governorate","Asyut Governorate","Beheira Governorate","Cairo Governorate","Dakahlia Governorate","Faiyum Governorate","Gharbia Governorate","Giza Governorate","Ismailia Governorate","Matruh Governorate","Minya Governorate","New Valley Governorate","North Sinai Governorate","Qena Governorate","Red Sea Governorate","Sharqia Governorate","Suez Governorate"],"Equatorial Guinea":["Bioko Norte","Litoral"],"Eritrea":["Debubawi Keyih Bahri","Gash-Barka","Semenawi Keyih Bahri"],"Eswatini":["Hhohho","Lubombo","Manzini","Shiselweni"],"Ethiopia":["Addis Ababa","Afar","Amara","Benshangul-Gumaz","Dire Dawa","Gambela Peoples","Oromia","Somali","Southern Nations","Tigrai"],"Gabon":["Estuaire Province","Haut-Ogooué Province","Moyen-Ogooué Province","Ngounié Province","Nyanga Province","Ogooué-Ivindo Province","Ogooué-Maritime Province","Woleu-Ntem Province"],"Gambia":["Western Division"],"Ghana":["Ashanti Region","Brong-Ahafo Region","Greater Accra Region","Northern Region","Upper East Region","Upper West Region","Western Region"],"Guinea":["Boké Region","Conakry Special Zone","Faranah Region","Kankan Region","Labé Region","Nzérékoré Region"],"Guinea-Bissau":["Bissau Autonomous Sector","Gabu Region","Tombali Region"],"Kenya":["Central Province","Coast Province","Eastern Province","Nairobi Province","North-Eastern Province","Nyanza Province","Rift Valley Province","Western Province"],"Lesotho":["Leribe","Mafeteng","Maseru","Mohale's Hoek","Mokhotlong","Qacha's Nek","Quthing","Thaba-Tseka"],"Liberia":["Grand Gedeh County","Grand Kru County","Lofa County","Margibi County","Maryland County","Montserrado County","Nimba County","Sinoe County"],"Libya":["Al Jabal al Akhdar District","Al Jabal al Gharbi District","Al Jufrah District","Al Kufrah District","Al Marj District","Al Wahat District","An Nuqat al Khams District","Benghazi District","Darnah District","Ghat District","Misurata District","Murzuq District","Nalut District","Sabha District","Surt District","Tripoli District","Wadi Al Shatii District"],"Madagascar":["Antananarivo","Antsiranana","Fianarantsoa","Mahajanga","Toamasina","Toliara"],"Malawi":["Blantyre District","Dedza District","Karonga District","Kasungu District","Likoma Island District","Lilongwe District","Machinga District","Mangochi District","Mchinji District","Mzimba District","Nkhotakota District","Nsanje District","Ntchisi District","Rumphi District","Salima District","Zomba District"],"Mali":["Gao Region","Kayes Region","Kidal Region","Koulikoro Region","Mopti Region","Sikasso Region","Tombouctou Region"],"Mauritania":["Adrar Region","Assaba Region","Brakna Region","Dakhlet Nouadhibou Region","Gorgol Region","Guidimaka Region","Hodh ech Chargui Region","Hodh el Charbi Region","Inchiri Region","Nouakchott Region","Tagant Region","Tiris Zemmour Region"],"Mauritius":["Grand Port","Vacosa-Phoenix"],"Mayotte":["(unassigned)"],"Morocco":["Agadir Province","Al Hoceïma Province","Aït Baha Province","Beni Mellal Province","Casablanca Province","Errachidia Province","Essaouira Province","Figuig Province","Fès Province","Ifrane Province","Kénitra Province","Laâyoune (EH) Province","Marrakech Province","Meknèses Province","Nador Province","Ouarzazate Province","Oujda Province","Rabat-Salé Province","Tan-Tan Province","Tanger Province","Taroudannt Province","Taza Province","Tiznit Province","Tétouan Province"],"Mozambique":["Cabo Delgado Province","Gaza Province","Inhambane Province","Manica Province","Maputo (city)","Maputo Province","Nampula Province","Niassa Province","Sofala Province","Tete Province","Zambezia Province"],"Namibia":["Erongo Region","Hardap Region","Kavango East Region","Khomas Region","Kunene Region","Ohangwena Region","Omaheke Region","Omusati Region","Oshana Region","Oshikoto Region","Otjozondjupa Region","Zambezi Region","ǁKaras Region"],"Niger":["Agadez Region","Diffa Region","Dosso Region","Maradi Region","Niamey Capital District","Tahoua Region","Tillabéri Region","Zinder Region"],"Nigeria":["Abuja Capital Territory","Adamawa","Benue","Borno","Cross River","Edo","Enugu","Gombe","Imo","Kaduna","Kano","Kogi","Kwara","Lagos","Niger","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Zamfara"],"Rwanda":["Eastern Province","Kigali Province","Northern Province","Southern Province","Western Province"],"Réunion":["(unassigned)"],"Senegal":["Dakar Region","Fatick Region","Louga Region","Matam Region","Saint-Louis Region","Tambacounda Region","Ziguinchor Region"],"Seychelles":["La Digue"],"Sierra Leone":["Eastern Province","Northern Province","Southern Province","Western Area"],"Somalia":["Banaadir","Bari","Bay","Galguduud","Gedo","Hiirsan","Jubbada Hoose","Mudug","Nugaal","Saneag","Woqooyi Galbeed"],"South Africa":["Eastern Cape","Free State","Gauteng","Kwazulu-Natal","Limpopo","Mpumalanga","North-West","Northern Cape","Western Cape"],"South Sudan":["Central Equatoria State","Eastern Equatoria State","Jonglei State","Lakes State","Northern Bahr el Ghazal State","Upper Nile State","Western Bahr el Ghazal State","Western Equatoria State"],"Sudan":["Al Qadarif State","Blue Nile State","East Darfur State","Kassala State","Khartoum State","North Darfur State","North Kurdufan State","Northern State","Red Sea State","River Nile State","South Darfur State","South Kurdufan State","West Darfur State"],"São Tomé and Principe":["São Tomé"],"Tanzania":["(unassigned)","Arusha Region","Dar-es-Salaam Region","Dodoma Region","Iringa Region","Kagera Region","Kaskazini Unguja Region","Kilimanjaro Region","Lindi Region","Manyara Region","Mara Region","Mbeya Region","Morogoro Region","Mtwara Region","Mwanza Region","Pwani Region","Rukwa Region","Ruvuma Region","Shinyanga Region","Singida Region","Tabora Region","Tanga Region","Xigoma Region"],"Togo":["Centrale Region","Kara Region","Maritime Region","Plateaux Region","Savanes Region"],"Tunisia":["Ben Arous Governorate","Bizerte Governorate","Gabès Governorate","Gafsa Governorate","Jendouba Governorate","Medenine Governorate","Monastir Governorate","Sfax Governorate","Tataouine Governorate","Tozeur Governorate","Tunis Governorate"],"Uganda":["Central Region","Eastern Region","Northern Region","Western Region"],"Western Sahara":["(unassigned)"],"Zambia":["Central Province","Copperbelt Province","Eastern Province","Luapula Province","Lusaka Province","North-Western Province","Northern Province","Southern Province","Western Province"],"Zimbabwe":["(unassigned)","Bulawayo Metropolitan Province","Harare Metropolitan Province","Manicaland Province","Mashonaland Central Province","Mashonaland East Province","Mashonaland West Province","Masvingo Province","Matabeleland North Province","Matabeleland South Province","Midlands Province"]},"Antarctica":{"Antarctica":["(unassigned)"],"French Southern Territories":["(unassigned)"]},"Asia":{"Afghanistan":["Badakhshan Province","Badghis Province","Balkh Province","Farah Province","Faryab Province","Herat Province","Kabul Province","Kandahar Province","Khost Province","Kunduz Province","Nangarhar Province","Nimruz Province","Orūzgān Province","Paktia Province","Paktika Province","Parwan Province","Takhar Province"],"Armenia":["Lori Province","Shirak Province","Vayots Dzor Province","Yerevan (capital district)"],"Azerbaijan":["Baku (city)","Ganja (city)","Khojaly District","Kurdamir District","Lankaran District","Nakhchivan Autonomous Republic","Qabala District","Samkir District","Sumqayit (city)","Yevlax (city)","Zaqatala District"],"Bahrain":["Muharraq Governorate","Southern Governorate"],"Bangladesh":["Barisal Division","Chittagong Division","Dhaka Division","Khulna Division","Rajshahi Division","Sylhet Division"],"Bhutan":["Paro","Sarpang","Trashigang"],"British Indian Ocean Territory":["(unassigned)"],"Brunei":["Belait District","Brunei-Muara District"],"Burma":["Ayeyarwady Division","Bago Division","Kachin State","Kayah State","Kayin State","Magway Division","Mandalay Division","Mon State","Rakhine State","Sagaing Division","Shan State","Tanintharyi Division","Yangon Division"],"Cambodia":["Baat Dambang","Kach Kong","Kampong Chaam","Kampong Chhnang","Kandaal","Krachoh","Mondol Kiri","Pousaat","Preah Vihear","Rotanak Kiri","Siem Reab","Stueng Traeng","Xrong Preah Sihanouk"],"China":["(unassigned)","Anhui Province","Beijing Municipality","Chongqing Municipality","Fujian Province","Gansu Province","Guangdong Province","Guangxi Autonomous Region","Guizhou Province","Hainan Province","Hebei Province","Heilongjiang Province","Henan Province","Hubei Province","Hunan Province","Inner Mongolia Autonomous Region","Jiangsu Province","Jiangxi Province","Jilin Province","Liaoning Province","Ningxia Autonomous Region","Qinghai Province","Shaanxi Province","Shandong Province","Shanghai Municipality","Shanxi Province","Sichuan Province","Tianjin Municipality","Tibet Autonomous Region","Xinjiang Autonomous Region","Yunnan Province","Zhejiang Province"],"Christmas Island":["(unassigned)"],"Cocos (Keeling) Islands":["(unassigned)"],"Cyprus":["Larnarca District","Nicosia District","Paphos District"],"Egypt":["North Sinai Governorate","Port Said Governorate","South Sinai Governorate"],"Georgia":["Autonomous Republic of Abkhazia","Autonomous Republic of Adjara","Imereti","Kakheti","Kvemo Kartli","Mtskheta-Mtianeti","Tbilisi"],"Hong Kong":["(unassigned)"],"India":["Andaman and Nicobar Islands","Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chandigarh","Chhattisgarh","Daman and Diu","Delhi","Gujarat","Haryana","Himachal Pradesh","Jammu and Kashmir","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttaranchal","West Bengal"],"Indonesia":["Aceh","Bali","Banten","Central Kalimantan","East Kalimantan","Gorontalo","Jakarta Raya","Jawa Barat","Jawa Tengah","Jawa Timur","Kalimantan Barat","Kalimantan Selatan","Lampung","Maluku","Maluku Utara","North Kalimantan","Nusa Tenggara Barat","Nusa Tenggara Timur","Papua","Riau","Sulawesi Selatan","Sulawesi Tengah","Sulawesi Tenggara","Sulawesi Utara","Sumatera Utara","Sumatra Barat","Sumatra Selatan","West Papua"],"Iran":["(unassigned)","Ardabil Province","Bushehr Province","Chaharmahal and Bakhtiari Province","East Azarbaijan Province","Esfahan Province","Fars Province","Gilan Province","Golestan Province","Hamadan Province","Hormozgan Province","Iiam Province","Kerman Province","Kermanshah Province","Khuzestan Province","Kohgiluyeh and Boyer-Ahmad Province","Kordestan Province","Lorestan Province","Markazi Province","Mazandaran Province","North Khorasan Province","Qazvin Province","Qom Province","Razavi Khorasan Province","Semnan Province","Sistan and Baluchestan Province","South Khorasan Province","Tehran Province","West Azarbaijan Province","Yazd Province","Zanjan Province"],"Iraq":["Al-Anbar Governorate","Arbil Governorate","As-Sulaymaniyyah Governorate","Baghdad Governorate","Basra Governorate","Dhi Qar Governorate","Kirkuk Governorate","Najaf Governorate","Ninawa Governorate","Salah ad Din Governorate"],"Israel":["Central District","Haifa District","Northern District","Southern District","Tel Aviv District"],"Japan":["Aichi Prefecture","Akita Prefecture","Aomori Prefecture","Chiba Prefecture","Ehime Prefecture","Fukui Prefecture","Fukuoka Prefecture","Fukusima Prefecture","Gifu Prefecture","Hiroshima Prefecture","Hokkaidō Prefecture","Hyōgo Prefecture","Ibaraki Prefecture","Ishikawa Prefecture","Iwate Prefecture","Kagawa Prefecture","Kagoshima Prefecture","Kanagawa Prefecture","Kumamoto Prefecture","Kōchi Prefecture","Mie Prefecture","Miyagi Prefecture","Miyazaki Prefecture","Nagano Prefecture","Nagasaki Prefecture","Niigata Prefecture","Okayama Prefecture","Okinawa Prefecture","Saga Prefecture","Shimane Prefecture","Shizuoka Prefecture","Tochigi Prefecture","Tokushima Prefecture","Tottori Prefecture","Toyama Prefecture","Tōkyō Prefecture","Wakayama Prefecture","Yamagata Prefecture","Yamaguchi Prefecture","Ōita Prefecture","Ōsaka Prefecture"],"Jordan":["Al 'Aqaba Governorate","Al Mafraq Governorate","Amman Governorate","Az Zarga Governorate"],"Kazakhstan":["Akmola Region","Aktobe Region","Almaty Region","Atyrau Region","Baikonur City","East Kazakhstan Region","Jambyl Region","Karaganda Region","Kostanay Region","Kyzylorda Region","Mangystau Region","North Kazakhstan Region","Pavlodar Region","South Kazakhstan Region","West Kazakhstan Region"],"Kuwait":["Al Ahmadi Governorate","Al Farwaniyah Governorate","Al Jahra Governorate"],"Kyrgyzstan":["Batken Region","Chuy Region","Issyk Kul Region","Jalal-Abad Region"],"Laos":["Bokeo Province","Champasak Province","Houaphan Province","Khammouan Province","Louang Namtha Province","Louangphabang Province","Oudomxai Province","Phongsali Province","Salavan Province","Savannakhet Province","Vientiane Prefecture","Xaignabouli Province","Xiangkhoang Province"],"Lebanon":["Beqaa Governorate","Mount Lebanon Governorate","North Governorate"],"Macau":["(unassigned)"],"Malaysia":["Johor","Kedah","Kelantan","Pahang","Perak","Pulau Pinang","Sabah","Sarawak","Selangor","Terengganu","Wilayah Persekutuan Kuala Lumpur","Wilayah Persekutuan Labuan"],"Maldives":["Haa Dhaalu Atoll","Laamu Atoll","Malé Capital","Seenu Atoll","Thaa"],"Mongolia":["Arhangay","Bayan-Olgiy","Bayanhongor","Bulgan","Dornod","Dzavhan","Govi-Altay","Hentiy","Khovd","Khövsgöl","Shbaatar","Ulanbaatar","Uvs","Ömnögovi","Övörkhangai"],"Nepal":["Bagmati","Bheri","Dhawalagiri","Gandaki","Janakpur","Karnali","Kosi","Lumbini","Mahakali","Mechi","Narayani","Rapti","Sagarmatha","Seti"],"North Korea":["Kangwon Province","Pyongyang (capital city)","South Hamgyong Province","South Pyongan Province"],"Oman":["Ad Dakhillyah Governorate","Al Batinah Governorate","Al Buraimi Governorate","Al Wusta Governorate","Ash Sharqlyah Governorate","Az Zahirah Governorate","Dhofar Governorate","Masqat Governorate","Musandam Governorate"],"Pakistan":["Azad Kashmir","Balochistan","Federally Administered Tribal Areas","North-West Frontier","Northern Areas","Punjab","Sindh"],"Philippines":["(unassigned)","Agusan del Norte Province","Aklan Province","Albay Province","Antique Province","Aurora Province","Basilan Province","Batangas Province","Benguet Province","Biliran Province","Bohol Province","Bukidnon Province","Bulacan Province","Cagayan Province","Camarines Norte Province","Camarines Sur Province","Camiguin Province","Capiz Province","Catanduanes Province","Cavite Province","Cebu Province","Davao Oriental Province","Davao Province","Davao del Sur Province","Eastern Samar Province","Ilocos Norte Province","Ilocos Sur Province","Iloilo Province","Isabela Province","La Union Province","Lanao del Norte Province","Lanao del Sur Province","Leyte Province","Maguindanao Province","Marinduque Province","Masbate Province","Mindoro Occidental Province","Mindoro Oriental Province","Misamis Occidental Province","Misamis Oriental Province","Negroe Occidental Province","Negros Oriental Province","Northern Samar Province","Nueva Ecija Province","Nueva Vizcaya Province","Palawan Province","Pampanga Province","Pangasinan Province","Quezon Province","Romblon Province","Sorsogon Province","South Cotabato Province","Southern Leyte Province","Sultan Kudarat Province","Sulu Province","Surigao del Norte Province","Surigao del Sur Province","Tawi-Tawi Province","Western Samar Province","Zambales Province","Zamboanga Sibiguey Province","Zamboanga del Norte Province","Zamboanga del Sur Province"],"Qatar":["Ad Dawhah Municipality","Al Khawr Municipality","Ar Rayyan Municipality"],"Russia":["Altai Krai","Altai Republic","Amur Oblast","Chelyabinsk Oblast","Chukotka Autonomous Okrug","Irkutsk Oblast","Jewish Autonomous Oblast","Kamchatka Krai","Kemerovo Oblast","Khabarovsk Krai","Khanty-Mansi Autonomous Okrug","Komi Republic","Krasnoyarsk Krai","Kurgan Oblast","Magadan Oblast","Novosibirsk Oblast","Omsk Oblast","Primorsky Krai","Republic of Buryat","Republic of Khakassia","Sakha (Yakutia) Republic","Sakhalin Oblast","Sverdlovsk Oblast","Tomsk Oblast","Tuva Republic","Tyumen Oblast","Yamalo-Nenets Autonomous Okrug","Zabaykalsky Krai"],"Saudi Arabia":["Al Batah Region","Al Jawf Region","Al Madinah Region","Al Qasim Region","Ash Sharqiyah Region","Asir Region","Ha'il Region","Jlzan Region","Makkah Region","Najran Region","Riyadh Region","Tabuk Region","The Northern Border Region"],"Singapore":["North East","North West","South East"],"South Korea":["Busan Gwang'yeogsi","Chungcheongbugdo","Chungcheongnamdo","Daegu Gwang'yeogsi","Gang'weondo","Gwangju Gwang'yeogsi","Gyeonggido","Gyeongsangbugdo","Gyeongsangnamdo","Incheon Gwang'yeogsi","Jejudo","Jeonrabugdo","Jeonranamdo","Seoul Teugbyeolsi","Ulsan Gwang'yeogsi"],"Sri Lanka":["Central Province","Eastern Province","North Central Province","Northern Province","Southern Province","Western Province"],"Syria":["Al-Hasakah Governorate","Aleppo Governorate","Ar-Raqqah Governorate","As-Suwayda Governorate","Damascus Governorate","Deir ez-Zor Governorate","Hama Governorate","Homs Governorate","Quneitra Governorate"],"Taiwan":["Chiayi County","Hsinchu (city)","Hualien County","Kaohsiung (municipality)","Kaohsiung County","Lienchiang County","Penghu County","Pingtung County","Taichung (city)","Tainan City","Taipei (municipality)","Taitung County","Taoyuan County"],"Tajikistan":["Districts of Republican Subordination","Gorno-Badakhshan Autonomous Region","Khatlon Region","Sughd Region"],"Thailand":["Bangkok Province","Buri Ram Province","Chachoengsao Province","Chiang Mai Province","Chiang Rai Province","Chon Buri Province","Chumphon Province","Khon Kaen Province","Krabi Province","Lampang Province","Lamphun Province","Loei Province","Lop Buri Province","Mae Hong Son Province","Nakhon Phanom Province","Nakhon Ratchasima Province","Nakhon Sawan Province","Nakhon Si Thammarat Province","Nan Province","Narathiwat Province","Pattani Province","Phayao Province","Phetchabun Province","Phetchaburi Province","Phitsanulok Province","Phrae Province","Phuket Province","Prachin Buri Province","Prachuap Khiri Khan Province","Ranong Province","Ratchaburi Province","Rayong Province","Roi Et Province","Sakon Nakhon Province","Satun Province","Songkhla Province","Sukhothai Province","Suphan Buri Province","Surat Thani Province","Surin Province","Tak Province","Trang Province","Trat Province","Ubon Ratchathani Province","Udon Thani Province","Uttaradit Province"],"Timor-Leste":["Baucau","Bobonaro","Cova Lima","Dili","Oecussi"],"Turkey":["Adana Province","Adıyaman Province","Afyonkarahisar Province","Amasya Province","Ankara Province","Antalya Province","Aydin Province","Ağrı Province","Balıkesir Province","Batman Province","Bursa Province","Denizli Province","Diyarbakir Province","Elazığ Province","Erzincan Province","Erzurum Province","Eskişehir Province","Gaziantep Province","Hatay Province","Isparta Province","Kahramanmaraş Province","Kars Province","Kastamonu Province","Kayseri Province","Kocaeli Province","Konya Province","Kütahya Province","Malatya Province","Manisa Province","Mardin Province","Muğla Province","Muş Province","Nevşehir Province","Samsun Province","Siirt Province","Sinop Province","Sivas Province","Tokat Province","Trabzon Province","Uşak Province","Van Province","Yalova Province","Zonguldak Province","Çanakkale Province","İstanbul Province","İzmir Province","Şanlıurfa Province","Şırnak Province"],"Turkmenistan":["Ahal","Balkan","Daşoguz","Lebap","Mary"],"United Arab Emirates":["Abu Dhabi Emirate","Dubai Emirate","Fujairah Emirate","Ras al-Khaimah Emirate","Sharjah Emirate","Umm al-Quwain Emirate"],"Uzbekistan":["Buxoro","Jizzax","Navoiy","Qashqadaryo","Qoraqalpogiston Respublikasi","Samarqand","Surxondaryo","Toshkent","Xorazm"],"Vietnam":["Ba Ria - Vung Tau Province","Bac Giang Province","Bac Ninh Province","Binh Dinh Province","Ca Mau Province","Da Nang Municipality","Dac Lac Province","Dong Nai Province","Gia Lai Province","Ha Tay Province","Ha Tinh Province","Hai Duong Province","Khanh Hoa Province","Kien Giang Province","Lam Dong Province","Lao Cai Province","Quang Ngai Province","Soc Trang Province","Son La Province","Thanh Hoa Province","Thua Thien-Hue Province","Tuyen Quang Province","Vinh Long Province"],"Yemen":["Abyan Governorate","Adan Governorate","Al Bayda' Governorate","Al Hydaydah Governorate","Al Jawf Governorate","Al Mahrah Governorate","Hadramawt Governorate","Lahij Governorate","Ma'rib Governorate","Sa'dah Governorate","San'a' Governorate","Ta'izz Governorate"]},"Europe":{"Albania":["Berat County","Korçë County","Kukës County","Lezhë County","Tirana County"],"Austria":["Burgenland","Carinthia","Lower Austria","Salzburg","Styria","Tyrol","Upper Austria","Vienna","Vorarlberg"],"Belarus":["Brest Voblast","Homiel Voblast","Hrodna Voblast","Mahilyow Voblast","Minsk Voblast","Vitsebsk Voblast"],"Belgium":["Antwerp","Brussels-Capital Region","East Flanders","Flemish Brabant","Hainaut","Limburg","Liège","Luxembourg","Namur","Walloon Brabant","West Flanders"],"Bosnia and Herzegovina":["Federacija Bosna i Hercegovina","Republika Srpska"],"Bulgaria":["Blagoevgrad Province","Burgas Province","Dobric Province","Haskovo Province","Jambol Province","Kyustendil Province","Lovec Province","Montana Province","Pernik Province","Pleven Province","Plovdiv Province","Ruse Province","Silistra Province","Sliven Province","Sofia Province","Stara Zagora Province","Varna Province","Veliko Tarnovo Province","Vraca Province"],"Croatia":["Bjelovar-Bilogora County","Brod-Posavina County","Dubrovnik-Neretva County","Istria County","Koprivnica-Križevci County","Krapina-Zagorje County","Lika-Senj County","Međimurje County","Osijek-Baranja County","Primorje-Gorski Kotar County","Sisak-Moslavina County","Split-Dalmatia County","Varaždin County","Vukovar-Srijem County","Zadar County","Zagreb (city)","Zagreb County"],"Czech Republic":["Carlsbad Region","Central Bohemian Region","Hradec Králové Region","Liberec Region","Moravian-Silesian Region","Olomouc Region","Pardubice Region","Plzeň Region","Prague (capital city)","South Bohemian Region","South Moravian Region","Vysočina Region","Zlin Region","Ústí nad Labem Region"],"Denmark":["Capital Region","Central Jutland","North Jutland","South Denmark","Zealand"],"Estonia":["(unassigned)","Harju County","Hiiu County","Ida-Viru County","Järva County","Lääne County","Lääne-Viru County","Pärnu County","Põlva County","Rapla County","Saare County","Tartu County","Viljandi County","Võru County"],"Finland":["Eastern Finland","Lapland","Oulu","Southern Finland","Western Finland","Åland Islands"],"France":["(unassigned)","Auvergne-Rhône-Alpes","Bourgogne-Franche-Comté","Brittany","Centre-Val de Loire","Corsica","Grand Est","Hauts-de-France","Normandy","Nouvelle-Aquitaine","Occitanie","Pays-de-la-Loire","Provence-Alpes-Côte-d'Azur","Île-de-France"],"Georgia":["Samegrelo-Zemo Svaneti"],"Germany":["Baden-Württemberg","Bavaria","Berlin","Brandenburg","Bremen","Hamburg","Hesse","Lower Saxony","Mecklenburg-Vorpommern","North Rhine-Westphalia","Rhineland-Palatinate","Saarland","Saxony","Saxony-Anhalt","Schleswig-Holstein","Thuringia"],"Gibraltar":["(unassigned)"],"Greece":["Achaea","Aetolia-Acarnania","Arcadia","Argolis","Attica","Boeotia","Chania","Chios","Corfu","Cyclades","Dodecanese","Euboea","Evros","Ilia","Imathia","Ioannina","Irakleion","Kastoria","Kavala","Kefallinia","Kozani","Laconia","Larissa","Lasithion","Lesbos","Magnesia","Messinia","Phthiotis","Preveza","Samos","Thessaloniki","Zakynthos"],"Guernsey":["(unassigned)"],"Hungary":["Baranya","Borsod-Abaúj-Zemplén","Budapest","Bács-Kiskun","Békés","Csongrád","Fejér","Győr-Moson-Sopron","Hajdu-Bihar","Heves","Jász-Nagykun-Szolnok","Komárom-Esztergom","Nográd","Pest","Somogy","Szabolcs-Szatmár-Bereg","Tolna","Vas","Veszprém","Zala"],"Iceland":["Capital Region","Eastern Region","Northeastern Region","Northwestern Region","Southern Peninsula","Southern Region","Western Region","Westfjords"],"Ireland":["County Carlow","County Clare","County Cork","County Donegal","County Dublin","County Galway","County Kerry","County Kildare","County Kilkenny","County Limerick","County Longford","County Mayo","County Meath","County Offaly","County Sligo","County Tipperary","County Waterford","County Wexford","County Wicklow"],"Isle of Man":["(unassigned)"],"Italy":["Abruzzi","Apulia","Calabria","Campania","Emilia-Romagna","Friuli-Venezia Giulia","Lazio","Liguria","Lombardy","Marche","Piedmont","Sardinia","Sicily","Trentino-Alto Adige","Tuscany","Umbria","Valle d'Aosta","Veneto"],"Jersey":["(unassigned)"],"Kosovo":["Gjakova District","Pristina District"],"Latvia":["Cēsis District","Daugavpils District","Dobele District","Jelgava (city)","Jēkabpils District","Liepāja District","Limbaži District","Ogre District","Riga (city)","Riga District","Rēzekne District","Talsi District","Tukums District","Ventspils (city)"],"Lithuania":["Alytus County","Kaunas County","Klaipėda County","Marijampolė County","Panevėžys County","Tauragė County","Telšiai County","Utena County","Vilnius County","Šiauliai County"],"Luxembourg":["Diekirch","Luxembourg"],"Malta":["Luqa"],"Moldova":["(unassigned)","Bălți","Chișinău","Florești","Rîșcani","Tiraspol"],"Montenegro":["Berane Municipality","Nikšić Municipality","Podgorica Municipality","Tivat Municipality"],"Netherlands":["Drente","Flevoland","Friesland","Gelderland","Groningen","Limburg","Noord-Brabant","Noord-Holland","Overijssel","Zeeland","Zuid-Holland"],"North Macedonia":["Eastern Statistical Region","Northeastern Statistical Region","Pelagonia Statistical Region","Southeastern Statistical Region","Southwestern Statistical Region","Vardar Statistical Region"],"Norway":["Akershus","Aust-Agder","Buskerud","Finnmark","Hedmark","Hordaland","Jan Mayen","Møre og Romsdal","Nord-Trøndelag","Nordland","Oppland","Rogaland","Sogn og Fjordane","Sør-Trøndelag","Telemark","Troms","Vest-Agder","Vestfold","Østfold"],"Poland":["Greater Poland","Kuyavia-Pomerania","Lesser Poland","Lodz","Lower Silesia","Lublin","Lubusz","Masovia","Opole","Podlachia","Pomerania","Silesia","Subcarpathia","Swietokrzyskie","Warmia-Masuria","West Pomerania"],"Portugal":["Autonomous Region of Azores","Autonomous Region of Madeira","Aveiro District","Beja District","Braga District","Bragança District","Castelo Branco District","Coimbra District","Faro District","Leiria District","Lisbon District","Oporto District","Portalegre District","Santarém District","Setúbal District","Vila Real District","Viseu District","Évora District"],"Romania":["Arad","Argeș","Bacău","Bihor","Brăila","București","Buzău","Caras-Severin","Cluj","Constanța","Dolj","Ialomița","Iași","Maramureș","Mureș","Olt","Prahova","Satu Mare","Sibiu","Suceava","Timiș","Tulcea"],"Russia":["Altai Krai","Amur Oblast","Arkhangelsk Oblast","Astrakhan Oblast","Belgorod Oblast","Bryansk Oblast","Chechen Republic","Chelyabinsk Oblast","Chukotka Autonomous Okrug","Chuvash Republic","Irkutsk Oblast","Ivanovo Oblast","Kabardino-Balkar Republic","Kaliningrad Oblast","Kaluga Oblast","Kamchatka Krai","Kemerovo Oblast","Khabarovsk Krai","Khanty-Mansi Autonomous Okrug","Kirov Oblast","Komi Republic","Kostroma Oblast","Krasnodar Krai","Krasnoyarsk Krai","Kurgan Oblast","Kursk Oblast","Leningrad Oblast","Lipetsk Oblast","Magadan Oblast","Mari El Republic","Moscow Oblast","Murmansk Oblast","Nenets Autonomous Okrug","Nizhny Novgorod Oblast","Novgorod Oblast","Omsk Oblast","Orenburg Oblast","Oryol Oblast","Penza Oblast","Perm Krai","Primorsky Krai","Pskov Oblast","Republic of Adygea","Republic of Bashkortostan","Republic of Dagestan","Republic of Ingushetia","Republic of Kalmykia","Republic of Karelia","Republic of Mordovia","Republic of North Ossetia-Alania","Republic of Tatarstan","Rostov Oblast","Ryazan Oblast","Saint Petersburg (city)","Sakha (Yakutia) Republic","Sakhalin Oblast","Samara Oblast","Saratov Oblast","Smolensk Oblast","Stavropol Krai","Sverdlovsk Oblast","Tambov Oblast","Tomsk Oblast","Tula Oblast","Tver Oblast","Udmurt Republic","Ulyanovsk Oblast","Vladimir Oblast","Volgograd Oblast","Vologda Oblast","Voronezh Oblast","Yamalo-Nenets Autonomous Okrug","Yaroslavl Oblast","Zabaykalsky Krai"],"Serbia":["(unassigned)","Beograd (city)","Central Banat","Jablanica","Kolubara","Moravica","Nišava","Northern Bačka","Rasina","Raška","South Banat","South Bačka","Srem","Zlatibor"],"Slovakia":["Banská Bystrica","Bratislava","Košice","Nitra","Prešov","Trenčín","Trnava","Žilina"],"Slovenia":["Bled","Bovec","Brezica","Celje","Divaca","Ljubljana","Maribor","Murska Sobota","Nova mesto","Piran","Postojna","Ptuj","Slovenj Gradec","Slovenske Konjice","Sostanj"],"Spain":["Andalucía","Aragón","Asturias","Baleares","Basque Country","Canary Islands","Cantabria","Castellón","Castilla y León","Castilla-La Mancha","Catalonia","Extremadura","Galicia","Girona","Jaén","León","Lleida","Madrid","Melilla","Murcia","Navarra","Valencia"],"Sweden":["Blekinge län","Dalarnas län","Gotlands län","Gävleborge län","Hallands län","Jämtlande län","Jönköpings län","Kalmar län","Kronoberge län","Norrbottena län","Skåne län","Stockholms län","Södermanlands län","Uppsala län","Värmlanda län","Västerbottens län","Västernorrlands län","Västmanlanda län","Västra Götalands län","Örebro län","Östergötlands län"],"Switzerland":["Canton of Aargau","Canton of Basel-Country","Canton of Berne","Canton of Fribourg","Canton of Geneva","Canton of Glarus","Canton of Grisons","Canton of Jura","Canton of Lucerne","Canton of Neuchâtel","Canton of Nidwalden","Canton of Obwalden","Canton of Schaffhausen","Canton of Schwyz","Canton of Solothurn","Canton of St. Gallen","Canton of Thurgau","Canton of Ticino","Canton of Valais","Canton of Vaud","Canton of Zurich"],"Turkey":["Tekirdağ Province","İstanbul Province"],"Ukraine":["(unassigned)","Cherkasy","Chernihiv","Chernivtsi","Crimea","Dnipropetrovsk","Donetsk","Ivano-Frankivsk","Kharkiv","Kherson","Khmelnytskyi","Kiev","Kirovohrad","Luhansk","Lviv","Mykolaiv","Odessa","Poltava","Rivne","Sumy","Ternopil","Vinnytsia","Volyn","Zakarpattia","Zaporizhia","Zhytomyr"],"United Kingdom":["(unassigned)","England","Northern Ireland","Scotland","Wales"]},"North America":{"Anguilla":["(unassigned)"],"Antigua and Barbuda":["Barbuda","Saint George"],"Aruba":["(unassigned)"],"Bahamas":["Acklins and Crooked Islands","Bimini","Cat Island","Exuma","Freeport","Governor's Harbour","Green Turtle Cay","Harbour Island","High Rock","Inagua","Kemps Bay","Long Island","Marsh Harbour","Mayaguana","New Providence","Nicholls Town and Berry Islands","Ragged Island","Rock Sound","San Salvador and Rum Cay","Sandy Point"],"Barbados":["Christ Church"],"Belize":["Belize District","Cayo District"],"Bermuda":["(unassigned)"],"British Virgin Islands":["(unassigned)"],"Canada":["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],"Caribbean Netherlands":["(unassigned)"],"Cayman Islands":["(unassigned)"],"Costa Rica":["Alajuela","Guanacaste","Heredia","Limon","Puntarenas","San Jose"],"Cuba":["Camagüey","Ciego de Ávila","Cienfuegos","Ciudad de la Habana","Granma","Guantánamo","Holguín","Isla de la Juventud","La Habana","Las Tunas","Matanzas","Pinar del Río","Sancti Spíritus","Santiago de Cuba","Villa Clara"],"Curaçao":["(unassigned)"],"Dominica":["Saint Andrew Parish","Saint Paul Parish"],"Dominican Republic":["Barahona Province","Dajabón Province","Distrito Nacional","El Seybo Province","La Altagracia Province","La Romana Province","La Vega Province","Monte Cristi Province","Pedernales Province","Puerto Plata Province","Samaná Province","Santiago de los Caballeros Province","Sánchez Ramírez Province"],"El Salvador":["Ahuachapan","Cuscatlan","La Libertad","La Paz","San Miguel","San Salvador","Sonsonate","Usulutan"],"Greenland":["(unassigned)"],"Grenada":["Saint George","Saint Patrick"],"Guadeloupe":["(unassigned)"],"Guatemala":["Alta Verapez","Escuintla","Guatemala","Izabal","Peten","Quetzaltenango","Quiche","Reta.thuleu","San Marcos","Santa Rosa","Zacapa"],"Haiti":["Grande'Anse Department","Nord Department","Nord-Ouest Department","Ouest Department","Sud Department","Sud-Est Department"],"Honduras":["Atlantida","Choluteca","Colon","Comayagua","Cortes","El Paraiso","Francisco Morazan","Gracias a Dios","Intibuca","Islas de la Bahia","Lempira","Ocotepeque","Olancho","Santa Barbara","Valle","Yoro"],"Jamaica":["Hanover","Kingston","Portland","Saint Andrew","Saint James","Saint Mary"],"Martinique":["(unassigned)"],"Mexico":["Aguascalientes","Baja California","Baja California Sur","Campeche","Chiapas","Chihuahua","Ciudad de México","Coahuila","Colima","Durango","Guanajuato","Guerrero","Hidalgo","Jalisco","Michoacán","Morelos","México (state)","Nayarit","Nuevo León","Oaxaca","Puebla","Querétaro","Quintana Roo","San Luis Potosí","Sinaloa","Sonora","Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucatán","Zacatecas"],"Montserrat":["(unassigned)"],"Nicaragua":["Atlantico Norte","Atlantico Sur","Boaco","Chinandega","Chontales","Leon","Managua","Rio San Juan","Rivas"],"Panama":["Bocas del Toro Province","Chiriquí Province","Coclé Province","Colón Province","Darién Province","Herrera Province","Kuna Yala Indigenous Region","Los Santos Province","Panamá Province","Veraguas Province"],"Puerto Rico":["(unassigned)"],"Saint Barthélemy":["(unassigned)"],"Saint Kitts and Nevis":["(unassigned)"],"Saint Lucia":["Castries","Vieux Fort"],"Saint Martin":["(unassigned)"],"Saint Pierre and Miquelon":["Miquelon-Longlade","Saint-Pierre"],"Saint Vincent and the Grenadines":["(unassigned)","Grenadines","Saint George"],"Sint Maarten":["(unassigned)"],"Trinidad and Tobago":["Tunapuna-Piarco","Western Tobago"],"Turks and Caicos Islands":["Ambergris Cays","Grand Turk","Middle Caicos","North Caicos","Pine Cay","Providenciales","Salt Cay","South Caicos"],"U.S. Virgin Islands":["(unassigned)"],"United States":["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","District of Columbia","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"]},"Oceania":{"American Samoa":["(unassigned)"],"Australia":["Australian Capital Territory","New South Wales","Northern Territory","Queensland","South Australia","Tasmania","Victoria","Western Australia"],"Cook Islands":["(unassigned)"],"Fiji":["Central","Eastern","Northern","Rotuma","Western"],"French Polynesia":["(unassigned)"],"Guam":["(unassigned)"],"Kiribati":["Gilbert Islands","Line Islands","Phoenix Islands"],"Marshall Islands":["Ailinglapalap","Aur","Eniwetok","Kwajalein","Majuro","Mili","Utirik"],"Micronesia":["Chuuk State","Kosrae State","Pohnpei State","Yap State"],"Nauru":["Yaren"],"New Caledonia":["(unassigned)"],"New Zealand":["Auckland Region","Bay of Plenty Region","Canterbury Region","Gisborne Region","Hawke's Bay Region","Manawatu-Wanganui Region","Marlborough Region","Nelson Region","Northland Region","Otago Region","Southland Region","Taranaki Region","Tasman Region","Waikato Region","Wellington Region","West Coast Region"],"Niue":["(unassigned)"],"Norfolk Island":["(unassigned)"],"Northern Mariana Islands":["(unassigned)"],"Palau":["Airai","Angaur","Peleliu"],"Papua New Guinea":["Bougainville (North Solomons)","Central","Chimbu","East New Britain","East Sepik","Eastern Highlands","Enga","Gulf","Hela","Jiwaka","Madang","Manus","Milne Bay","Morobe","National Capital District (Port Moresby)","New Ireland","Northern (Oro)","Sandaun (West Sepik)","Southern Highlands","West New Britain","Western (Fly River)","Western Highlands"],"Samoa":["A'ana District","Palauli District","Tuamasaga District"],"Solomon Islands":["Capital Territory (Honiara)","Central","Choiseul","Guadalcanal","Isabel","Makira","Malaita","Rennell and Bellona","Temotu","Western"],"Tonga":["Ha'apai","Niuas","Tongatapu","Vava'"],"Tuvalu":["Funafuti"],"United States Minor Outlying Islands":["Midway Islands","Wake Island"],"Vanuatu":["Malampa","Penama","Sanma","Shefa","Tafea","Torba"],"Wallis and Futuna":["(unassigned)"]},"South America":{"Argentina":["Buenos Aires Province","Capital federal","Catamarca Province","Chaco Province","Chubut Province","Corrientes Province","Córdoba Province","Entre Ríos Province","Formosa Province","Jujuy Province","La Pampa Province","La Rioja Province","Mendoza Province","Misiones Province","Neuquén Province","Río Negro Province","Salta Province","San Juan Province","San Luis Province","Santa Cruz Province","Santa Fe Province","Santiago del Estero Province","Tierra del Fuego Province","Tucumán Province"],"Bolivia":["Chuquisaca Department","Cochabamba Department","El Beni Department","La Paz Department","Oruro Department","Pando Department","Potosí Department","Santa Cruz Department","Tarija Department"],"Brazil":["Acre","Alagoas","Amapá","Amazonas","Bahia","Ceará","Distrito Federal","Espírito Santo","Goiás","Maranhão","Mato Grosso","Mato Grosso do Sul","Minas Gerais","Paraná","Paraíba","Pará","Pernambuco","Piauí","Rio Grande do Norte","Rio Grande do Sul","Rio de Janeiro","Rondônia","Roraima","Santa Catarina","Sergipe","São Paulo","Tocatins"],"Chile":["Antofagasta Region","Araucanía Region","Arica and Parinacota Region","Atacama Region","Aysén Region","Bío-Bío Region","Coquimbo Region","Los Lagos Region","Los Ríos Region","Magallanes Region","Maule Region","O'Higgins Region","Santiago Metropolitan Region","Tarapacá Region","Valparaíso Region"],"Colombia":["Amazonas Department","Antioquía Department","Arauca Department","Atlántico Department","Bolívar Department","Boyacá Department","Caldas Department","Caquetá Department","Casanare Department","Cauca Department","Chocó Department","Cundinamarca Department","César Department","Córdoba Department","Guainía Department","Guaviare Department","Huila Department","La Guajira Department","Magdalena Department","Meta Department","Nariño Department","Norte de Santander Department","Putumayo Department","Quindio Department","Risaralda Department","San Andrés","Santander Department","Sucre Department","Tolima Department","Valle del Cauca Department","Vaupés Department","Vichada Department"],"Ecuador":["Azuay Province","Carchi Province","Chimborazo Province","Cotopaxi Province","El Oro Province","Esmeraldas Province","Galapagos Province","Guayas Province","Imbabura Province","Loja Province","Los Rios Province","Manabi Province","Morona-Santiago Province","Napo Province","Orellana Province","Pastaza Province","Pichincha Province","Sucumbios Province","Tungurahua Province"],"Falkland Islands":["(unassigned)"],"French Guiana":["Cayenne","Saint-Laurent-du-Maroni"],"Guyana":["Barima-Waini","Cuyuni-Mazaruni","Demerara-Mahaica","East Berbice-Corentyne","Potaro-Siparuni","Upper Takutu-Upper Essequibo"],"Paraguay":["Alto Paraná Department","Amambay Department","Boquerón Department","Canindeyú Department","Central Department","Concepción Department","Itapúa Department","Misiones Department","Paraguarí Department","Presidente Hayes Department","San Pedro Department","Ñeembucú Department"],"Perú":["Amazonas Region","Ancash Region","Apurímac Region","Arequipa Region","Ayacucho Region","Cajamarca Region","Cuzco Region","Huánuco Region","Ica Region","Junín Region","La Libertad Region","Lambayeque Region","Lima Region","Loreto Region","Madre de Dios Region","Moquegua Region","Pasco Region","Piura Region","Puno Region","San Martín Region","Tacna Region","Tumbes Region","Ucayali Region"],"Suriname":["Brokopondo","Coronie","Marowijne","Nickerie","Para","Paramaribo","Saramacca","Sipaliwini"],"Uruguay":["Artigas Department","Canelones Department","Cerro Largo Department","Colonia Department","Durazno Department","Lavalleja Department","Maldonado Department","Montevideo Department","Paysandu Department","Rivera Department","Rocha Department","Río Negro Department","Salto Department","San José Department","Soriano Department","Tacuarembo Department","Treinta y Tres Department"],"Venezuela":["Amazonas","Anzoategui","Apure","Aragua","Barinas","Bolívar","Carabobo","Cojedes","Delta Amacuro","Dependencias Federales","Falcon","Guarico","Lara","Merida","Miranda","Monagas","Nueva Esparta","Portuguesa","Sucre","Tachira","Trujillo","Vargas","Yaracuy","Zulia"]}};
+
+let currentDep = null;
+let currentArr = null;
+let mapInstance = null;
+let mapLayer = null;
+let flightPlan = []; // array of leg objects
+
+// ═══════════════════════════════════════════════════════
+// LOAD AIRPORT DATA
+// ═══════════════════════════════════════════════════════
+// SUPABASE HOOK: Replace this entire block with:
+// const { data } = await supabase.from('airports').select('*').eq('msfs_compatible', true)
+// AIRPORTS = data;
+
+async function loadAirports() {
+  try {
+    // Airports data embedded inline as base64 / lazy loaded
+    // For the web version, airports.json sits beside this HTML file
+    const resp = await fetch('airports.json');
+    if (!resp.ok) throw new Error('fetch failed');
+    AIRPORTS = await resp.json();
+    document.getElementById('db-count').textContent = AIRPORTS.length.toLocaleString();
+    initDropdowns();
+  } catch(e) {
+    // Fallback: show graceful message
+    document.getElementById('db-count').textContent = 'offline';
+    setStatus('Airport database not found. Place airports.json in the same folder as this file.', 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// DROPDOWN LOGIC
+// ═══════════════════════════════════════════════════════
+function populateSelect(sel, items, defaultLabel='— Random —') {
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${defaultLabel}</option>`;
+  items.forEach(i => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = i;
+    if (i === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+function initDropdowns() {
+  updateDepCountry();
+  updateArrCountry();
+}
+
+function updateDepCountry() {
+  const cont = document.getElementById('dep-continent').value;
+  const sel = document.getElementById('dep-country');
+  if (cont && LOOKUP[cont]) {
+    populateSelect(sel, Object.keys(LOOKUP[cont]));
+  } else {
+    sel.innerHTML = '<option value="">— Random —</option>';
+  }
+  document.getElementById('dep-region').innerHTML = '<option value="">— Random —</option>';
+}
+
+function updateDepRegion() {
+  const cont = document.getElementById('dep-continent').value;
+  const country = document.getElementById('dep-country').value;
+  const sel = document.getElementById('dep-region');
+  if (cont && country && LOOKUP[cont] && LOOKUP[cont][country]) {
+    populateSelect(sel, LOOKUP[cont][country]);
+  } else {
+    sel.innerHTML = '<option value="">— Random —</option>';
+  }
+}
+
+function updateArrCountry() {
+  const cont = document.getElementById('arr-continent').value;
+  const sel = document.getElementById('arr-country');
+  if (cont && LOOKUP[cont]) {
+    populateSelect(sel, Object.keys(LOOKUP[cont]));
+  } else {
+    sel.innerHTML = '<option value="">— Random —</option>';
+  }
+  document.getElementById('arr-region').innerHTML = '<option value="">— Random —</option>';
+}
+
+function updateArrRegion() {
+  const cont = document.getElementById('arr-continent').value;
+  const country = document.getElementById('arr-country').value;
+  const sel = document.getElementById('arr-region');
+  if (cont && country && LOOKUP[cont] && LOOKUP[cont][country]) {
+    populateSelect(sel, LOOKUP[cont][country]);
+  } else {
+    sel.innerHTML = '<option value="">— Random —</option>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// DEP MODE TOGGLE
+// ═══════════════════════════════════════════════════════
+function depModeChanged() {
+  const mode = document.querySelector('input[name="dep-mode"]:checked').value;
+  document.getElementById('dep-specific-section').style.display = mode === 'specific' ? 'block' : 'none';
+  document.getElementById('dep-random-section').style.display = mode === 'random' ? 'block' : 'none';
+}
+
+function validateDep() {
+  const ident = document.getElementById('dep-ident').value.toUpperCase().trim();
+  const msg = document.getElementById('dep-validate-msg');
+  if (!ident) { msg.textContent = ''; return; }
+  const found = AIRPORTS.find(a => a.id === ident);
+  if (found) {
+    msg.style.color = 'var(--green)';
+    msg.textContent = `✓ ${found.name} · ${found.type} · ${found.city || '—'}, ${found.country}`;
+  } else {
+    msg.style.color = 'var(--red)';
+    msg.textContent = `✗ "${ident}" not found in database — check the ICAO code`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// FLIGHT MATH
+// ═══════════════════════════════════════════════════════
+function distNm(lat1, lon1, lat2, lon2) {
+  if (lat1===lat2 && lon1===lon2) return 0;
+  const toR = d => d * Math.PI / 180;
+  const t = lon1 - lon2;
+  let d = Math.sin(toR(lat1))*Math.sin(toR(lat2)) + Math.cos(toR(lat1))*Math.cos(toR(lat2))*Math.cos(toR(t));
+  d = Math.acos(Math.min(1, Math.max(-1, d)));
+  return (d * 180 / Math.PI) * 60 * 1.1515 * 0.8684;
+}
+
+function bearing(lat1, lon1, lat2, lon2) {
+  const toR = d => d * Math.PI / 180;
+  const dLon = toR(lon2 - lon1);
+  const dPhi = Math.log(Math.tan(toR(lat2)/2 + Math.PI/4) / Math.tan(toR(lat1)/2 + Math.PI/4));
+  let b = Math.atan2(dLon, dPhi);
+  b = (b * 180 / Math.PI + 360) % 360;
+  return b;
+}
+
+function bearingName(b) {
+  const names = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return names[Math.round(b / 22.5) % 16];
+}
+
+// ═══════════════════════════════════════════════════════
+// FILTER AIRPORTS
+// ═══════════════════════════════════════════════════════
+function getCheckedValues(cls) {
+  return [...document.querySelectorAll(`.${cls}:checked`)].map(el => el.value);
+}
+
+function filterAirports(prefix) {
+  let pool = AIRPORTS;
+
+  // Location filters
+  const cont = document.getElementById(`${prefix}-continent`).value;
+  const country = document.getElementById(`${prefix}-country`).value;
+  const region = document.getElementById(`${prefix}-region`).value;
+  if (cont) pool = pool.filter(a => a.continent === cont);
+  if (country) pool = pool.filter(a => a.country === country);
+  if (region) pool = pool.filter(a => a.region === region);
+
+  // Airport type
+  const types = getCheckedValues(`${prefix}-type`);
+  if (types.length) pool = pool.filter(a => types.includes(a.type));
+
+  // Runway surface
+  const rwys = getCheckedValues(`${prefix}-rwy`);
+  if (rwys.length) {
+    pool = pool.filter(a => {
+      return rwys.some(r => {
+        if (r === 'hard') return a.hard === 1;
+        if (r === 'soft') return a.soft === 1;
+        if (r === 'water') return a.water === 1;
+        if (r === 'heli') return a.heli === 1;
+        return false;
+      });
+    });
+  }
+
+  // Runway length
+  const minRwy = parseInt(document.getElementById(`${prefix}-rwy-min`).value) || 0;
+  const maxRwy = parseInt(document.getElementById(`${prefix}-rwy-max`).value) || 999999;
+  if (minRwy > 0) pool = pool.filter(a => a.runway >= minRwy);
+  if (maxRwy < 999999) pool = pool.filter(a => a.runway <= maxRwy);
+
+  // Fuel
+  if (document.getElementById(`${prefix}-avgas`).checked) pool = pool.filter(a => a.avgas === 1);
+  if (document.getElementById(`${prefix}-jeta`).checked) pool = pool.filter(a => a.jeta === 1);
+
+  // Approaches (arrival only)
+  if (prefix === 'arr') {
+    if (document.getElementById('arr-als').checked) pool = pool.filter(a => a.als === 1);
+    if (document.getElementById('arr-vasi').checked) pool = pool.filter(a => a.vasi === 1);
+    if (document.getElementById('arr-ils').checked) pool = pool.filter(a => a.ils === 1);
+  }
+
+  return pool;
+}
+
+// ═══════════════════════════════════════════════════════
+// VALIDATION
+// ═══════════════════════════════════════════════════════
+function validate() {
+  const errors = [];
+  const depMode = document.querySelector('input[name="dep-mode"]:checked').value;
+
+  // ── DEPARTURE checks ──
+  if (depMode === 'specific') {
+    const ident = document.getElementById('dep-ident').value.trim();
+    if (!ident) {
+      errors.push('Enter a departure airport ICAO code (e.g. KCLT).');
+    } else {
+      const found = AIRPORTS.find(a => a.id === ident.toUpperCase());
+      if (!found) errors.push(`Departure airport "${ident.toUpperCase()}" not found in the database.`);
+    }
+  } else {
+    // Random departure — need at least one type and one runway surface
+    const depTypes = getCheckedValues('dep-type');
+    if (!depTypes.length) errors.push('Departure: select at least one Airport Type.');
+
+    const depRwys = getCheckedValues('dep-rwy');
+    if (!depRwys.length) errors.push('Departure: select at least one Runway Surface.');
+
+    // Runway min/max sanity
+    const depRwyMin = parseInt(document.getElementById('dep-rwy-min').value) || 0;
+    const depRwyMax = parseInt(document.getElementById('dep-rwy-max').value) || 0;
+    if (depRwyMin && depRwyMax && depRwyMin > depRwyMax) {
+      errors.push('Departure: Min runway length cannot be greater than Max runway length.');
+    }
+  }
+
+  // ── ARRIVAL checks ──
+  const arrTypes = getCheckedValues('arr-type');
+  if (!arrTypes.length) errors.push('Arrival: select at least one Airport Type.');
+
+  const arrRwys = getCheckedValues('arr-rwy');
+  if (!arrRwys.length) errors.push('Arrival: select at least one Runway Surface.');
+
+  // Runway min/max sanity
+  const arrRwyMin = parseInt(document.getElementById('arr-rwy-min').value) || 0;
+  const arrRwyMax = parseInt(document.getElementById('arr-rwy-max').value) || 0;
+  if (arrRwyMin && arrRwyMax && arrRwyMin > arrRwyMax) {
+    errors.push('Arrival: Min runway length cannot be greater than Max runway length.');
+  }
+
+  // Range (nm) sanity
+  const minNm = parseFloat(document.getElementById('arr-min').value);
+  const maxNm = parseFloat(document.getElementById('arr-max').value);
+  if (!minNm || minNm < 1) errors.push('Arrival range: Min distance must be at least 1 nm.');
+  if (!maxNm || maxNm < 1) errors.push('Arrival range: Max distance must be at least 1 nm.');
+  if (minNm && maxNm && minNm >= maxNm) errors.push('Arrival range: Min distance must be less than Max distance.');
+
+  // Cruise speed
+  const speed = parseFloat(document.getElementById('cruise-speed').value);
+  if (!speed || speed < 10 || speed > 2000) errors.push('Cruise speed must be between 10 and 2000 kts.');
+
+  return errors;
+}
+
+// ═══════════════════════════════════════════════════════
+// MAIN FLIGHT FINDER
+// ═══════════════════════════════════════════════════════
+function findFlight() {
+  if (!AIRPORTS.length) {
+    setStatus('Airport database not loaded.', 'err');
+    return;
+  }
+
+  // Run validation first
+  const errors = validate();
+  if (errors.length) {
+    setStatus('⚠ ' + errors[0], 'err'); // show first error clearly
+    return;
+  }
+
+  const btn = document.getElementById('btn-fly');
+  btn.disabled = true;
+  btn.textContent = '⟳ Searching...';
+
+  setTimeout(() => {
+    try {
+      _doFind();
+    } catch(e) {
+      setStatus('Error: ' + e.message, 'err');
+    }
+    btn.disabled = false;
+    btn.textContent = '✈ LET\'S FLY!';
+  }, 80);
+}
+
+function _doFind() {
+  const depMode = document.querySelector('input[name="dep-mode"]:checked').value;
+  let dep = null;
+
+  // ── DEPARTURE ──
+  if (depMode === 'specific') {
+    const ident = document.getElementById('dep-ident').value.toUpperCase().trim();
+    dep = AIRPORTS.find(a => a.id === ident);
+    // Update dep match count to reflect it's a pinned airport
+    document.getElementById('dep-match').textContent = '1 pinned';
+  } else {
+    const pool = filterAirports('dep');
+    document.getElementById('dep-match').textContent = pool.length.toLocaleString() + ' match';
+    if (!pool.length) {
+      setStatus('No departure airports match your criteria — try relaxing the filters.', 'err');
+      return;
+    }
+    dep = pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // ── ARRIVAL ──
+  const arrPool = filterAirports('arr');
+  document.getElementById('arr-match').textContent = arrPool.length.toLocaleString() + ' match';
+
+  if (!arrPool.length) {
+    setStatus('No arrival airports match your criteria — try relaxing the filters.', 'err');
+    return;
+  }
+
+  const minNm = parseFloat(document.getElementById('arr-min').value);
+  const maxNm = parseFloat(document.getElementById('arr-max').value);
+
+  // Filter by distance from departure, exclude same airport
+  const candidates = arrPool.filter(a => {
+    if (a.id === dep.id) return false;
+    const d = distNm(dep.lat, dep.lon, a.lat, a.lon);
+    return d >= minNm && d <= maxNm;
+  });
+
+  if (!candidates.length) {
+    setStatus(
+      `No arrival airports within ${minNm}–${maxNm} nm of ${dep.id}. ` +
+      `Try widening the range or relaxing arrival filters.`, 'err'
+    );
+    return;
+  }
+
+  const arr = candidates[Math.floor(Math.random() * candidates.length)];
+  currentDep = dep;
+  currentArr = arr;
+
+  renderResults(dep, arr);
+  setStatus(`Found ${candidates.length.toLocaleString()} matching arrival airports. Click LET'S FLY! again for a different flight!`, 'ok');
+  document.getElementById('btn-next-hop').style.display = 'inline-flex';
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER RESULTS
+// ═══════════════════════════════════════════════════════
+function renderResults(dep, arr) {
+  const dist = distNm(dep.lat, dep.lon, arr.lat, arr.lon);
+  const bear = bearing(dep.lat, dep.lon, arr.lat, arr.lon);
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const time = dist / speed;
+  const bName = bearingName(bear);
+
+  function makeTags(airport, isDep) {
+    let tags = '';
+    if (airport.hard===1) tags += '<span class="tag tag-gray">Hard</span>';
+    if (airport.soft===1) tags += '<span class="tag tag-gray">Soft</span>';
+    if (airport.water===1) tags += '<span class="tag tag-blue">Water</span>';
+    if (airport.heli===1) tags += '<span class="tag tag-gray">Heli</span>';
+    if (airport.avgas===1) tags += '<span class="tag tag-amber">AVGAS</span>';
+    if (airport.jeta===1) tags += '<span class="tag tag-amber">JET A</span>';
+    if (!isDep) {
+      if (airport.ils===1) tags += '<span class="tag tag-green">ILS</span>';
+      if (airport.vasi===1) tags += '<span class="tag tag-green">VASI</span>';
+      if (airport.als===1) tags += '<span class="tag tag-green">ALS</span>';
+    }
+    return tags;
+  }
+
+  const html = `
+    <div class="airport-card dep-card">
+      <div class="airport-card-header">
+        <div>
+          <div class="card-role">Departure</div>
+          <div class="card-ident">${dep.id}</div>
+        </div>
+        <a class="card-airnav" href="https://ourairports.com/airports/${dep.id}" target="_blank">Airport Info ↗</a>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${dep.name}</div>
+        <div class="card-stats">
+          <div class="stat-item"><div class="stat-label">Type</div><div class="stat-value">${dep.type}</div></div>
+          <div class="stat-item"><div class="stat-label">Elevation</div><div class="stat-value">${dep.elev} ft</div></div>
+          <div class="stat-item"><div class="stat-label">Max Runway</div><div class="stat-value">${dep.runway > 0 ? dep.runway.toLocaleString() + ' ft' : '—'}</div></div>
+          <div class="stat-item"><div class="stat-label">Location</div><div class="stat-value">${dep.city || '—'}, ${dep.country}</div></div>
+        </div>
+        <div class="tags" style="margin-top:10px">${makeTags(dep, true)}</div>
+      </div>
+    </div>
+
+    <div class="airport-card arr-card">
+      <div class="airport-card-header">
+        <div>
+          <div class="card-role">Arrival</div>
+          <div class="card-ident">${arr.id}</div>
+        </div>
+        <a class="card-airnav" href="https://ourairports.com/airports/${arr.id}" target="_blank">Airport Info ↗</a>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${arr.name}</div>
+        <div class="card-stats">
+          <div class="stat-item"><div class="stat-label">Type</div><div class="stat-value">${arr.type}</div></div>
+          <div class="stat-item"><div class="stat-label">Elevation</div><div class="stat-value">${arr.elev} ft</div></div>
+          <div class="stat-item"><div class="stat-label">Max Runway</div><div class="stat-value">${arr.runway > 0 ? arr.runway.toLocaleString() + ' ft' : '—'}</div></div>
+          <div class="stat-item"><div class="stat-label">Location</div><div class="stat-value">${arr.city || '—'}, ${arr.country}</div></div>
+        </div>
+        <div class="tags" style="margin-top:10px">${makeTags(arr, false)}</div>
+      </div>
+    </div>
+
+    <div class="flight-summary">
+      <div class="summary-stat">
+        <div class="summary-label">Distance</div>
+        <div class="summary-value">${dist.toFixed(0)}<span class="summary-unit"> nm</span></div>
+      </div>
+      <div class="flight-arrow">${dep.id} ——— ${bName} ——→ ${arr.id}</div>
+      <div class="summary-stat">
+        <div class="summary-label">Bearing</div>
+        <div class="summary-value">${bear.toFixed(1)}<span class="summary-unit">°</span></div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-label">Est. Time</div>
+        <div class="summary-value">${time.toFixed(1)}<span class="summary-unit"> hr</span></div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-label">@ Cruise</div>
+        <div class="summary-value">${speed}<span class="summary-unit"> kts</span></div>
+      </div>
+    </div>
+
+    <div class="pilot-notes" style="grid-column:1/-1">
+      <label>Pilot Notes</label>
+      <textarea placeholder="Add your flight notes here..."></textarea>
+    </div>
+  `;
+
+  document.getElementById('text-results').innerHTML = html;
+  document.getElementById('results-area').classList.add('visible');
+  document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Show action buttons
+  document.getElementById('btn-add-hop').style.display = 'inline-flex';
+  document.getElementById('btn-next-hop').style.display = 'inline-flex';
+
+  // Update map if visible
+  if (document.getElementById('tab-map').classList.contains('active')) {
+    renderMap(dep, arr);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════════════════
+function renderMap(dep, arr) {
+  if (!mapInstance) {
+    mapInstance = L.map('map', { zoomControl: true, attributionControl: false });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19
+    }).addTo(mapInstance);
+  }
+
+  if (mapLayer) { mapLayer.remove(); mapLayer = null; }
+
+  const g = L.layerGroup().addTo(mapInstance);
+  mapLayer = g;
+
+  const depIcon = L.divIcon({
+    html: `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;background:#f4a261;color:#000;padding:3px 7px;border-radius:3px;white-space:nowrap;font-weight:600">✈ ${dep.id}</div>`,
+    className: '', iconAnchor: [0, 0]
+  });
+
+  const arrIcon = L.divIcon({
+    html: `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;background:#00b4d8;color:#000;padding:3px 7px;border-radius:3px;white-space:nowrap;font-weight:600">⬛ ${arr.id}</div>`,
+    className: '', iconAnchor: [0, 0]
+  });
+
+  L.marker([dep.lat, dep.lon], { icon: depIcon }).addTo(g);
+  L.marker([arr.lat, arr.lon], { icon: arrIcon }).addTo(g);
+
+  // Great circle line approximation
+  L.polyline([[dep.lat, dep.lon], [arr.lat, arr.lon]], {
+    color: '#00b4d8', weight: 2, opacity: 0.8, dashArray: '8 6'
+  }).addTo(g);
+
+  const bounds = L.latLngBounds([[dep.lat, dep.lon], [arr.lat, arr.lon]]);
+  mapInstance.fitBounds(bounds, { padding: [60, 60] });
+
+  document.getElementById('map-overlay').style.display = 'block';
+  document.getElementById('map-route-label').textContent = `${dep.id} → ${arr.id}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.results-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab-btn:${tab==='text'?'first':'last'}-child`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  if (tab === 'map' && currentDep && currentArr) {
+    setTimeout(() => renderMap(currentDep, currentArr), 50);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// FLIGHT PLAN LOG
+// ═══════════════════════════════════════════════════════
+function addHop() {
+  if (!currentDep || !currentArr) return;
+
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const dist = distNm(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const bear = bearing(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+
+  // Check if last leg's arrival matches this departure (chain continuity)
+  const lastLeg = flightPlan[flightPlan.length - 1];
+  if (lastLeg && lastLeg.arr.id !== currentDep.id) {
+    // Non-contiguous — still allow but mark as a gap
+    flightPlan.push({ dep: currentDep, arr: currentArr, dist, bear, speed, gap: true });
+  } else {
+    flightPlan.push({ dep: currentDep, arr: currentArr, dist, bear, speed, gap: false });
+  }
+
+  renderPlan();
+  setStatus(`Leg ${flightPlan.length} added to your flight plan.`, 'ok');
+
+  // Scroll to plan
+  document.getElementById('flightplan-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderPlan() {
+  if (!flightPlan.length) {
+    document.getElementById('flightplan-area').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('flightplan-area').style.display = 'block';
+
+  const totalDist = flightPlan.reduce((s, l) => s + l.dist, 0);
+  const totalTime = flightPlan.reduce((s, l) => s + l.dist / l.speed, 0);
+
+  document.getElementById('plan-total-dist').innerHTML = `${totalDist.toFixed(0)} <span style="font-size:10px;color:var(--text3)">nm</span>`;
+  document.getElementById('plan-total-time').innerHTML = `${totalTime.toFixed(1)} <span style="font-size:10px;color:var(--text3)">hr</span>`;
+  document.getElementById('plan-leg-count').textContent = flightPlan.length + ' leg' + (flightPlan.length !== 1 ? 's' : '');
+  document.getElementById('plan-leg-count2').textContent = flightPlan.length;
+
+  // Route strip: DEP → ARR → ARR...
+  const routeIds = [];
+  flightPlan.forEach((leg, i) => {
+    if (i === 0) routeIds.push(leg.dep.id);
+    routeIds.push((leg.gap && i > 0 ? '✦ ' : '') + leg.arr.id);
+  });
+  document.getElementById('plan-route-strip').textContent = routeIds.join(' → ');
+
+  // Build leg rows
+  let html = '';
+  flightPlan.forEach((leg, i) => {
+    const time = leg.dist / leg.speed;
+    const bName = bearingName(leg.bear);
+
+    // Gap warning connector
+    if (leg.gap && i > 0) {
+      html += `
+        <div class="plan-leg-connector">
+          <div class="plan-connector-line"></div>
+          <div class="plan-connector-label">⚠ gap — ${flightPlan[i-1].arr.id} → ${leg.dep.id}</div>
+          <div class="plan-connector-line"></div>
+        </div>`;
+    } else if (i > 0) {
+      html += `
+        <div class="plan-leg-connector">
+          <div class="plan-connector-line"></div>
+          <div class="plan-connector-label">${leg.dep.id}</div>
+          <div class="plan-connector-line"></div>
+        </div>`;
+    }
+
+    html += `
+      <div class="plan-leg">
+        <div class="plan-leg-num">${i + 1}</div>
+
+        <div class="plan-leg-dep">
+          <div class="plan-leg-ident" style="color:var(--amber)">${leg.dep.id}</div>
+          <div class="plan-leg-name">${leg.dep.name}</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:3px">${leg.dep.city || '—'}, ${leg.dep.country}</div>
+        </div>
+
+        <div class="plan-leg-arr">
+          <div class="plan-leg-ident" style="color:var(--accent)">${leg.arr.id}</div>
+          <div class="plan-leg-name">${leg.arr.name}</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:3px">${leg.arr.city || '—'}, ${leg.arr.country}</div>
+        </div>
+
+        <div class="plan-leg-stats">
+          <div class="plan-leg-stat-row">
+            <div class="plan-stat">
+              <div class="plan-stat-label">Distance</div>
+              <div class="plan-stat-value">${leg.dist.toFixed(0)} nm</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">Bearing</div>
+              <div class="plan-stat-value">${leg.bear.toFixed(1)}° ${bName}</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">Est. Time</div>
+              <div class="plan-stat-value">${time.toFixed(1)} hr</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">@ Speed</div>
+              <div class="plan-stat-value">${leg.speed} kts</div>
+            </div>
+          </div>
+          <div class="plan-leg-stat-row" style="margin-top:3px">
+            <div class="plan-stat">
+              <div class="plan-stat-label">Dep Elev</div>
+              <div class="plan-stat-value">${leg.dep.elev} ft</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">Arr Elev</div>
+              <div class="plan-stat-value">${leg.arr.elev} ft</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">Arr Runway</div>
+              <div class="plan-stat-value">${leg.arr.runway > 0 ? leg.arr.runway.toLocaleString() + ' ft' : '—'}</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="plan-leg-remove" onclick="removeLeg(${i})" title="Remove leg">×</button>
+      </div>`;
+  });
+
+  document.getElementById('plan-legs').innerHTML = html;
+}
+
+function removeLeg(i) {
+  flightPlan.splice(i, 1);
+  renderPlan();
+}
+
+function clearPlan() {
+  if (!flightPlan.length) return;
+  if (!confirm(`Clear all ${flightPlan.length} leg${flightPlan.length !== 1 ? 's' : ''} from the flight plan?`)) return;
+  flightPlan = [];
+  renderPlan();
+  setStatus('Flight plan cleared.', '');
+}
+
+function copyPlan() {
+  if (!flightPlan.length) return;
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const totalDist = flightPlan.reduce((s, l) => s + l.dist, 0);
+  const totalTime = flightPlan.reduce((s, l) => s + l.dist / l.speed, 0);
+
+  let txt = `SimLetsFly — Flight Plan\n`;
+  txt += `${'═'.repeat(48)}\n`;
+  flightPlan.forEach((leg, i) => {
+    const bName = bearingName(leg.bear);
+    txt += `\nLEG ${i + 1}: ${leg.dep.id} → ${leg.arr.id}\n`;
+    txt += `  Departure: ${leg.dep.name} (${leg.dep.city || '—'}, ${leg.dep.country})\n`;
+    txt += `  Arrival:   ${leg.arr.name} (${leg.arr.city || '—'}, ${leg.arr.country})\n`;
+    txt += `  Distance:  ${leg.dist.toFixed(0)} nm\n`;
+    txt += `  Bearing:   ${leg.bear.toFixed(1)}° (${bName})\n`;
+    txt += `  Est. Time: ${(leg.dist / leg.speed).toFixed(1)} hr @ ${leg.speed} kts\n`;
+  });
+  txt += `\n${'─'.repeat(48)}\n`;
+  txt += `TOTAL: ${flightPlan.length} leg${flightPlan.length !== 1 ? 's' : ''} · ${totalDist.toFixed(0)} nm · ${totalTime.toFixed(1)} hr\n`;
+  txt += `[FOR ENTERTAINMENT PURPOSES ONLY]`;
+
+  navigator.clipboard.writeText(txt).then(() => setStatus('Flight plan copied to clipboard!', 'ok'));
+}
+
+// ═══════════════════════════════════════════════════════
+// NEXT HOP
+// ═══════════════════════════════════════════════════════
+function nextHop() {
+  if (!currentArr) return;
+  document.getElementById('dep-specific').checked = true;
+  document.getElementById('dep-ident').value = currentArr.id;
+  depModeChanged();
+  validateDep();
+  findFlight();
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════
+function setStatus(msg, type='') {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = 'visible' + (type ? ' ' + type : '');
+}
+
+function copyFlight() {
+  if (!currentDep || !currentArr) return;
+  const dist = distNm(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const bear = bearing(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const txt = `SimLetsFly Flight Details
+DEPARTURE: ${currentDep.id} — ${currentDep.name}
+ARRIVAL:   ${currentArr.id} — ${currentArr.name}
+Distance:  ${dist.toFixed(0)} nm
+Bearing:   ${bear.toFixed(1)}° (${bearingName(bear)})
+Est. Time: ${(dist/speed).toFixed(1)} hours @ ${speed} kts
+[FOR ENTERTAINMENT PURPOSES ONLY]`;
+  navigator.clipboard.writeText(txt).then(() => setStatus('Copied to clipboard!', 'ok'));
+}
+
+function openWeather() {
+  if (!currentArr) return;
+  window.open(`https://forecast.weather.gov/MapClick.php?lat=${currentArr.lat}&lon=${currentArr.lon}`, '_blank');
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+loadAirports();
+depModeChanged();
+
+// Mutual exclusivity for fuel checkboxes
+document.getElementById('dep-avgas').addEventListener('change', function() { if(this.checked) document.getElementById('dep-jeta').checked = false; });
+document.getElementById('dep-jeta').addEventListener('change', function() { if(this.checked) document.getElementById('dep-avgas').checked = false; });
+document.getElementById('arr-avgas').addEventListener('change', function() { if(this.checked) document.getElementById('arr-jeta').checked = false; });
+document.getElementById('arr-jeta').addEventListener('change', function() { if(this.checked) document.getElementById('arr-avgas').checked = false; });
+</script>
+</body>
+</html>
