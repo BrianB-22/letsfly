@@ -1064,6 +1064,138 @@
     opacity: 0.35;
     pointer-events: none;
   }
+
+  /* ── AUTH MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 28px 32px;
+    width: 100%;
+    max-width: 380px;
+    position: relative;
+  }
+  .modal-title {
+    font-family: var(--cond);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .modal-close {
+    position: absolute;
+    top: 12px; right: 14px;
+    background: none; border: none;
+    color: var(--text3); font-size: 20px;
+    cursor: pointer; line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .modal-field input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+  }
+  .modal-field input:focus { border-color: var(--accent); }
+  .modal-err {
+    font-size: 12px;
+    color: var(--red);
+    margin-bottom: 10px;
+    min-height: 16px;
+  }
+  .modal-btn {
+    width: 100%;
+    padding: 9px;
+    border-radius: 3px;
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+  }
+  .modal-btn-primary { background: var(--accent); border-color: var(--accent); color: #000; }
+  .modal-btn-primary:hover { background: #00c8f0; }
+  .modal-switch {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--text3);
+  }
+  .modal-switch a { color: var(--accent); cursor: pointer; }
+  .modal-switch a:hover { text-decoration: underline; }
+  /* User chip shown in header when signed in */
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .user-chip .signout-btn {
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    transition: all 0.15s;
+  }
+  .user-chip .signout-btn:hover { border-color: var(--red); color: var(--red); }
+  /* Toast notification */
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 10px 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    z-index: 2000;
+    transform: translateY(60px);
+    opacity: 0;
+    transition: all 0.25s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+  .toast.err { border-color: var(--red); color: var(--red); }
 </style>
 </head>
 <body>
@@ -1078,10 +1210,10 @@
       <span class="pulse-dot"></span>
       DB: <span id="db-count">Loading...</span> airports
     </div>
-    <!-- SUPABASE AUTH HOOK: Replace these buttons with Supabase auth UI component -->
-    <!-- import { Auth } from '@supabase/auth-ui-react' when migrating to React -->
-    <button class="auth-btn auth-btn-ghost" onclick="alert('TODO: Connect to Supabase Auth for login')">Sign In</button>
-    <button class="auth-btn auth-btn-solid" onclick="alert('TODO: Connect to Supabase Auth for signup')">Create Account</button>
+    <div id="auth-header">
+      <button class="auth-btn auth-btn-ghost" onclick="showAuthModal('signin')">Sign In</button>
+      <button class="auth-btn auth-btn-solid" onclick="showAuthModal('signup')">Create Account</button>
+    </div>
   </div>
 </header>
 
@@ -1337,10 +1469,8 @@
       </div>
       <div class="result-actions">
         <button class="action-btn action-btn-ghost" onclick="copyFlight()">Copy to Clipboard</button>
-        <!-- TODO: Wire to Supabase - saves flight to user's saved_flights table -->
-        <button class="action-btn action-btn-save" onclick="alert('TODO: Implement Supabase save flight for logged-in user')">Save Flight</button>
-        <!-- TODO: Wire to Supabase - generates shareable link via saved_flights with public=true -->
-        <button class="action-btn action-btn-share" onclick="alert('TODO: Implement Supabase shareable link generation')">Share Flight</button>
+        <button class="action-btn action-btn-save" onclick="saveFlight()">Save Flight</button>
+        <button class="action-btn action-btn-share" onclick="shareFlight()">Share Flight</button>
         <button class="action-btn action-btn-ghost" onclick="openWeather()">Arrival Weather</button>
         <div style="flex:1"></div>
         <button class="action-btn action-btn-hop" id="btn-add-hop" onclick="addHop()" style="display:none">+ Add Hop</button>
@@ -1399,8 +1529,170 @@
   </div>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <script>
+// ═══════════════════════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════════════════════
+const _sb = window.supabase.createClient(
+  'https://blxugbnoitkxhdjgfkff.supabase.co',
+  'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY'
+);
+
+let currentUser = null;
+
+// Watch auth state changes (sign in / sign out / session restore)
+_sb.auth.onAuthStateChange((_event, session) => {
+  currentUser = session?.user ?? null;
+  renderAuthHeader();
+});
+
+// Restore session on page load
+_sb.auth.getSession().then(({ data: { session } }) => {
+  currentUser = session?.user ?? null;
+  renderAuthHeader();
+});
+
+function renderAuthHeader() {
+  const el = document.getElementById('auth-header');
+  if (currentUser) {
+    el.innerHTML = `
+      <div class="user-chip">
+        <span>${currentUser.email}</span>
+        <button class="signout-btn" onclick="signOut()">Sign Out</button>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <button class="auth-btn auth-btn-ghost" onclick="showAuthModal('signin')">Sign In</button>
+      <button class="auth-btn auth-btn-solid" onclick="showAuthModal('signup')">Create Account</button>`;
+  }
+}
+
+// ── AUTH MODAL ──
+let _authMode = 'signin';
+
+function showAuthModal(mode) {
+  _authMode = mode || 'signin';
+  setAuthMode(_authMode);
+  document.getElementById('auth-modal').classList.add('open');
+  setTimeout(() => document.getElementById('auth-email').focus(), 80);
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('open');
+  document.getElementById('modal-err').textContent = '';
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+}
+
+function setAuthMode(mode) {
+  _authMode = mode;
+  const isSignin = mode === 'signin';
+  document.getElementById('modal-title').textContent = isSignin ? 'Sign In' : 'Create Account';
+  document.getElementById('modal-submit').textContent = isSignin ? 'Sign In' : 'Create Account';
+  document.getElementById('modal-switch').innerHTML = isSignin
+    ? `No account? <a onclick="setAuthMode('signup')">Create one</a>`
+    : `Have an account? <a onclick="setAuthMode('signin')">Sign in</a>`;
+  document.getElementById('modal-err').textContent = '';
+}
+
+async function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('modal-err');
+  const btn = document.getElementById('modal-submit');
+  if (!email || !password) { errEl.textContent = 'Email and password required.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = '...';
+  errEl.textContent = '';
+
+  let error;
+  if (_authMode === 'signin') {
+    ({ error } = await _sb.auth.signInWithPassword({ email, password }));
+  } else {
+    ({ error } = await _sb.auth.signUp({ email, password }));
+  }
+
+  btn.disabled = false;
+  setAuthMode(_authMode);
+
+  if (error) {
+    errEl.textContent = error.message;
+  } else {
+    closeAuthModal();
+    showToast(_authMode === 'signup'
+      ? 'Account created! Check your email to confirm.'
+      : 'Signed in!', 'ok');
+  }
+}
+
+async function signOut() {
+  await _sb.auth.signOut();
+  showToast('Signed out.', '');
+}
+
+// ── SAVE FLIGHT ──
+async function saveFlight() {
+  if (!currentUser) { showAuthModal('signin'); return; }
+  if (!currentDep || !currentArr) return;
+
+  const dist = distNm(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const bear = bearing(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const notes = document.querySelector('#text-results textarea')?.value || '';
+
+  const { error } = await _sb.from('saved_flights').insert({
+    user_id: currentUser.id,
+    dep_id: currentDep.id, dep_name: currentDep.name,
+    dep_lat: currentDep.lat, dep_lon: currentDep.lon,
+    arr_id: currentArr.id, arr_name: currentArr.name,
+    arr_lat: currentArr.lat, arr_lon: currentArr.lon,
+    distance_nm: dist, bearing_deg: bear, speed_kts: speed,
+    pilot_notes: notes, is_public: false
+  });
+
+  if (error) showToast('Save failed: ' + error.message, 'err');
+  else showToast('Flight saved! ✓', 'ok');
+}
+
+// ── SHARE FLIGHT ──
+async function shareFlight() {
+  if (!currentUser) { showAuthModal('signin'); return; }
+  if (!currentDep || !currentArr) return;
+
+  const dist = distNm(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const bear = bearing(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const notes = document.querySelector('#text-results textarea')?.value || '';
+
+  const { data, error } = await _sb.from('saved_flights').insert({
+    user_id: currentUser.id,
+    dep_id: currentDep.id, dep_name: currentDep.name,
+    dep_lat: currentDep.lat, dep_lon: currentDep.lon,
+    arr_id: currentArr.id, arr_name: currentArr.name,
+    arr_lat: currentArr.lat, arr_lon: currentArr.lon,
+    distance_nm: dist, bearing_deg: bear, speed_kts: speed,
+    pilot_notes: notes, is_public: true
+  }).select('share_token').single();
+
+  if (error) { showToast('Share failed: ' + error.message, 'err'); return; }
+
+  const url = `${location.origin}${location.pathname}?flight=${data.share_token}`;
+  navigator.clipboard.writeText(url).then(() => showToast('Shareable link copied to clipboard!', 'ok'));
+}
+
+// ── TOAST ──
+let _toastTimer;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
 // ═══════════════════════════════════════════════════════
 // DATA & STATE
 // ═══════════════════════════════════════════════════════
@@ -2139,5 +2431,32 @@ document.getElementById('dep-jeta').addEventListener('change', function() { if(t
 document.getElementById('arr-avgas').addEventListener('change', function() { if(this.checked) document.getElementById('arr-jeta').checked = false; });
 document.getElementById('arr-jeta').addEventListener('change', function() { if(this.checked) document.getElementById('arr-avgas').checked = false; });
 </script>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="auth-modal" onclick="if(event.target===this)closeAuthModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAuthModal()">×</button>
+    <div class="modal-title" id="modal-title">Sign In</div>
+    <div class="modal-field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="pilot@example.com" autocomplete="email"
+             onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="modal-field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="modal-err" id="modal-err"></div>
+    <button class="modal-btn modal-btn-primary" id="modal-submit" onclick="authSubmit()">Sign In</button>
+    <div class="modal-switch" id="modal-switch">
+      No account? <a onclick="setAuthMode('signup')">Create one</a>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
 </body>
 </html>
