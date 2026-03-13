@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LetsFly — MSFS Flight Finder</title>
+<title>SimLetsFly — Sim Flight Finder</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -57,7 +57,7 @@
   header {
     position: relative;
     z-index: 10;
-    padding: 16px 24px;
+    padding: 10px 20px;
     border-bottom: 1px solid var(--border);
     background: var(--bg1);
     display: flex;
@@ -74,7 +74,7 @@
 
   .logo-mark {
     font-family: var(--cond);
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 700;
     letter-spacing: 3px;
     color: var(--accent);
@@ -145,15 +145,15 @@
     z-index: 1;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 24px 20px;
+    padding: 14px 16px;
   }
 
   /* ── FILTER GRID ── */
   .filter-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 12px;
   }
 
   @media (max-width: 900px) {
@@ -171,7 +171,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 16px;
+    padding: 7px 12px;
     background: var(--bg3);
     border-bottom: 1px solid var(--border);
   }
@@ -199,21 +199,21 @@
 
   .panel-title {
     font-family: var(--cond);
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
     color: var(--text);
   }
 
-  .panel-body { padding: 16px; }
+  .panel-body { padding: 10px 12px; }
 
   /* ── RADIO GROUP ── */
   .radio-group {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 5px;
+    margin-bottom: 8px;
   }
 
   .radio-opt {
@@ -268,15 +268,15 @@
   .section {
     border: 1px solid var(--border);
     border-radius: 3px;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     overflow: hidden;
   }
 
   .section-inner {
-    padding: 12px;
+    padding: 8px 10px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
   }
 
   /* ── FORM ELEMENTS ── */
@@ -311,7 +311,7 @@
     color: var(--text);
     font-family: var(--mono);
     font-size: 12px;
-    padding: 6px 10px;
+    padding: 4px 8px;
     border-radius: 3px;
     width: 100%;
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -353,7 +353,7 @@
   .check-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 5px;
+    gap: 2px;
   }
 
   .check-opt {
@@ -361,7 +361,7 @@
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    padding: 4px 6px;
+    padding: 2px 4px;
     border-radius: 3px;
     transition: background 0.1s;
   }
@@ -443,8 +443,8 @@
   .flight-controls {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
   }
 
@@ -455,7 +455,7 @@
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 8px 14px;
+    padding: 6px 12px;
   }
 
   .speed-field label {
@@ -482,9 +482,9 @@
   .btn-fly {
     flex: 1;
     min-width: 200px;
-    padding: 14px 32px;
+    padding: 10px 32px;
     font-family: var(--cond);
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     letter-spacing: 4px;
     text-transform: uppercase;
@@ -857,9 +857,9 @@
     letter-spacing: 2px;
     color: var(--text3);
     text-transform: uppercase;
-    padding: 6px 0 4px;
+    padding: 3px 0 2px;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
   }
 
   /* Pilot notes */
@@ -934,8 +934,8 @@
 
 <header>
   <div class="logo">
-    <div class="logo-mark">✈ LetsFly</div>
-    <div class="logo-sub">MSFS2020 Flight Finder v2.0</div>
+    <div class="logo-mark">✈ SimLetsFly</div>
+    <div class="logo-sub">Sim Flight Finder v3.0</div>
   </div>
   <div class="header-right">
     <div class="status-bar">
@@ -1079,7 +1079,7 @@
       </div>
       <div class="panel-body">
 
-        <div class="field-row" style="margin-bottom:14px">
+        <div class="field-row" style="margin-bottom:8px">
           <label style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;white-space:nowrap">Range (nm)</label>
           <input type="number" id="arr-min" value="100" min="1" style="width:80px;text-align:center">
           <span class="range-sep">—</span>
