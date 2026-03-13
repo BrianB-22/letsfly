@@ -1543,9 +1543,12 @@ const _sb = window.supabase.createClient(
 let currentUser = null;
 
 // Watch auth state changes (sign in / sign out / session restore)
-_sb.auth.onAuthStateChange((_event, session) => {
+_sb.auth.onAuthStateChange((event, session) => {
   currentUser = session?.user ?? null;
   renderAuthHeader();
+  if (event === 'PASSWORD_RECOVERY') {
+    showNewPasswordModal();
+  }
 });
 
 // Restore session on page load
@@ -1588,13 +1591,32 @@ function closeAuthModal() {
 
 function setAuthMode(mode) {
   _authMode = mode;
-  const isSignin = mode === 'signin';
-  document.getElementById('modal-title').textContent = isSignin ? 'Sign In' : 'Create Account';
-  document.getElementById('modal-submit').textContent = isSignin ? 'Sign In' : 'Create Account';
-  document.getElementById('modal-switch').innerHTML = isSignin
-    ? `No account? <a onclick="setAuthMode('signup')">Create one</a>`
-    : `Have an account? <a onclick="setAuthMode('signin')">Sign in</a>`;
+  const pwField = document.getElementById('modal-password-field');
+  const forgot  = document.getElementById('modal-forgot');
   document.getElementById('modal-err').textContent = '';
+
+  if (mode === 'signin') {
+    document.getElementById('modal-title').textContent  = 'Sign In';
+    document.getElementById('modal-submit').textContent = 'Sign In';
+    pwField.style.display = 'block';
+    forgot.style.display  = 'block';
+    document.getElementById('modal-switch').innerHTML =
+      `No account? <a onclick="setAuthMode('signup')">Create one</a>`;
+  } else if (mode === 'signup') {
+    document.getElementById('modal-title').textContent  = 'Create Account';
+    document.getElementById('modal-submit').textContent = 'Create Account';
+    pwField.style.display = 'block';
+    forgot.style.display  = 'none';
+    document.getElementById('modal-switch').innerHTML =
+      `Have an account? <a onclick="setAuthMode('signin')">Sign in</a>`;
+  } else if (mode === 'reset') {
+    document.getElementById('modal-title').textContent  = 'Reset Password';
+    document.getElementById('modal-submit').textContent = 'Send Reset Link';
+    pwField.style.display = 'none';
+    forgot.style.display  = 'none';
+    document.getElementById('modal-switch').innerHTML =
+      `<a onclick="setAuthMode('signin')">← Back to sign in</a>`;
+  }
 }
 
 async function authSubmit() {
@@ -1602,7 +1624,11 @@ async function authSubmit() {
   const password = document.getElementById('auth-password').value;
   const errEl = document.getElementById('modal-err');
   const btn = document.getElementById('modal-submit');
-  if (!email || !password) { errEl.textContent = 'Email and password required.'; return; }
+  if (_authMode === 'reset') {
+    if (!email) { errEl.textContent = 'Enter your email address.'; return; }
+  } else {
+    if (!email || !password) { errEl.textContent = 'Email and password required.'; return; }
+  }
 
   btn.disabled = true;
   btn.textContent = '...';
@@ -1611,8 +1637,12 @@ async function authSubmit() {
   let error;
   if (_authMode === 'signin') {
     ({ error } = await _sb.auth.signInWithPassword({ email, password }));
-  } else {
+  } else if (_authMode === 'signup') {
     ({ error } = await _sb.auth.signUp({ email, password }));
+  } else if (_authMode === 'reset') {
+    ({ error } = await _sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    }));
   }
 
   btn.disabled = false;
@@ -1620,6 +1650,23 @@ async function authSubmit() {
 
   if (error) {
     errEl.textContent = error.message;
+  } else if (_authMode === 'reset') {
+    const emailVal = document.getElementById('auth-email').value;
+    document.querySelector('#auth-modal .modal').innerHTML = `
+      <div style="text-align:center;padding:10px 0">
+        <div style="font-size:36px;margin-bottom:16px">✉️</div>
+        <div class="modal-title" style="margin-bottom:12px">Check Your Email</div>
+        <p style="color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:20px">
+          Password reset instructions sent to<br>
+          <strong style="color:var(--text)">${emailVal}</strong>
+        </p>
+        <p style="color:var(--text3);font-size:12px;line-height:1.6;margin-bottom:24px">
+          Tap the link in the email to set a new password, then come back here to sign in.
+        </p>
+        <button class="modal-btn modal-btn-primary" onclick="closeAuthModal();showAuthModal('signin')">
+          OK — Back to Sign In
+        </button>
+      </div>`;
   } else if (_authMode === 'signup') {
     // Show confirmation screen inside the modal
     document.querySelector('.modal').innerHTML = `
@@ -1646,6 +1693,53 @@ async function authSubmit() {
 async function signOut() {
   await _sb.auth.signOut();
   showToast('Signed out.', '');
+}
+
+// ── NEW PASSWORD (after reset link clicked) ──
+function showNewPasswordModal() {
+  document.getElementById('auth-modal').classList.add('open');
+  document.querySelector('#auth-modal .modal').innerHTML = `
+    <div class="modal-title" style="margin-bottom:20px">Set New Password</div>
+    <div class="modal-field">
+      <label>New Password</label>
+      <input type="password" id="new-password" placeholder="••••••••" autocomplete="new-password"
+             onkeydown="if(event.key==='Enter')submitNewPassword()">
+    </div>
+    <div class="modal-field">
+      <label>Confirm Password</label>
+      <input type="password" id="confirm-password" placeholder="••••••••" autocomplete="new-password"
+             onkeydown="if(event.key==='Enter')submitNewPassword()">
+    </div>
+    <div class="modal-err" id="newpw-err"></div>
+    <button class="modal-btn modal-btn-primary" id="newpw-submit" onclick="submitNewPassword()">
+      Save New Password
+    </button>`;
+  setTimeout(() => document.getElementById('new-password').focus(), 80);
+}
+
+async function submitNewPassword() {
+  const pw  = document.getElementById('new-password').value;
+  const pw2 = document.getElementById('confirm-password').value;
+  const errEl = document.getElementById('newpw-err');
+  const btn   = document.getElementById('newpw-submit');
+
+  if (!pw || pw.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (pw !== pw2)            { errEl.textContent = 'Passwords do not match.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = '...';
+  errEl.textContent = '';
+
+  const { error } = await _sb.auth.updateUser({ password: pw });
+
+  btn.disabled = false;
+  if (error) {
+    btn.textContent = 'Save New Password';
+    errEl.textContent = error.message;
+  } else {
+    closeAuthModal();
+    showToast('Password updated! You are now signed in.', 'ok');
+  }
 }
 
 // ── SAVE FLIGHT ──
@@ -2457,10 +2551,16 @@ document.getElementById('arr-jeta').addEventListener('change', function() { if(t
       <input type="email" id="auth-email" placeholder="pilot@example.com" autocomplete="email"
              onkeydown="if(event.key==='Enter')authSubmit()">
     </div>
-    <div class="modal-field">
+    <div class="modal-field" id="modal-password-field">
       <label>Password</label>
       <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"
              onkeydown="if(event.key==='Enter')authSubmit()">
+      <div style="text-align:right;margin-top:5px">
+        <a id="modal-forgot" onclick="setAuthMode('reset')"
+           style="font-size:11px;color:var(--text3);cursor:pointer;font-family:var(--mono);">
+          Forgot password?
+        </a>
+      </div>
     </div>
     <div class="modal-err" id="modal-err"></div>
     <button class="modal-btn modal-btn-primary" id="modal-submit" onclick="authSubmit()">Sign In</button>
