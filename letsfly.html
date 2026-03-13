@@ -800,6 +800,142 @@
     background: rgba(0,180,216,0.2);
   }
 
+  .action-btn-hop {
+    background: rgba(244,162,97,0.12);
+    border-color: rgba(244,162,97,0.4);
+    color: var(--amber);
+    font-weight: 700;
+  }
+
+  .action-btn-hop:hover {
+    background: rgba(244,162,97,0.22);
+  }
+
+  /* ── FLIGHT PLAN LEG ── */
+  .plan-leg {
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr auto;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  .plan-leg:last-child { border-bottom: none; }
+  .plan-leg:hover { background: var(--bg2); }
+
+  .plan-leg-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+    padding: 12px 0;
+    border-right: 1px solid var(--border);
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .plan-leg-dep {
+    padding: 10px 14px;
+    border-right: 1px solid var(--border);
+  }
+
+  .plan-leg-arr {
+    padding: 10px 14px;
+    border-right: 1px solid var(--border);
+  }
+
+  .plan-leg-ident {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--text);
+    letter-spacing: 2px;
+  }
+
+  .plan-leg-name {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
+
+  .plan-leg-stats {
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .plan-leg-stat-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .plan-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .plan-stat-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1px;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+
+  .plan-stat-value {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .plan-leg-remove {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 0 14px;
+    font-size: 16px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+  }
+
+  .plan-leg-remove:hover { color: var(--red); }
+
+  .plan-leg-connector {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 14px 3px 42px;
+    background: var(--bg0);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .plan-connector-line {
+    flex: 1;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, var(--border2) 0, var(--border2) 4px, transparent 4px, transparent 8px);
+  }
+
+  .plan-connector-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
   /* ── MAP RESULTS ── */
   #map-container {
     height: 460px;
@@ -979,7 +1115,8 @@
           <div class="section-inner">
             <div class="field-row">
               <label>ICAO</label>
-              <input type="text" id="dep-ident" placeholder="e.g. KCLT" maxlength="6" oninput="this.value=this.value.toUpperCase()">
+              <input type="text" id="dep-ident" placeholder="e.g. KCLT" maxlength="6" 
+                oninput="this.value=this.value.toUpperCase(); if(this.value.length>=3) validateDep()">
               <button class="btn-validate" onclick="validateDep()">Validate</button>
             </div>
             <div id="dep-validate-msg" style="font-family:var(--mono);font-size:10px;color:var(--text3);padding:2px 0;"></div>
@@ -1182,7 +1319,6 @@
       <div class="unit">kts</div>
     </div>
     <button class="btn-fly" id="btn-fly" onclick="findFlight()">✈ LET'S FLY!</button>
-    <button class="action-btn action-btn-ghost" id="btn-next-hop" onclick="nextHop()" style="display:none">Next Hop →</button>
   </div>
 
   <!-- ── STATUS ── -->
@@ -1206,6 +1342,9 @@
         <!-- TODO: Wire to Supabase - generates shareable link via saved_flights with public=true -->
         <button class="action-btn action-btn-share" onclick="alert('TODO: Implement Supabase shareable link generation')">Share Flight</button>
         <button class="action-btn action-btn-ghost" onclick="openWeather()">Arrival Weather</button>
+        <div style="flex:1"></div>
+        <button class="action-btn action-btn-hop" id="btn-add-hop" onclick="addHop()" style="display:none">+ Add Hop</button>
+        <button class="action-btn action-btn-ghost" id="btn-next-hop" onclick="nextHop()" style="display:none">Next Hop →</button>
       </div>
     </div>
 
@@ -1222,9 +1361,42 @@
     </div>
   </div>
 
-</div>
+  <!-- ── FLIGHT PLAN LOG ── -->
+  <div id="flightplan-area" style="display:none; margin-top:16px;">
+    <div class="panel">
+      <div class="panel-header" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="panel-badge" style="background:rgba(82,183,136,0.12);color:var(--green);border:1px solid rgba(82,183,136,0.3)">PLAN</div>
+          <div class="panel-title">Flight Plan</div>
+          <div class="match-count" id="plan-leg-count">0 legs</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="action-btn action-btn-ghost" onclick="copyPlan()" style="font-size:11px;padding:4px 12px">Copy Plan</button>
+          <button class="action-btn action-btn-ghost" onclick="clearPlan()" style="font-size:11px;padding:4px 12px;color:var(--red);border-color:rgba(231,111,81,0.3)">Clear</button>
+        </div>
+      </div>
 
-<!-- Leaflet map -->
+      <!-- Plan summary strip -->
+      <div id="plan-summary" style="display:flex;align-items:center;gap:24px;padding:8px 16px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <div class="summary-stat">
+          <div class="summary-label">Total Distance</div>
+          <div style="font-family:var(--mono);font-size:16px;color:var(--green)" id="plan-total-dist">0 <span style="font-size:10px;color:var(--text3)">nm</span></div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Total Est. Time</div>
+          <div style="font-family:var(--mono);font-size:16px;color:var(--green)" id="plan-total-time">0.0 <span style="font-size:10px;color:var(--text3)">hr</span></div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Legs</div>
+          <div style="font-family:var(--mono);font-size:16px;color:var(--green)" id="plan-leg-count2">0</div>
+        </div>
+        <div id="plan-route-strip" style="font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:1px;flex:1;text-align:right"></div>
+      </div>
+
+      <!-- Leg rows -->
+      <div id="plan-legs" style="padding:0"></div>
+    </div>
+  </div>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -1245,6 +1417,7 @@ let currentDep = null;
 let currentArr = null;
 let mapInstance = null;
 let mapLayer = null;
+let flightPlan = []; // array of leg objects
 
 // ═══════════════════════════════════════════════════════
 // LOAD AIRPORT DATA
@@ -1343,15 +1516,15 @@ function depModeChanged() {
 
 function validateDep() {
   const ident = document.getElementById('dep-ident').value.toUpperCase().trim();
-  if (!ident) return;
-  const found = AIRPORTS.find(a => a.id === ident);
   const msg = document.getElementById('dep-validate-msg');
+  if (!ident) { msg.textContent = ''; return; }
+  const found = AIRPORTS.find(a => a.id === ident);
   if (found) {
     msg.style.color = 'var(--green)';
-    msg.textContent = `✓ ${found.name} — ${found.type} — ${found.city}, ${found.country}`;
+    msg.textContent = `✓ ${found.name} · ${found.type} · ${found.city || '—'}, ${found.country}`;
   } else {
     msg.style.color = 'var(--red)';
-    msg.textContent = `✗ Airport "${ident}" not found in MSFS database`;
+    msg.textContent = `✗ "${ident}" not found in database — check the ICAO code`;
   }
 }
 
@@ -1438,11 +1611,78 @@ function filterAirports(prefix) {
 }
 
 // ═══════════════════════════════════════════════════════
+// VALIDATION
+// ═══════════════════════════════════════════════════════
+function validate() {
+  const errors = [];
+  const depMode = document.querySelector('input[name="dep-mode"]:checked').value;
+
+  // ── DEPARTURE checks ──
+  if (depMode === 'specific') {
+    const ident = document.getElementById('dep-ident').value.trim();
+    if (!ident) {
+      errors.push('Enter a departure airport ICAO code (e.g. KCLT).');
+    } else {
+      const found = AIRPORTS.find(a => a.id === ident.toUpperCase());
+      if (!found) errors.push(`Departure airport "${ident.toUpperCase()}" not found in the database.`);
+    }
+  } else {
+    // Random departure — need at least one type and one runway surface
+    const depTypes = getCheckedValues('dep-type');
+    if (!depTypes.length) errors.push('Departure: select at least one Airport Type.');
+
+    const depRwys = getCheckedValues('dep-rwy');
+    if (!depRwys.length) errors.push('Departure: select at least one Runway Surface.');
+
+    // Runway min/max sanity
+    const depRwyMin = parseInt(document.getElementById('dep-rwy-min').value) || 0;
+    const depRwyMax = parseInt(document.getElementById('dep-rwy-max').value) || 0;
+    if (depRwyMin && depRwyMax && depRwyMin > depRwyMax) {
+      errors.push('Departure: Min runway length cannot be greater than Max runway length.');
+    }
+  }
+
+  // ── ARRIVAL checks ──
+  const arrTypes = getCheckedValues('arr-type');
+  if (!arrTypes.length) errors.push('Arrival: select at least one Airport Type.');
+
+  const arrRwys = getCheckedValues('arr-rwy');
+  if (!arrRwys.length) errors.push('Arrival: select at least one Runway Surface.');
+
+  // Runway min/max sanity
+  const arrRwyMin = parseInt(document.getElementById('arr-rwy-min').value) || 0;
+  const arrRwyMax = parseInt(document.getElementById('arr-rwy-max').value) || 0;
+  if (arrRwyMin && arrRwyMax && arrRwyMin > arrRwyMax) {
+    errors.push('Arrival: Min runway length cannot be greater than Max runway length.');
+  }
+
+  // Range (nm) sanity
+  const minNm = parseFloat(document.getElementById('arr-min').value);
+  const maxNm = parseFloat(document.getElementById('arr-max').value);
+  if (!minNm || minNm < 1) errors.push('Arrival range: Min distance must be at least 1 nm.');
+  if (!maxNm || maxNm < 1) errors.push('Arrival range: Max distance must be at least 1 nm.');
+  if (minNm && maxNm && minNm >= maxNm) errors.push('Arrival range: Min distance must be less than Max distance.');
+
+  // Cruise speed
+  const speed = parseFloat(document.getElementById('cruise-speed').value);
+  if (!speed || speed < 10 || speed > 2000) errors.push('Cruise speed must be between 10 and 2000 kts.');
+
+  return errors;
+}
+
+// ═══════════════════════════════════════════════════════
 // MAIN FLIGHT FINDER
 // ═══════════════════════════════════════════════════════
 function findFlight() {
   if (!AIRPORTS.length) {
     setStatus('Airport database not loaded.', 'err');
+    return;
+  }
+
+  // Run validation first
+  const errors = validate();
+  if (errors.length) {
+    setStatus('⚠ ' + errors[0], 'err'); // show first error clearly
     return;
   }
 
@@ -1462,31 +1702,38 @@ function findFlight() {
 }
 
 function _doFind() {
-  // Get departure
-  let dep = null;
   const depMode = document.querySelector('input[name="dep-mode"]:checked').value;
+  let dep = null;
 
+  // ── DEPARTURE ──
   if (depMode === 'specific') {
     const ident = document.getElementById('dep-ident').value.toUpperCase().trim();
     dep = AIRPORTS.find(a => a.id === ident);
-    if (!dep) { setStatus('Departure airport not found: ' + ident, 'err'); return; }
+    // Update dep match count to reflect it's a pinned airport
+    document.getElementById('dep-match').textContent = '1 pinned';
   } else {
     const pool = filterAirports('dep');
     document.getElementById('dep-match').textContent = pool.length.toLocaleString() + ' match';
-    if (!pool.length) { setStatus('No departure airports match your criteria. Try relaxing the filters.', 'err'); return; }
+    if (!pool.length) {
+      setStatus('No departure airports match your criteria — try relaxing the filters.', 'err');
+      return;
+    }
     dep = pool[Math.floor(Math.random() * pool.length)];
   }
 
-  // Get arrival candidates
+  // ── ARRIVAL ──
   const arrPool = filterAirports('arr');
   document.getElementById('arr-match').textContent = arrPool.length.toLocaleString() + ' match';
 
-  if (!arrPool.length) { setStatus('No arrival airports match your criteria. Try relaxing the filters.', 'err'); return; }
+  if (!arrPool.length) {
+    setStatus('No arrival airports match your criteria — try relaxing the filters.', 'err');
+    return;
+  }
 
-  const minNm = parseFloat(document.getElementById('arr-min').value) || 0;
-  const maxNm = parseFloat(document.getElementById('arr-max').value) || 99999;
+  const minNm = parseFloat(document.getElementById('arr-min').value);
+  const maxNm = parseFloat(document.getElementById('arr-max').value);
 
-  // Filter by distance, exclude same airport
+  // Filter by distance from departure, exclude same airport
   const candidates = arrPool.filter(a => {
     if (a.id === dep.id) return false;
     const d = distNm(dep.lat, dep.lon, a.lat, a.lon);
@@ -1494,7 +1741,10 @@ function _doFind() {
   });
 
   if (!candidates.length) {
-    setStatus(`No arrival airports within ${minNm}–${maxNm}nm of ${dep.id}. Try adjusting the range.`, 'err');
+    setStatus(
+      `No arrival airports within ${minNm}–${maxNm} nm of ${dep.id}. ` +
+      `Try widening the range or relaxing arrival filters.`, 'err'
+    );
     return;
   }
 
@@ -1503,7 +1753,7 @@ function _doFind() {
   currentArr = arr;
 
   renderResults(dep, arr);
-  setStatus('Not interested? Click LET\'S FLY! again for a different random flight!', 'ok');
+  setStatus(`Found ${candidates.length.toLocaleString()} matching arrival airports. Click LET'S FLY! again for a different flight!`, 'ok');
   document.getElementById('btn-next-hop').style.display = 'inline-flex';
 }
 
@@ -1604,6 +1854,10 @@ function renderResults(dep, arr) {
   document.getElementById('results-area').classList.add('visible');
   document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  // Show action buttons
+  document.getElementById('btn-add-hop').style.display = 'inline-flex';
+  document.getElementById('btn-next-hop').style.display = 'inline-flex';
+
   // Update map if visible
   if (document.getElementById('tab-map').classList.contains('active')) {
     renderMap(dep, arr);
@@ -1665,18 +1919,182 @@ function switchTab(tab) {
 }
 
 // ═══════════════════════════════════════════════════════
+// FLIGHT PLAN LOG
+// ═══════════════════════════════════════════════════════
+function addHop() {
+  if (!currentDep || !currentArr) return;
+
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const dist = distNm(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const bear = bearing(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+
+  // Check if last leg's arrival matches this departure (chain continuity)
+  const lastLeg = flightPlan[flightPlan.length - 1];
+  if (lastLeg && lastLeg.arr.id !== currentDep.id) {
+    // Non-contiguous — still allow but mark as a gap
+    flightPlan.push({ dep: currentDep, arr: currentArr, dist, bear, speed, gap: true });
+  } else {
+    flightPlan.push({ dep: currentDep, arr: currentArr, dist, bear, speed, gap: false });
+  }
+
+  renderPlan();
+  setStatus(`Leg ${flightPlan.length} added to your flight plan.`, 'ok');
+
+  // Scroll to plan
+  document.getElementById('flightplan-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderPlan() {
+  if (!flightPlan.length) {
+    document.getElementById('flightplan-area').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('flightplan-area').style.display = 'block';
+
+  const totalDist = flightPlan.reduce((s, l) => s + l.dist, 0);
+  const totalTime = flightPlan.reduce((s, l) => s + l.dist / l.speed, 0);
+
+  document.getElementById('plan-total-dist').innerHTML = `${totalDist.toFixed(0)} <span style="font-size:10px;color:var(--text3)">nm</span>`;
+  document.getElementById('plan-total-time').innerHTML = `${totalTime.toFixed(1)} <span style="font-size:10px;color:var(--text3)">hr</span>`;
+  document.getElementById('plan-leg-count').textContent = flightPlan.length + ' leg' + (flightPlan.length !== 1 ? 's' : '');
+  document.getElementById('plan-leg-count2').textContent = flightPlan.length;
+
+  // Route strip: DEP → ARR → ARR...
+  const routeIds = [];
+  flightPlan.forEach((leg, i) => {
+    if (i === 0) routeIds.push(leg.dep.id);
+    routeIds.push((leg.gap && i > 0 ? '✦ ' : '') + leg.arr.id);
+  });
+  document.getElementById('plan-route-strip').textContent = routeIds.join(' → ');
+
+  // Build leg rows
+  let html = '';
+  flightPlan.forEach((leg, i) => {
+    const time = leg.dist / leg.speed;
+    const bName = bearingName(leg.bear);
+
+    // Gap warning connector
+    if (leg.gap && i > 0) {
+      html += `
+        <div class="plan-leg-connector">
+          <div class="plan-connector-line"></div>
+          <div class="plan-connector-label">⚠ gap — ${flightPlan[i-1].arr.id} → ${leg.dep.id}</div>
+          <div class="plan-connector-line"></div>
+        </div>`;
+    } else if (i > 0) {
+      html += `
+        <div class="plan-leg-connector">
+          <div class="plan-connector-line"></div>
+          <div class="plan-connector-label">${leg.dep.id}</div>
+          <div class="plan-connector-line"></div>
+        </div>`;
+    }
+
+    html += `
+      <div class="plan-leg">
+        <div class="plan-leg-num">${i + 1}</div>
+
+        <div class="plan-leg-dep">
+          <div class="plan-leg-ident" style="color:var(--amber)">${leg.dep.id}</div>
+          <div class="plan-leg-name">${leg.dep.name}</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:3px">${leg.dep.city || '—'}, ${leg.dep.country}</div>
+        </div>
+
+        <div class="plan-leg-arr">
+          <div class="plan-leg-ident" style="color:var(--accent)">${leg.arr.id}</div>
+          <div class="plan-leg-name">${leg.arr.name}</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:3px">${leg.arr.city || '—'}, ${leg.arr.country}</div>
+        </div>
+
+        <div class="plan-leg-stats">
+          <div class="plan-leg-stat-row">
+            <div class="plan-stat">
+              <div class="plan-stat-label">Distance</div>
+              <div class="plan-stat-value">${leg.dist.toFixed(0)} nm</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">Bearing</div>
+              <div class="plan-stat-value">${leg.bear.toFixed(1)}° ${bName}</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">Est. Time</div>
+              <div class="plan-stat-value">${time.toFixed(1)} hr</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">@ Speed</div>
+              <div class="plan-stat-value">${leg.speed} kts</div>
+            </div>
+          </div>
+          <div class="plan-leg-stat-row" style="margin-top:3px">
+            <div class="plan-stat">
+              <div class="plan-stat-label">Dep Elev</div>
+              <div class="plan-stat-value">${leg.dep.elev} ft</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">Arr Elev</div>
+              <div class="plan-stat-value">${leg.arr.elev} ft</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-label">Arr Runway</div>
+              <div class="plan-stat-value">${leg.arr.runway > 0 ? leg.arr.runway.toLocaleString() + ' ft' : '—'}</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="plan-leg-remove" onclick="removeLeg(${i})" title="Remove leg">×</button>
+      </div>`;
+  });
+
+  document.getElementById('plan-legs').innerHTML = html;
+}
+
+function removeLeg(i) {
+  flightPlan.splice(i, 1);
+  renderPlan();
+}
+
+function clearPlan() {
+  if (!flightPlan.length) return;
+  if (!confirm(`Clear all ${flightPlan.length} leg${flightPlan.length !== 1 ? 's' : ''} from the flight plan?`)) return;
+  flightPlan = [];
+  renderPlan();
+  setStatus('Flight plan cleared.', '');
+}
+
+function copyPlan() {
+  if (!flightPlan.length) return;
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const totalDist = flightPlan.reduce((s, l) => s + l.dist, 0);
+  const totalTime = flightPlan.reduce((s, l) => s + l.dist / l.speed, 0);
+
+  let txt = `SimLetsFly — Flight Plan\n`;
+  txt += `${'═'.repeat(48)}\n`;
+  flightPlan.forEach((leg, i) => {
+    const bName = bearingName(leg.bear);
+    txt += `\nLEG ${i + 1}: ${leg.dep.id} → ${leg.arr.id}\n`;
+    txt += `  Departure: ${leg.dep.name} (${leg.dep.city || '—'}, ${leg.dep.country})\n`;
+    txt += `  Arrival:   ${leg.arr.name} (${leg.arr.city || '—'}, ${leg.arr.country})\n`;
+    txt += `  Distance:  ${leg.dist.toFixed(0)} nm\n`;
+    txt += `  Bearing:   ${leg.bear.toFixed(1)}° (${bName})\n`;
+    txt += `  Est. Time: ${(leg.dist / leg.speed).toFixed(1)} hr @ ${leg.speed} kts\n`;
+  });
+  txt += `\n${'─'.repeat(48)}\n`;
+  txt += `TOTAL: ${flightPlan.length} leg${flightPlan.length !== 1 ? 's' : ''} · ${totalDist.toFixed(0)} nm · ${totalTime.toFixed(1)} hr\n`;
+  txt += `[FOR ENTERTAINMENT PURPOSES ONLY]`;
+
+  navigator.clipboard.writeText(txt).then(() => setStatus('Flight plan copied to clipboard!', 'ok'));
+}
+
+// ═══════════════════════════════════════════════════════
 // NEXT HOP
 // ═══════════════════════════════════════════════════════
 function nextHop() {
   if (!currentArr) return;
-  // Set departure mode to specific, fill with last arrival
   document.getElementById('dep-specific').checked = true;
   document.getElementById('dep-ident').value = currentArr.id;
   depModeChanged();
-  // Validate
-  const msg = document.getElementById('dep-validate-msg');
-  msg.style.color = 'var(--green)';
-  msg.textContent = `✓ ${currentArr.name} — ${currentArr.type} — ${currentArr.city}, ${currentArr.country}`;
+  validateDep();
   findFlight();
 }
 
@@ -1694,7 +2112,7 @@ function copyFlight() {
   const dist = distNm(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
   const bear = bearing(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
   const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
-  const txt = `LetsFly Flight Plan
+  const txt = `SimLetsFly Flight Details
 DEPARTURE: ${currentDep.id} — ${currentDep.name}
 ARRIVAL:   ${currentArr.id} — ${currentArr.name}
 Distance:  ${dist.toFixed(0)} nm
