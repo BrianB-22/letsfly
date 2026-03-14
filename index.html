@@ -2721,18 +2721,21 @@ function renderMap(dep, arr) {
   const g = L.layerGroup().addTo(mapInstance);
   mapLayer = g;
 
-  const depIcon = L.divIcon({
-    html: `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;background:#f4a261;color:#000;padding:3px 7px;border-radius:3px;white-space:nowrap;font-weight:600">✈ ${dep.id}</div>`,
-    className: '', iconAnchor: [0, 0]
-  });
+  function makeMarker(role, icao, name, color) {
+    const html = `
+      <div style="display:flex;align-items:flex-start;gap:6px;">
+        <div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid rgba(0,0,0,0.4);flex-shrink:0;margin-top:3px;box-shadow:0 0 6px ${color}88;"></div>
+        <div style="background:rgba(10,13,16,0.88);border:1px solid ${color}55;border-radius:4px;padding:4px 8px;white-space:nowrap;backdrop-filter:blur(4px);">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:${color};margin-bottom:2px;">${role}</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:700;color:#fff;letter-spacing:2px;">${icao}</div>
+          <div style="font-family:'Barlow',sans-serif;font-size:11px;color:#7a92a8;margin-top:1px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+        </div>
+      </div>`;
+    return L.divIcon({ html, className: '', iconAnchor: [-2, 8] });
+  }
 
-  const arrIcon = L.divIcon({
-    html: `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;background:#00b4d8;color:#000;padding:3px 7px;border-radius:3px;white-space:nowrap;font-weight:600">⬛ ${arr.id}</div>`,
-    className: '', iconAnchor: [0, 0]
-  });
-
-  L.marker([dep.lat, dep.lon], { icon: depIcon }).addTo(g);
-  L.marker([arr.lat, arr.lon], { icon: arrIcon }).addTo(g);
+  L.marker([dep.lat, dep.lon], { icon: makeMarker('Departure', dep.id, dep.name, '#f4a261') }).addTo(g);
+  L.marker([arr.lat, arr.lon], { icon: makeMarker('Arrival',   arr.id, arr.name, '#00b4d8') }).addTo(g);
 
   // Great circle line approximation
   L.polyline([[dep.lat, dep.lon], [arr.lat, arr.lon]], {
