@@ -1329,6 +1329,12 @@
   }
   .metar-text.loading { color: var(--text3); font-style: italic; }
   .metar-text.unavailable { color: var(--text3); }
+  .metar-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .metar-content .metar-text { flex: 1; }
   .metar-decode-btn {
     display: inline-block;
     margin-left: 8px;
@@ -2558,8 +2564,10 @@ function renderResults(dep, arr) {
         <div class="tags" style="margin-top:10px">${makeTags(dep, true)}</div>
         <div class="metar-row">
           <span class="metar-label">METAR</span>
-          <span class="metar-text loading" id="metar-dep">fetching...</span>
-          <button class="metar-decode-btn" onclick="showMetarDecode('dep')" title="Decode METAR">Decode</button>
+          <div class="metar-content">
+            <span class="metar-text loading" id="metar-dep">fetching...</span>
+            <button class="metar-decode-btn" onclick="showMetarDecode('dep')">Decode</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2583,8 +2591,10 @@ function renderResults(dep, arr) {
         <div class="tags" style="margin-top:10px">${makeTags(arr, false)}</div>
         <div class="metar-row">
           <span class="metar-label">METAR</span>
-          <span class="metar-text loading" id="metar-arr">fetching...</span>
-          <button class="metar-decode-btn" onclick="showMetarDecode('arr')" title="Decode METAR">Decode</button>
+          <div class="metar-content">
+            <span class="metar-text loading" id="metar-arr">fetching...</span>
+            <button class="metar-decode-btn" onclick="showMetarDecode('arr')">Decode</button>
+          </div>
         </div>
       </div>
     </div>
