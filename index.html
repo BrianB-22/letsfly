@@ -2846,8 +2846,11 @@ Est. Time: ${(dist/speed).toFixed(1)} hours @ ${speed} kts
 async function fetchMetar(side, icao) {
   const el = document.getElementById('metar-' + side);
   if (!el) return;
+  const noaaUrl = `https://aviationweather.gov/api/data/metar?ids=${icao}&format=raw`;
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(noaaUrl)}`;
   try {
-    const resp = await fetch(`https://aviationweather.gov/api/data/metar?ids=${icao}&format=raw`);
+    const resp = await fetch(proxyUrl);
+    if (!resp.ok) throw new Error('fetch failed');
     const text = (await resp.text()).trim();
     if (text && text.length > 5 && !text.toLowerCase().startsWith('no ')) {
       el.textContent = text;
