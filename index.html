@@ -1798,6 +1798,7 @@ _sb.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN') {
     depFavorites = [];
     loadFavorites();
+    loadUserPrefs();
     // Refresh favorites section if currently visible
     const mode = document.querySelector('input[name="dep-mode"]:checked')?.value;
     if (mode === 'favorites') depModeChanged();
@@ -2090,6 +2091,24 @@ async function shareFlight() {
 
 // ── FAVORITES ──
 let depFavorites = [];
+
+async function loadUserPrefs() {
+  if (!currentUser) return;
+  const { data } = await _sb
+    .from('profiles')
+    .select('cruise_speed')
+    .eq('user_id', currentUser.id)
+    .single();
+  if (data?.cruise_speed) {
+    document.getElementById('cruise-speed').value = data.cruise_speed;
+  }
+}
+
+async function saveUserPrefs() {
+  if (!currentUser) return;
+  const speed = parseInt(document.getElementById('cruise-speed').value) || 280;
+  await _sb.from('profiles').upsert({ user_id: currentUser.id, cruise_speed: speed, updated_at: new Date().toISOString() });
+}
 
 async function loadFavorites() {
   if (!currentUser) return;
@@ -2471,6 +2490,8 @@ function findFlight() {
     setStatus('⚠ ' + errors[0], 'err'); // show first error clearly
     return;
   }
+
+  saveUserPrefs();
 
   const btn = document.getElementById('btn-fly');
   btn.disabled = true;
