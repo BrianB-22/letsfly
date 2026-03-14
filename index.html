@@ -847,6 +847,16 @@
     background: rgba(0,180,216,0.2);
   }
 
+  .action-btn-copy {
+    background: rgba(122,146,168,0.1);
+    border-color: rgba(122,146,168,0.35);
+    color: #7a92a8;
+  }
+  .action-btn-copy:hover {
+    background: rgba(122,146,168,0.2);
+    border-color: rgba(122,146,168,0.6);
+    color: var(--text);
+  }
   .action-btn-hop {
     background: rgba(244,162,97,0.12);
     border-color: rgba(244,162,97,0.4);
@@ -1713,7 +1723,7 @@
       </div>
       <div class="result-actions">
         <button class="action-btn action-btn-save" onclick="saveFlight()">Save Flight</button>
-        <button class="action-btn action-btn-ghost" onclick="copyFlight()">Copy to Clipboard</button>
+        <button class="action-btn action-btn-copy" onclick="copyFlight()">Copy to Clipboard</button>
         <button class="action-btn action-btn-share" onclick="shareFlight()">Share Flight</button>
 
         <div style="flex:1"></div>
