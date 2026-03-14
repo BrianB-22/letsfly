@@ -2092,7 +2092,7 @@ function showToast(msg, type) {
   el.textContent = msg;
   el.className = 'toast show' + (type ? ' ' + type : '');
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 6000);
 }
 
 // ═══════════════════════════════════════════════════════
