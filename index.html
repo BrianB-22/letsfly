@@ -1685,7 +1685,7 @@
         <button class="action-btn action-btn-ghost" onclick="copyFlight()">Copy to Clipboard</button>
         <button class="action-btn action-btn-save" onclick="saveFlight()">Save Flight</button>
         <button class="action-btn action-btn-share" onclick="shareFlight()">Share Flight</button>
-        <button class="action-btn action-btn-ghost" onclick="openWeather()">Arrival Weather</button>
+
         <div style="flex:1"></div>
         <button class="action-btn action-btn-hop" id="btn-add-hop" onclick="addHop()" style="display:none">+ Add Hop</button>
         <button class="action-btn action-btn-ghost" id="btn-next-hop" onclick="nextHop()" style="display:none">Next Hop →</button>
@@ -2926,6 +2926,9 @@ function decodeMetar(raw) {
   const parts = raw.trim().split(/\s+/);
   let i = 0;
   const rows = [];
+
+  // Skip report type prefix (METAR, SPECI, etc.)
+  if (/^(METAR|SPECI)$/i.test(parts[i])) i++;
 
   // Station
   const station = parts[i++];
