@@ -2964,15 +2964,33 @@ function copyFlight() {
   const arrMetar = document.getElementById('metar-arr')?.textContent?.trim();
   const metarLine = s => (s && !s.startsWith('No METAR') && !s.startsWith('METAR unavailable') && !s.startsWith('fetching')) ? s : 'N/A';
 
-  const divider = '─'.repeat(48);
+  function airportFlags(a) {
+    const surface = [a.hard && 'Hard', a.soft && 'Soft', a.water && 'Water', a.heli && 'Heli'].filter(Boolean).join('/') || '—';
+    const fuel    = [a.avgas && 'AvGas', a.jeta && 'Jet-A'].filter(Boolean).join(', ') || 'None';
+    const nav     = [a.ils && 'ILS', a.vasi && 'VASI', a.als && 'ALS'].filter(Boolean).join(', ') || 'None';
+    return { surface, fuel, nav };
+  }
+
+  const dep = currentDep, arr = currentArr;
+  const df = airportFlags(dep), af = airportFlags(arr);
+  const divider = '─'.repeat(52);
+
   let txt = `SimLetsFly — Flight Brief\n${divider}\n\n`;
-  txt += `  DEPARTURE  ${currentDep.id} · ${currentDep.name}\n`;
-  txt += `             ${currentDep.city || '—'}, ${currentDep.country} · Elev ${currentDep.elev} ft\n`;
-  txt += `  METAR DEP  ${metarLine(depMetar)}\n\n`;
-  txt += `  ARRIVAL    ${currentArr.id} · ${currentArr.name}\n`;
-  txt += `             ${currentArr.city || '—'}, ${currentArr.country} · Elev ${currentArr.elev} ft\n`;
-  txt += `             Runway ${currentArr.runway > 0 ? currentArr.runway.toLocaleString() + ' ft' : '—'}\n`;
-  txt += `  METAR ARR  ${metarLine(arrMetar)}\n\n`;
+
+  txt += `  DEPARTURE  ${dep.id} · ${dep.name}\n`;
+  txt += `             ${dep.city || '—'}, ${dep.country}\n`;
+  txt += `             Type: ${dep.type}  ·  Elev: ${dep.elev} ft\n`;
+  txt += `             Runway: ${dep.runway > 0 ? dep.runway.toLocaleString() + ' ft' : '—'}  ·  Surface: ${df.surface}\n`;
+  txt += `             Fuel: ${df.fuel}\n`;
+  txt += `  METAR      ${metarLine(depMetar)}\n\n`;
+
+  txt += `  ARRIVAL    ${arr.id} · ${arr.name}\n`;
+  txt += `             ${arr.city || '—'}, ${arr.country}\n`;
+  txt += `             Type: ${arr.type}  ·  Elev: ${arr.elev} ft\n`;
+  txt += `             Runway: ${arr.runway > 0 ? arr.runway.toLocaleString() + ' ft' : '—'}  ·  Surface: ${af.surface}\n`;
+  txt += `             Fuel: ${af.fuel}  ·  Nav Aids: ${af.nav}\n`;
+  txt += `  METAR      ${metarLine(arrMetar)}\n\n`;
+
   txt += `${divider}\n`;
   txt += `  DISTANCE   ${dist.toFixed(0)} nm\n`;
   txt += `  BEARING    ${bear.toFixed(1)}° (${bearingName(bear)})\n`;
