@@ -767,13 +767,13 @@
   }
   .compass-icon {
     flex-shrink: 0;
-    width: 38px;
-    height: 38px;
+    width: 28px;
+    height: 28px;
     position: relative;
   }
   .compass-ring {
-    width: 38px;
-    height: 38px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: 1px solid var(--border2);
     background: var(--bg2);
@@ -788,8 +788,8 @@
     justify-content: center;
   }
   .compass-needle svg {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
   }
 
   /* Action row */
@@ -2640,8 +2640,9 @@ function renderResults(dep, arr) {
           <div class="compass-ring"></div>
           <div class="compass-needle">
             <svg viewBox="0 0 22 22" style="transform:rotate(${bear.toFixed(0)}deg)">
-              <polygon points="11,2 14,11 11,20 8,11" fill="var(--accent)" opacity="0.9"/>
-              <circle cx="11" cy="11" r="2" fill="var(--bg0)"/>
+              <polygon points="11,2 13.5,11 8.5,11" fill="#e76f51"/>
+              <polygon points="11,20 13.5,11 8.5,11" fill="var(--text3)" opacity="0.6"/>
+              <circle cx="11" cy="11" r="1.8" fill="var(--bg2)"/>
             </svg>
           </div>
         </div>
