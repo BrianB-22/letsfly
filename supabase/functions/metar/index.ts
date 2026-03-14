@@ -23,7 +23,8 @@ Deno.serve(async (req) => {
       `https://aviationweather.gov/api/data/metar?ids=${icao}&format=raw`
     );
     const text = (await resp.text()).trim();
-    return new Response(JSON.stringify({ metar: text || null }), {
+    const valid = resp.ok && text.length > 5 && !text.startsWith('<');
+    return new Response(JSON.stringify({ metar: valid ? text : null }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {

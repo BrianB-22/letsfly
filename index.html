@@ -2909,7 +2909,7 @@ async function fetchMetar(side, icao) {
     );
     if (!resp.ok) throw new Error('fetch failed');
     const { metar } = await resp.json();
-    if (metar && metar.length > 5 && !metar.toLowerCase().startsWith('no ')) {
+    if (metar && metar.length > 5 && !metar.toLowerCase().startsWith('no ') && !metar.startsWith('<')) {
       el.textContent = metar;
       el.className = 'metar-text';
     } else {
