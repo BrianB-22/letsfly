@@ -2846,14 +2846,15 @@ Est. Time: ${(dist/speed).toFixed(1)} hours @ ${speed} kts
 async function fetchMetar(side, icao) {
   const el = document.getElementById('metar-' + side);
   if (!el) return;
-  const noaaUrl = `https://aviationweather.gov/api/data/metar?ids=${icao}&format=raw`;
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(noaaUrl)}`;
   try {
-    const resp = await fetch(proxyUrl);
+    const resp = await fetch(
+      `https://blxugbnoitkxhdjgfkff.supabase.co/functions/v1/metar?icao=${icao}`,
+      { headers: { 'apikey': 'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY' } }
+    );
     if (!resp.ok) throw new Error('fetch failed');
-    const text = (await resp.text()).trim();
-    if (text && text.length > 5 && !text.toLowerCase().startsWith('no ')) {
-      el.textContent = text;
+    const { metar } = await resp.json();
+    if (metar && metar.length > 5 && !metar.toLowerCase().startsWith('no ')) {
+      el.textContent = metar;
       el.className = 'metar-text';
     } else {
       el.textContent = 'No METAR available for this airport';
