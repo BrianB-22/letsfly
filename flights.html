@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Flights — SimLetsFly</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="robots" content="noindex">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      --bg0: #0a0d10; --bg1: #0e1318; --bg2: #131920; --bg3: #1a2230;
+      --panel: #111720; --border: #1e2d3d; --border2: #243447;
+      --accent: #00b4d8; --accent-glow: rgba(0,180,216,0.15);
+      --amber: #f4a261; --green: #52b788; --red: #e76f51;
+      --text: #c8d8e8; --text2: #7a92a8; --text3: #4a6070;
+      --mono: 'Share Tech Mono', monospace;
+      --sans: 'Barlow', sans-serif;
+      --cond: 'Barlow Condensed', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg0); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: linear-gradient(rgba(0,180,216,0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,180,216,0.03) 1px, transparent 1px);
+      background-size: 40px 40px; pointer-events: none; z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative; z-index: 10; padding: 10px 20px;
+      border-bottom: 1px solid var(--border); background: var(--bg1);
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .logo-mark { font-family: var(--cond); font-size: 22px; font-weight: 700; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; text-decoration: none; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .back-link { font-family: var(--mono); font-size: 11px; color: var(--text3); text-decoration: none; letter-spacing: 1px; transition: color 0.15s; }
+    .back-link:hover { color: var(--accent); }
+    .auth-btn { font-family: var(--cond); font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 3px; cursor: pointer; transition: all 0.15s; }
+    .auth-btn-ghost { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+    .auth-btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .user-chip { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 11px; color: var(--text2); }
+    .signout-btn { font-family: var(--cond); font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; cursor: pointer; background: transparent; border: 1px solid var(--border2); color: var(--text3); transition: all 0.15s; }
+    .signout-btn:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── LAYOUT ── */
+    .app { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ── PAGE HEADER ── */
+    .page-header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px; }
+    .page-title { font-family: var(--cond); font-size: 28px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; }
+    .page-title span { color: var(--accent); }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      display: flex; gap: 0; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 4px; margin-bottom: 18px; overflow: hidden;
+    }
+    .stat-chip { flex: 1; padding: 12px 18px; border-right: 1px solid var(--border); }
+    .stat-chip:last-child { border-right: none; }
+    .stat-chip-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; margin-bottom: 4px; }
+    .stat-chip-value { font-family: var(--mono); font-size: 18px; color: var(--accent); }
+
+    /* ── SORT BAR ── */
+    .sort-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .sort-label { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 1px; }
+    .sort-btn { font-family: var(--mono); font-size: 10px; padding: 3px 10px; border-radius: 2px; background: transparent; border: 1px solid var(--border); color: var(--text3); cursor: pointer; transition: all 0.15s; }
+    .sort-btn.active { border-color: var(--accent); color: var(--accent); }
+    .sort-btn:hover { color: var(--text2); border-color: var(--border2); }
+    .sort-btn.active:hover { color: var(--accent); border-color: var(--accent); }
+    .flights-count { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-left: auto; }
+
+    /* ── FLIGHT CARD ── */
+    .flight-card { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 10px; overflow: hidden; transition: border-color 0.15s; }
+    .flight-card.expanded { border-color: var(--border2); }
+
+    .card-summary { padding: 14px 16px; cursor: pointer; display: flex; align-items: center; gap: 14px; }
+    .card-summary:hover { background: rgba(255,255,255,0.02); }
+
+    .card-route { flex: 1; min-width: 0; }
+    .card-icao { font-family: var(--mono); font-size: 17px; letter-spacing: 2px; }
+    .card-icao .dep { color: var(--amber); }
+    .card-icao .arr { color: var(--accent); }
+    .card-icao .sep { color: var(--text3); margin: 0 10px; font-size: 13px; }
+    .card-names { font-size: 11px; color: var(--text3); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .card-badges { display: flex; gap: 6px; align-items: center; }
+    .badge { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; padding: 2px 7px; border-radius: 2px; text-transform: uppercase; border: 1px solid; }
+    .badge-complete { color: var(--green); border-color: rgba(82,183,136,0.35); background: rgba(82,183,136,0.08); }
+    .badge-pending { color: var(--text3); border-color: var(--border); background: transparent; }
+    .card-dist { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+    .card-date { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+    .stars-preview { display: flex; gap: 1px; }
+    .star-prev { font-size: 11px; color: var(--amber); }
+    .star-prev.empty { color: var(--border2); }
+    .card-chevron { font-size: 11px; color: var(--text3); transition: transform 0.2s; flex-shrink: 0; }
+    .flight-card.expanded .card-chevron { transform: rotate(180deg); }
+
+    /* ── EXPANDED BODY ── */
+    .card-body { display: none; border-top: 1px solid var(--border); padding: 18px; }
+    .flight-card.expanded .card-body { display: block; }
+
+    .body-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 620px) { .body-grid { grid-template-columns: 1fr; } }
+
+    .sec-label {
+      font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--accent);
+      text-transform: uppercase; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    /* Fields */
+    .field-group { margin-bottom: 12px; }
+    .field-label { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: var(--text3); text-transform: uppercase; display: block; margin-bottom: 5px; }
+    input[type="date"], textarea {
+      background: var(--bg2); border: 1px solid var(--border2); color: var(--text);
+      font-family: var(--mono); font-size: 12px; padding: 6px 10px; border-radius: 3px;
+      transition: border-color 0.15s; outline: none;
+    }
+    input[type="date"] { width: auto; }
+    input[type="date"]:focus, textarea:focus { border-color: var(--accent); }
+    textarea { width: 100%; resize: vertical; min-height: 90px; font-family: var(--sans); font-size: 13px; line-height: 1.5; }
+
+    /* Completed toggle */
+    .completed-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 0; }
+    .toggle-track { width: 36px; height: 20px; border-radius: 10px; background: var(--bg3); border: 1px solid var(--border2); position: relative; transition: background 0.2s, border-color 0.2s; flex-shrink: 0; }
+    .toggle-track.on { background: var(--green); border-color: var(--green); }
+    .toggle-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--text3); position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
+    .toggle-track.on .toggle-thumb { left: 18px; background: #fff; }
+    .toggle-text { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+
+    /* Ratings */
+    .rating-grid { display: flex; flex-direction: column; gap: 8px; }
+    .rating-row { display: flex; align-items: center; justify-content: space-between; }
+    .rating-row-label { font-family: var(--mono); font-size: 11px; color: var(--text2); min-width: 110px; }
+    .rating-stars { display: flex; gap: 4px; cursor: pointer; }
+    .rating-star { font-size: 18px; color: var(--border2); transition: color 0.1s, transform 0.1s; line-height: 1; }
+    .rating-star.filled { color: var(--amber); }
+    .rating-star:hover { color: var(--amber); transform: scale(1.15); }
+    .rating-row.overall .rating-star { font-size: 20px; }
+    .rating-row.overall .rating-row-label { color: var(--text); font-weight: 600; }
+
+    /* Route map */
+    .route-map-wrap { margin-top: 14px; height: 260px; border-radius: 4px; overflow: hidden; display: none; border: 1px solid var(--border); }
+    .route-map-wrap.open { display: block; }
+
+    /* Card actions */
+    .card-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+    .btn { font-family: var(--cond); font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 16px; border-radius: 3px; cursor: pointer; transition: all 0.15s; border: 1px solid; }
+    .btn-save  { background: rgba(82,183,136,0.1);  border-color: rgba(82,183,136,0.3);  color: var(--green); }
+    .btn-save:hover  { background: rgba(82,183,136,0.2); }
+    .btn-map   { background: rgba(0,180,216,0.1);   border-color: rgba(0,180,216,0.3);   color: var(--accent); }
+    .btn-map:hover   { background: rgba(0,180,216,0.2); }
+    .btn-pub   { background: transparent; border-color: var(--border2); color: var(--text3); }
+    .btn-pub.public  { background: rgba(0,180,216,0.08); border-color: rgba(0,180,216,0.3); color: var(--accent); }
+    .btn-pub:hover   { border-color: var(--border2); color: var(--text2); }
+    .btn-delete { background: transparent; border-color: rgba(231,111,81,0.25); color: var(--red); opacity: 0.65; margin-left: auto; }
+    .btn-delete:hover { opacity: 1; background: rgba(231,111,81,0.1); }
+
+    /* ── EMPTY / AUTH STATES ── */
+    .center-state { text-align: center; padding: 80px 20px; }
+    .center-icon  { font-size: 48px; margin-bottom: 16px; opacity: 0.35; }
+    .center-title { font-family: var(--cond); font-size: 20px; letter-spacing: 2px; color: var(--text2); margin-bottom: 8px; }
+    .center-sub   { font-size: 13px; color: var(--text3); margin-bottom: 20px; }
+    .center-sub a { color: var(--accent); text-decoration: none; }
+    .center-sub a:hover { text-decoration: underline; }
+
+    /* ── AUTH MODAL ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; padding: 28px 32px; width: 100%; max-width: 380px; position: relative; }
+    .modal-title { font-family: var(--cond); font-size: 18px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; }
+    .modal-close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--text3); font-size: 20px; cursor: pointer; }
+    .modal-close:hover { color: var(--text); }
+    .modal-field { margin-bottom: 14px; }
+    .modal-field label { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; color: var(--text3); text-transform: uppercase; margin-bottom: 5px; }
+    .modal-field input { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; padding: 8px 10px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; }
+    .modal-field input:focus { border-color: var(--accent); }
+    .modal-err { font-size: 12px; color: var(--red); margin-bottom: 10px; min-height: 16px; }
+    .modal-btn { width: 100%; padding: 9px; border-radius: 3px; font-family: var(--cond); font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; border: 1px solid; transition: all 0.15s; }
+    .modal-btn-primary { background: var(--accent); border-color: var(--accent); color: #000; }
+    .modal-btn-primary:hover { background: #00c8f0; }
+    .modal-switch { text-align: center; margin-top: 14px; font-size: 12px; color: var(--text3); }
+    .modal-switch a { color: var(--accent); cursor: pointer; }
+    .modal-switch a:hover { text-decoration: underline; }
+
+    /* ── TOAST ── */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px; padding: 10px 18px; font-family: var(--mono); font-size: 12px; color: var(--text); z-index: 2000; transform: translateY(60px); opacity: 0; transition: all 0.25s; pointer-events: none; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.ok  { border-color: var(--green); color: var(--green); }
+    .toast.err { border-color: var(--red);   color: var(--red); }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .pulse-dot { display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite;margin-right:4px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="logo-mark">✈ SimLetsFly</a>
+  <div class="header-right">
+    <a href="index.html" class="back-link">← Back to App</a>
+    <div id="auth-header"></div>
+  </div>
+</header>
+
+<div class="app">
+  <div class="page-header">
+    <div class="page-title">My <span>Flights</span></div>
+  </div>
+
+  <div id="stats-bar" class="stats-bar" style="display:none">
+    <div class="stat-chip">
+      <div class="stat-chip-label">Total Saved</div>
+      <div class="stat-chip-value" id="stat-total">—</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">Completed</div>
+      <div class="stat-chip-value" id="stat-completed" style="color:var(--green)">—</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">Total Distance</div>
+      <div class="stat-chip-value" id="stat-dist">—</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">Avg Overall</div>
+      <div class="stat-chip-value" id="stat-rating" style="color:var(--amber)">—</div>
+    </div>
+  </div>
+
+  <div id="sort-bar" class="sort-bar" style="display:none">
+    <span class="sort-label">Sort:</span>
+    <button class="sort-btn active" onclick="sortBy('date', this)">Date Saved</button>
+    <button class="sort-btn" onclick="sortBy('distance', this)">Distance</button>
+    <button class="sort-btn" onclick="sortBy('rating', this)">Rating</button>
+    <span class="flights-count" id="flights-count"></span>
+  </div>
+
+  <div id="flights-list">
+    <div class="center-state">
+      <div class="center-icon">✈</div>
+      <div class="center-title">Loading Flights...</div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="auth-modal" onclick="if(event.target===this)closeAuthModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAuthModal()">×</button>
+    <div class="modal-title" id="modal-title">Sign In</div>
+    <div class="modal-field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="pilot@example.com" onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="modal-field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="modal-err" id="modal-err"></div>
+    <button class="modal-btn modal-btn-primary" id="modal-submit" onclick="authSubmit()">Sign In</button>
+    <div class="modal-switch">No account? <a onclick="setAuthMode('signup')">Create one</a></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const _sb = window.supabase.createClient(
+  'https://blxugbnoitkxhdjgfkff.supabase.co',
+  'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY'
+);
+
+let currentUser = null;
+let flights = [];
+let leafletMaps = {};
+
+// ── AUTH ──
+_sb.auth.onAuthStateChange((event, session) => {
+  currentUser = session?.user ?? null;
+  renderAuthHeader();
+  if (event === 'SIGNED_IN')  loadFlights();
+  if (event === 'SIGNED_OUT') showAuthRequired();
+});
+
+_sb.auth.getSession().then(({ data: { session } }) => {
+  currentUser = session?.user ?? null;
+  renderAuthHeader();
+  if (currentUser) loadFlights();
+  else showAuthRequired();
+});
+
+function renderAuthHeader() {
+  const el = document.getElementById('auth-header');
+  if (currentUser) {
+    el.innerHTML = `<div class="user-chip"><span>${currentUser.email}</span><button class="signout-btn" onclick="signOut()">Sign Out</button></div>`;
+  } else {
+    el.innerHTML = `<button class="auth-btn auth-btn-ghost" onclick="showAuthModal('signin')">Sign In</button>`;
+  }
+}
+
+async function signOut() { await _sb.auth.signOut(); }
+
+// ── LOAD ──
+async function loadFlights() {
+  const { data, error } = await _sb
+    .from('saved_flights')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    document.getElementById('flights-list').innerHTML =
+      `<div class="center-state"><div class="center-title">Error</div><div class="center-sub">${error.message}</div></div>`;
+    return;
+  }
+  flights = data || [];
+  renderStats();
+  renderList(flights);
+}
+
+function renderStats() {
+  if (!flights.length) return;
+  document.getElementById('stats-bar').style.display = 'flex';
+  document.getElementById('sort-bar').style.display = 'flex';
+  const done = flights.filter(f => f.completed).length;
+  const dist = flights.reduce((s, f) => s + (f.distance_nm || 0), 0);
+  const rated = flights.filter(f => f.rating_overall);
+  const avg = rated.length
+    ? (rated.reduce((s, f) => s + f.rating_overall, 0) / rated.length).toFixed(1)
+    : '—';
+  document.getElementById('stat-total').textContent = flights.length;
+  document.getElementById('stat-completed').textContent = done;
+  document.getElementById('stat-dist').textContent = Math.round(dist).toLocaleString() + ' nm';
+  document.getElementById('stat-rating').textContent = avg !== '—' ? '★ ' + avg : '—';
+  document.getElementById('flights-count').textContent =
+    flights.length + ' flight' + (flights.length !== 1 ? 's' : '');
+}
+
+function sortBy(mode, btn) {
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const sorted = [...flights];
+  if (mode === 'date')     sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  if (mode === 'distance') sorted.sort((a, b) => b.distance_nm - a.distance_nm);
+  if (mode === 'rating')   sorted.sort((a, b) => (b.rating_overall || 0) - (a.rating_overall || 0));
+  renderList(sorted);
+}
+
+// ── RENDER CARDS ──
+const RATING_CATS = [
+  { key: 'rating_takeoff',    label: 'Takeoff' },
+  { key: 'rating_landing',    label: 'Landing' },
+  { key: 'rating_procedures', label: 'Procedures' },
+  { key: 'rating_navigation', label: 'Navigation' },
+  { key: 'rating_scenery',    label: 'Scenery / View' },
+  { key: 'rating_atc',        label: 'ATC' },
+  { key: 'rating_fun',        label: 'Fun Factor' },
+  { key: 'rating_overall',    label: 'Overall',  overall: true },
+];
+
+function starsPreview(val) {
+  return [1,2,3,4,5].map(n =>
+    `<span class="star-prev${(val||0) >= n ? '' : ' empty'}">★</span>`
+  ).join('');
+}
+
+function renderList(list) {
+  const el = document.getElementById('flights-list');
+  if (!list.length) {
+    el.innerHTML = `
+      <div class="center-state">
+        <div class="center-icon">✈</div>
+        <div class="center-title">No Saved Flights Yet</div>
+        <div class="center-sub">Head back to <a href="index.html">SimLetsFly</a>, find a flight, and hit Save Flight.</div>
+      </div>`;
+    return;
+  }
+  el.innerHTML = list.map(f => buildCard(f)).join('');
+}
+
+function buildCard(f) {
+  const savedDate = f.created_at
+    ? new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '—';
+  const flownDate = f.flight_date
+    ? new Date(f.flight_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+  const dist = f.distance_nm ? Math.round(f.distance_nm).toLocaleString() + ' nm' : '—';
+
+  const ratingsHtml = RATING_CATS.map(r => `
+    <div class="rating-row${r.overall ? ' overall' : ''}">
+      <span class="rating-row-label">${r.label}</span>
+      <div class="rating-stars" data-id="${f.id}" data-cat="${r.key}">
+        ${[1,2,3,4,5].map(n =>
+          `<span class="rating-star${(f[r.key]||0) >= n ? ' filled' : ''}"
+            onclick="setRating('${f.id}','${r.key}',${n})">★</span>`
+        ).join('')}
+      </div>
+    </div>`).join('');
+
+  return `
+  <div class="flight-card" id="card-${f.id}">
+    <div class="card-summary" onclick="toggleCard('${f.id}')">
+      <div class="card-route">
+        <div class="card-icao">
+          <span class="dep">${f.dep_id}</span>
+          <span class="sep">→</span>
+          <span class="arr">${f.arr_id}</span>
+        </div>
+        <div class="card-names">${f.dep_name} → ${f.arr_name}</div>
+      </div>
+      <div class="card-right">
+        <div class="card-badges">
+          ${f.completed
+            ? `<span class="badge badge-complete">Completed</span>`
+            : `<span class="badge badge-pending">Pending</span>`}
+          <div class="stars-preview">${starsPreview(f.rating_overall)}</div>
+        </div>
+        <div class="card-dist">${dist}</div>
+        <div class="card-date">Saved ${savedDate}</div>
+      </div>
+      <div class="card-chevron">▼</div>
+    </div>
+
+    <div class="card-body">
+      <div class="body-grid">
+        <!-- Left col: details + notes -->
+        <div>
+          <div class="sec-label">Flight Details</div>
+          <div class="field-group">
+            <label class="field-label">Date Flown</label>
+            <input type="date" id="date-${f.id}" value="${f.flight_date || ''}">
+          </div>
+          <div class="field-group">
+            <div class="completed-toggle" onclick="toggleCompleted('${f.id}')">
+              <div class="toggle-track${f.completed ? ' on' : ''}" id="toggle-${f.id}">
+                <div class="toggle-thumb"></div>
+              </div>
+              <span class="toggle-text" id="toggle-text-${f.id}">
+                ${f.completed ? 'Flight Completed' : 'Mark as Completed'}
+              </span>
+            </div>
+          </div>
+          <div class="field-group" style="margin-top:4px">
+            <label class="field-label">Pilot Notes</label>
+            <textarea id="notes-${f.id}" placeholder="Add notes about this flight...">${f.pilot_notes || ''}</textarea>
+          </div>
+        </div>
+
+        <!-- Right col: ratings -->
+        <div>
+          <div class="sec-label">Ratings</div>
+          <div class="rating-grid">${ratingsHtml}</div>
+        </div>
+      </div>
+
+      <!-- Route map (lazy) -->
+      <div class="route-map-wrap" id="mapwrap-${f.id}">
+        <div id="leafmap-${f.id}" style="width:100%;height:100%"></div>
+      </div>
+
+      <div class="card-actions">
+        <button class="btn btn-save" onclick="saveDetails('${f.id}')">Save Changes</button>
+        <button class="btn btn-map"  onclick="toggleMap('${f.id}')">View Route</button>
+        <button class="btn btn-pub${f.is_public ? ' public' : ''}" id="pub-${f.id}" onclick="togglePublic('${f.id}')">
+          ${f.is_public ? '🔓 Public' : '🔒 Private'}
+        </button>
+        <button class="btn btn-delete" onclick="deleteFlight('${f.id}')">Delete</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── TOGGLE CARD ──
+function toggleCard(id) {
+  document.getElementById('card-' + id).classList.toggle('expanded');
+}
+
+// ── RATINGS ──
+function setRating(id, cat, val) {
+  const f = flights.find(f => f.id === id);
+  if (!f) return;
+  f[cat] = val;
+  const container = document.querySelector(`.rating-stars[data-id="${id}"][data-cat="${cat}"]`);
+  if (container) {
+    container.querySelectorAll('.rating-star').forEach((s, i) => {
+      s.classList.toggle('filled', i < val);
+    });
+  }
+  if (cat === 'rating_overall') {
+    const preview = document.querySelector(`#card-${id} .stars-preview`);
+    if (preview) preview.innerHTML = starsPreview(val);
+  }
+}
+
+// ── COMPLETED TOGGLE ──
+function toggleCompleted(id) {
+  const f = flights.find(f => f.id === id);
+  if (!f) return;
+  f.completed = !f.completed;
+  const track = document.getElementById('toggle-' + id);
+  const text  = document.getElementById('toggle-text-' + id);
+  track.classList.toggle('on', f.completed);
+  text.textContent = f.completed ? 'Flight Completed' : 'Mark as Completed';
+  const badge = document.querySelector(`#card-${id} .badge`);
+  if (badge) {
+    badge.className = f.completed ? 'badge badge-complete' : 'badge badge-pending';
+    badge.textContent = f.completed ? 'Completed' : 'Pending';
+  }
+}
+
+// ── SAVE ──
+async function saveDetails(id) {
+  const f = flights.find(f => f.id === id);
+  if (!f) return;
+  const updates = {
+    flight_date:        document.getElementById('date-' + id)?.value || null,
+    pilot_notes:        document.getElementById('notes-' + id)?.value || null,
+    completed:          f.completed,
+    rating_takeoff:     f.rating_takeoff    || null,
+    rating_landing:     f.rating_landing    || null,
+    rating_procedures:  f.rating_procedures || null,
+    rating_navigation:  f.rating_navigation || null,
+    rating_scenery:     f.rating_scenery    || null,
+    rating_atc:         f.rating_atc        || null,
+    rating_fun:         f.rating_fun        || null,
+    rating_overall:     f.rating_overall    || null,
+  };
+  const { error } = await _sb.from('saved_flights')
+    .update(updates).eq('id', id).eq('user_id', currentUser.id);
+  if (error) showToast('Save failed: ' + error.message, 'err');
+  else { showToast('Flight updated! ✓', 'ok'); renderStats(); }
+}
+
+// ── DELETE ──
+async function deleteFlight(id) {
+  if (!confirm('Delete this flight from your log? This cannot be undone.')) return;
+  const { error } = await _sb.from('saved_flights')
+    .delete().eq('id', id).eq('user_id', currentUser.id);
+  if (error) { showToast('Delete failed: ' + error.message, 'err'); return; }
+  flights = flights.filter(f => f.id !== id);
+  document.getElementById('card-' + id)?.remove();
+  renderStats();
+  showToast('Flight deleted.', '');
+  if (!flights.length) renderList([]);
+}
+
+// ── PUBLIC TOGGLE ──
+async function togglePublic(id) {
+  const f = flights.find(f => f.id === id);
+  if (!f) return;
+  const newVal = !f.is_public;
+  const { error } = await _sb.from('saved_flights')
+    .update({ is_public: newVal }).eq('id', id).eq('user_id', currentUser.id);
+  if (error) { showToast('Update failed.', 'err'); return; }
+  f.is_public = newVal;
+  const btn = document.getElementById('pub-' + id);
+  if (btn) {
+    btn.className = 'btn btn-pub' + (newVal ? ' public' : '');
+    btn.textContent = newVal ? '🔓 Public' : '🔒 Private';
+  }
+  showToast(newVal ? 'Flight is now public.' : 'Flight set to private.', 'ok');
+}
+
+// ── ROUTE MAP ──
+function toggleMap(id) {
+  const wrap = document.getElementById('mapwrap-' + id);
+  const isOpen = wrap.classList.contains('open');
+  wrap.classList.toggle('open');
+  if (!isOpen) {
+    setTimeout(() => {
+      if (leafletMaps[id]) { leafletMaps[id].invalidateSize(); return; }
+      const f = flights.find(f => f.id === id);
+      if (!f) return;
+      const map = L.map('leafmap-' + id, { zoomControl: true, attributionControl: false });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+      const pin = (label, icao, color) => L.divIcon({
+        html: `<div style="display:flex;align-items:flex-start;gap:5px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid rgba(0,0,0,0.4);flex-shrink:0;margin-top:3px;box-shadow:0 0 5px ${color}88"></div>
+          <div style="background:rgba(10,13,16,0.9);border:1px solid ${color}55;border-radius:4px;padding:3px 8px;white-space:nowrap">
+            <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:${color};letter-spacing:1px;margin-bottom:1px">${label}</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:#fff;font-weight:700">${icao}</div>
+          </div></div>`,
+        className: '', iconAnchor: [-2, 7]
+      });
+      L.marker([f.dep_lat, f.dep_lon], { icon: pin('DEPARTURE', f.dep_id, '#f4a261') }).addTo(map);
+      L.marker([f.arr_lat, f.arr_lon], { icon: pin('ARRIVAL',   f.arr_id, '#00b4d8') }).addTo(map);
+      L.polyline([[f.dep_lat, f.dep_lon], [f.arr_lat, f.arr_lon]], {
+        color: '#00b4d8', weight: 2, opacity: 0.8, dashArray: '8 6'
+      }).addTo(map);
+      map.fitBounds(L.latLngBounds([[f.dep_lat, f.dep_lon], [f.arr_lat, f.arr_lon]]), { padding: [40, 40] });
+      leafletMaps[id] = map;
+    }, 50);
+  }
+}
+
+// ── AUTH REQUIRED ──
+function showAuthRequired() {
+  document.getElementById('stats-bar').style.display = 'none';
+  document.getElementById('sort-bar').style.display = 'none';
+  document.getElementById('flights-list').innerHTML = `
+    <div class="center-state">
+      <div class="center-icon">🔒</div>
+      <div class="center-title">Sign In to View Your Flights</div>
+      <div class="center-sub">Your saved flights are linked to your SimLetsFly account.</div>
+      <button class="btn btn-save" style="margin:0 auto;display:block" onclick="showAuthModal('signin')">Sign In</button>
+    </div>`;
+}
+
+// ── AUTH MODAL ──
+let _authMode = 'signin';
+function showAuthModal(mode) {
+  _authMode = mode;
+  document.getElementById('modal-title').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  document.getElementById('modal-submit').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  document.getElementById('auth-modal').classList.add('open');
+  setTimeout(() => document.getElementById('auth-email').focus(), 80);
+}
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('open');
+  document.getElementById('modal-err').textContent = '';
+}
+function setAuthMode(mode) {
+  _authMode = mode;
+  document.getElementById('modal-title').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  document.getElementById('modal-submit').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  document.querySelector('.modal-switch').innerHTML = mode === 'signup'
+    ? `Have an account? <a onclick="setAuthMode('signin')">Sign in</a>`
+    : `No account? <a onclick="setAuthMode('signup')">Create one</a>`;
+}
+async function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('modal-err');
+  const btn = document.getElementById('modal-submit');
+  if (!email || !password) { errEl.textContent = 'Email and password required.'; return; }
+  btn.disabled = true; btn.textContent = '...'; errEl.textContent = '';
+  const { error } = _authMode === 'signin'
+    ? await _sb.auth.signInWithPassword({ email, password })
+    : await _sb.auth.signUp({ email, password });
+  btn.disabled = false;
+  btn.textContent = _authMode === 'signup' ? 'Create Account' : 'Sign In';
+  if (error) errEl.textContent = error.message;
+  else closeAuthModal();
+}
+
+// ── TOAST ──
+let _toastTimer;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+}
+</script>
+</body>
+</html>

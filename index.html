@@ -1869,6 +1869,7 @@ function renderAuthHeader() {
   if (currentUser) {
     el.innerHTML = `
       <div class="user-chip">
+        <a href="flights.html" style="color:var(--accent);text-decoration:none;font-size:13px;padding-right:6px;border-right:1px solid var(--border2);margin-right:6px;">My Flights</a>
         <span>${currentUser.email}</span>
         <button class="signout-btn" onclick="signOut()">Sign Out</button>
       </div>`;
