@@ -1712,8 +1712,8 @@
         <!-- Filled by JS -->
       </div>
       <div class="result-actions">
-        <button class="action-btn action-btn-ghost" onclick="copyFlight()">Copy to Clipboard</button>
         <button class="action-btn action-btn-save" onclick="saveFlight()">Save Flight</button>
+        <button class="action-btn action-btn-ghost" onclick="copyFlight()">Copy to Clipboard</button>
         <button class="action-btn action-btn-share" onclick="shareFlight()">Share Flight</button>
 
         <div style="flex:1"></div>
@@ -2956,13 +2956,32 @@ function copyFlight() {
   const dist = distNm(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
   const bear = bearing(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
   const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
-  const txt = `SimLetsFly Flight Details
-DEPARTURE: ${currentDep.id} — ${currentDep.name}
-ARRIVAL:   ${currentArr.id} — ${currentArr.name}
-Distance:  ${dist.toFixed(0)} nm
-Bearing:   ${bear.toFixed(1)}° (${bearingName(bear)})
-Est. Time: ${(dist/speed).toFixed(1)} hours @ ${speed} kts
-[FOR ENTERTAINMENT PURPOSES ONLY]`;
+  const estTime = dist / speed;
+  const hrs = Math.floor(estTime);
+  const mins = Math.round((estTime - hrs) * 60);
+  const notes = document.querySelector('#text-results textarea')?.value?.trim();
+  const depMetar = document.getElementById('metar-dep')?.textContent?.trim();
+  const arrMetar = document.getElementById('metar-arr')?.textContent?.trim();
+  const metarLine = s => (s && !s.startsWith('No METAR') && !s.startsWith('METAR unavailable') && !s.startsWith('fetching')) ? s : 'N/A';
+
+  const divider = '─'.repeat(48);
+  let txt = `SimLetsFly — Flight Brief\n${divider}\n\n`;
+  txt += `  DEPARTURE  ${currentDep.id} · ${currentDep.name}\n`;
+  txt += `             ${currentDep.city || '—'}, ${currentDep.country} · Elev ${currentDep.elev} ft\n`;
+  txt += `  METAR DEP  ${metarLine(depMetar)}\n\n`;
+  txt += `  ARRIVAL    ${currentArr.id} · ${currentArr.name}\n`;
+  txt += `             ${currentArr.city || '—'}, ${currentArr.country} · Elev ${currentArr.elev} ft\n`;
+  txt += `             Runway ${currentArr.runway > 0 ? currentArr.runway.toLocaleString() + ' ft' : '—'}\n`;
+  txt += `  METAR ARR  ${metarLine(arrMetar)}\n\n`;
+  txt += `${divider}\n`;
+  txt += `  DISTANCE   ${dist.toFixed(0)} nm\n`;
+  txt += `  BEARING    ${bear.toFixed(1)}° (${bearingName(bear)})\n`;
+  txt += `  CRUISE     ${speed} kts\n`;
+  txt += `  EST. TIME  ${hrs}h ${mins.toString().padStart(2,'0')}m\n`;
+  if (notes) txt += `\n  NOTES      ${notes.replace(/\n/g, '\n             ')}\n`;
+  txt += `\n${divider}\n`;
+  txt += `  For entertainment purposes only · SimLetsFly.com\n`;
+
   navigator.clipboard.writeText(txt).then(() => setStatus('Copied to clipboard!', 'ok'));
 }
 
