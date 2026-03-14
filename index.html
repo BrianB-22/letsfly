@@ -1213,6 +1213,98 @@
   .toast.show { transform: translateY(0); opacity: 1; }
   .toast.ok { border-color: var(--green); color: var(--green); }
   .toast.err { border-color: var(--red); color: var(--red); }
+  /* ── Favorites ── */
+  .fav-login-msg {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    padding: 10px 0 4px;
+    text-align: center;
+  }
+  .fav-login-msg a { color: var(--accent); cursor: pointer; }
+  .fav-login-msg a:hover { text-decoration: underline; }
+  .fav-empty {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    padding: 6px 0;
+  }
+  .fav-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .fav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .fav-item:hover { border-color: var(--border2); }
+  .fav-item.selected { border-color: var(--accent); background: var(--accent-glow); }
+  .fav-item input[type="radio"] { accent-color: var(--accent); flex-shrink: 0; }
+  .fav-item-icao {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    min-width: 52px;
+    font-weight: 600;
+  }
+  .fav-item-name {
+    font-size: 12px;
+    color: var(--text2);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fav-remove {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .fav-remove:hover { color: var(--red); }
+  .fav-add-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 6px;
+  }
+  .fav-add-row input {
+    flex: 1;
+    background: var(--bg0);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 8px;
+    text-transform: uppercase;
+  }
+  .fav-add-row input:focus { outline: none; border-color: var(--accent); }
+  .fav-add-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    color: var(--text2);
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .fav-add-btn:hover { border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
@@ -1263,9 +1355,31 @@
             <label for="dep-specific">Enter Specific Airport</label>
           </label>
           <label class="radio-opt">
+            <input type="radio" name="dep-mode" value="favorites" id="dep-favorites" onchange="depModeChanged()">
+            <label for="dep-favorites">Favorite Airports</label>
+          </label>
+          <label class="radio-opt">
             <input type="radio" name="dep-mode" value="random" id="dep-random" checked onchange="depModeChanged()">
             <label for="dep-random">Random — Match Criteria Below</label>
           </label>
+        </div>
+
+        <!-- Favorites Section -->
+        <div class="section" id="dep-favorites-section" style="display:none">
+          <div class="section-inner">
+            <div id="dep-fav-login-msg" class="fav-login-msg" style="display:none">
+              <a onclick="showAuthModal('signin')">Sign in</a> or <a onclick="showAuthModal('signup')">create an account</a> to use favorite airports.
+            </div>
+            <div id="dep-fav-content" style="display:none">
+              <div class="fav-list" id="dep-fav-list"></div>
+              <div class="fav-add-row">
+                <input type="text" id="dep-fav-input" placeholder="ICAO (e.g. KCLT)" maxlength="6"
+                  oninput="this.value=this.value.toUpperCase()"
+                  onkeydown="if(event.key==='Enter')addFavorite('dep')">
+                <button class="fav-add-btn" onclick="addFavorite('dep')">+ Add</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Specific Airport Input -->
@@ -1577,6 +1691,20 @@ _sb.auth.onAuthStateChange((event, session) => {
   if (event === 'PASSWORD_RECOVERY') {
     showNewPasswordModal();
   }
+  if (event === 'SIGNED_IN') {
+    depFavorites = [];
+    loadFavorites();
+    // Refresh favorites section if currently visible
+    const mode = document.querySelector('input[name="dep-mode"]:checked')?.value;
+    if (mode === 'favorites') depModeChanged();
+  }
+  if (event === 'SIGNED_OUT') {
+    depFavorites = [];
+    renderFavoritesList();
+    // If on favorites mode, show login message
+    const mode = document.querySelector('input[name="dep-mode"]:checked')?.value;
+    if (mode === 'favorites') depModeChanged();
+  }
 });
 
 // Restore session on page load
@@ -1856,6 +1984,83 @@ async function shareFlight() {
   navigator.clipboard.writeText(url).then(() => showToast('Shareable link copied to clipboard!', 'ok'));
 }
 
+// ── FAVORITES ──
+let depFavorites = [];
+
+async function loadFavorites() {
+  if (!currentUser) return;
+  const { data, error } = await _sb
+    .from('favorites')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('airport_id');
+  if (!error) {
+    depFavorites = data || [];
+    renderFavoritesList();
+  }
+}
+
+function renderFavoritesList() {
+  const list = document.getElementById('dep-fav-list');
+  if (!list) return;
+  if (!depFavorites.length) {
+    list.innerHTML = '<div class="fav-empty">No favorites yet — add an ICAO below.</div>';
+    return;
+  }
+  list.innerHTML = depFavorites.map(f => `
+    <div class="fav-item" id="fav-item-${f.id}" onclick="selectFavorite('${f.airport_id}','${f.id}')">
+      <input type="radio" name="dep-fav-select" value="${f.airport_id}" id="fav-radio-${f.id}">
+      <span class="fav-item-icao">${f.airport_id}</span>
+      <span class="fav-item-name">${f.airport_name || '—'}</span>
+      <button class="fav-remove" onclick="event.stopPropagation();removeFavorite('${f.id}')" title="Remove">×</button>
+    </div>
+  `).join('');
+}
+
+function selectFavorite(icao, id) {
+  document.getElementById('fav-radio-' + id).checked = true;
+  document.querySelectorAll('.fav-item').forEach(el => el.classList.remove('selected'));
+  document.getElementById('fav-item-' + id).classList.add('selected');
+}
+
+async function addFavorite(side) {
+  if (!currentUser) return;
+  const input = document.getElementById('dep-fav-input');
+  const icao = input.value.toUpperCase().trim();
+  if (!icao) return;
+
+  const airport = AIRPORTS.find(a => a.id === icao);
+  if (!airport) {
+    showToast(`"${icao}" not found in airport database.`, 'err');
+    return;
+  }
+  if (depFavorites.find(f => f.airport_id === icao)) {
+    showToast(`${icao} is already in your favorites.`, '');
+    return;
+  }
+
+  const { data, error } = await _sb.from('favorites').insert({
+    user_id: currentUser.id,
+    airport_id: icao,
+    airport_name: airport.name
+  }).select().single();
+
+  if (error) { showToast('Could not add favorite: ' + error.message, 'err'); return; }
+
+  depFavorites.push(data);
+  depFavorites.sort((a, b) => a.airport_id.localeCompare(b.airport_id));
+  renderFavoritesList();
+  input.value = '';
+  showToast(`${icao} added to favorites.`, 'ok');
+}
+
+async function removeFavorite(id) {
+  const { error } = await _sb.from('favorites').delete().eq('id', id);
+  if (error) { showToast('Could not remove favorite.', 'err'); return; }
+  depFavorites = depFavorites.filter(f => f.id !== id);
+  renderFavoritesList();
+}
+
 // ── TOAST ──
 let _toastTimer;
 function showToast(msg, type) {
@@ -1976,8 +2181,19 @@ function updateArrRegion() {
 // ═══════════════════════════════════════════════════════
 function depModeChanged() {
   const mode = document.querySelector('input[name="dep-mode"]:checked').value;
-  document.getElementById('dep-specific-section').style.display = mode === 'specific' ? 'block' : 'none';
-  document.getElementById('dep-random-section').style.display = mode === 'random' ? 'block' : 'none';
+  document.getElementById('dep-specific-section').style.display  = mode === 'specific'  ? 'block' : 'none';
+  document.getElementById('dep-favorites-section').style.display = mode === 'favorites' ? 'block' : 'none';
+  document.getElementById('dep-random-section').style.display    = mode === 'random'    ? 'block' : 'none';
+  if (mode === 'favorites') {
+    if (!currentUser) {
+      document.getElementById('dep-fav-login-msg').style.display = 'block';
+      document.getElementById('dep-fav-content').style.display   = 'none';
+    } else {
+      document.getElementById('dep-fav-login-msg').style.display = 'none';
+      document.getElementById('dep-fav-content').style.display   = 'block';
+      if (!depFavorites.length) loadFavorites();
+    }
+  }
 }
 
 function validateDep() {
@@ -2175,7 +2391,12 @@ function _doFind() {
   if (depMode === 'specific') {
     const ident = document.getElementById('dep-ident').value.toUpperCase().trim();
     dep = AIRPORTS.find(a => a.id === ident);
-    // Update dep match count to reflect it's a pinned airport
+    document.getElementById('dep-match').textContent = '1 pinned';
+  } else if (depMode === 'favorites') {
+    const sel = document.querySelector('input[name="dep-fav-select"]:checked');
+    if (!sel) { setStatus('Select a favorite airport from the list first.', 'err'); return; }
+    dep = AIRPORTS.find(a => a.id === sel.value);
+    if (!dep) { setStatus(`Favorite airport ${sel.value} not found in database.`, 'err'); return; }
     document.getElementById('dep-match').textContent = '1 pinned';
   } else {
     const pool = filterAirports('dep');
