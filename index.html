@@ -1900,6 +1900,7 @@ async function loadAirports() {
     AIRPORTS = await resp.json();
     document.getElementById('db-count').textContent = AIRPORTS.length.toLocaleString();
     initDropdowns();
+    loadSharedFlight();
   } catch(e) {
     // Fallback: show graceful message
     document.getElementById('db-count').textContent = 'offline';
@@ -2590,6 +2591,52 @@ Est. Time: ${(dist/speed).toFixed(1)} hours @ ${speed} kts
 function openWeather() {
   if (!currentArr) return;
   window.open(`https://forecast.weather.gov/MapClick.php?lat=${currentArr.lat}&lon=${currentArr.lon}`, '_blank');
+}
+
+// ═══════════════════════════════════════════════════════
+// LOAD SHARED FLIGHT FROM ?flight=TOKEN
+// ═══════════════════════════════════════════════════════
+async function loadSharedFlight() {
+  const token = new URLSearchParams(window.location.search).get('flight');
+  if (!token) return;
+
+  // Clean the token from the URL immediately
+  history.replaceState(null, '', window.location.pathname);
+
+  setStatus('Loading shared flight...', '');
+
+  const { data, error } = await _sb
+    .from('saved_flights')
+    .select('*')
+    .eq('share_token', token)
+    .eq('is_public', true)
+    .single();
+
+  if (error || !data) {
+    setStatus('Shared flight not found or link has expired.', 'err');
+    return;
+  }
+
+  // Look up full airport objects from local database
+  const dep = AIRPORTS.find(a => a.id === data.dep_id);
+  const arr = AIRPORTS.find(a => a.id === data.arr_id);
+
+  if (!dep || !arr) {
+    setStatus('Shared flight airports not found in database.', 'err');
+    return;
+  }
+
+  currentDep = dep;
+  currentArr = arr;
+
+  renderResults(dep, arr);
+  setStatus(`Shared flight loaded: ${dep.id} → ${arr.id}`, 'ok');
+  document.getElementById('btn-next-hop').style.display = 'inline-flex';
+
+  // Scroll to results
+  setTimeout(() => {
+    document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
 }
 
 // ═══════════════════════════════════════════════════════
