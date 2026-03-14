@@ -457,6 +457,59 @@
     color: var(--amber);
   }
 
+  /* ── AIRPORT NAME SEARCH ── */
+  .name-search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .name-search-row label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    width: 40px;
+  }
+  .name-search-input {
+    flex: 1;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+  }
+  .name-search-input:focus { border-color: var(--accent); }
+  .name-search-results {
+    margin-top: 4px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    display: none;
+  }
+  .name-search-results.open { display: block; }
+  .name-result-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .name-result-item:last-child { border-bottom: none; }
+  .name-result-item:hover { background: rgba(0,180,216,0.07); }
+  .name-result-icao { font-family: var(--mono); font-size: 12px; color: var(--accent); flex-shrink: 0; }
+  .name-result-label { font-size: 12px; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .name-result-use { font-family: var(--mono); font-size: 10px; color: var(--text3); flex-shrink: 0; }
+
   /* ── FLIGHT CONTROLS ── */
   .flight-controls {
     display: flex;
@@ -1426,7 +1479,7 @@
 <header>
   <div class="logo">
     <div class="logo-mark">✈ SimLetsFly</div>
-    <div class="logo-sub">Sim Flight Finder v3.0 -- BETA - STILL IN DEVELOPMENT</div>
+    <div class="logo-sub">Sim Flight Finder</div>
   </div>
   <div class="header-right">
     <div class="status-bar">
@@ -1501,11 +1554,17 @@
           <div class="section-inner">
             <div class="field-row">
               <label>ICAO</label>
-              <input type="text" id="dep-ident" placeholder="e.g. KCLT" maxlength="6" 
+              <input type="text" id="dep-ident" placeholder="e.g. KCLT" maxlength="6"
                 oninput="this.value=this.value.toUpperCase(); if(this.value.length>=3) validateDep()">
               <button class="btn-validate" onclick="validateDep()">Validate</button>
             </div>
             <div id="dep-validate-msg" style="font-family:var(--mono);font-size:10px;color:var(--text3);padding:2px 0;"></div>
+            <div class="name-search-row">
+              <label>Name</label>
+              <input type="text" class="name-search-input" id="dep-name-search" placeholder="Search by airport name or city…"
+                oninput="airportNameSearch('dep', this.value)">
+            </div>
+            <div class="name-search-results" id="dep-name-results"></div>
           </div>
         </div>
 
@@ -1838,6 +1897,12 @@ _sb.auth.getSession().then(({ data: { session } }) => {
     history.replaceState(null, '', window.location.pathname);
     // Wait for DOM to be ready before showing modal
     window.addEventListener('DOMContentLoaded', showExpiredLinkModal);
+  // Close name-search dropdowns when clicking outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#dep-specific-section')) {
+      document.getElementById('dep-name-results')?.classList.remove('open');
+    }
+  });
     if (document.readyState !== 'loading') showExpiredLinkModal();
   }
 })();
@@ -2345,6 +2410,34 @@ function validateDep() {
 }
 
 // ═══════════════════════════════════════════════════════
+// AIRPORT NAME SEARCH
+// ═══════════════════════════════════════════════════════
+function airportNameSearch(side, query) {
+  const resultsEl = document.getElementById(side + '-name-results');
+  query = query.trim();
+  if (query.length < 2) { resultsEl.classList.remove('open'); resultsEl.innerHTML = ''; return; }
+  const q = query.toLowerCase();
+  const matches = AIRPORTS.filter(a =>
+    a.name.toLowerCase().includes(q) || (a.city && a.city.toLowerCase().includes(q))
+  ).slice(0, 12);
+  if (!matches.length) { resultsEl.classList.remove('open'); resultsEl.innerHTML = ''; return; }
+  resultsEl.innerHTML = matches.map(a => `
+    <div class="name-result-item" onclick="selectAirportFromSearch('${side}','${a.id}')">
+      <span class="name-result-icao">${a.id}</span>
+      <span class="name-result-label">${a.name}${a.city ? ' · ' + a.city : ''}</span>
+      <span class="name-result-use">${a.type.replace(' Airport','').replace('airport','')}</span>
+    </div>`).join('');
+  resultsEl.classList.add('open');
+}
+
+function selectAirportFromSearch(side, icao) {
+  document.getElementById(side + '-ident').value = icao;
+  document.getElementById(side + '-name-search').value = '';
+  document.getElementById(side + '-name-results').classList.remove('open');
+  if (side === 'dep') validateDep();
+}
+
+// ═══════════════════════════════════════════════════════
 // FLIGHT MATH
 // ═══════════════════════════════════════════════════════
 function distNm(lat1, lon1, lat2, lon2) {
@@ -2628,7 +2721,7 @@ function renderResults(dep, arr) {
           <span class="metar-label">METAR</span>
           <div class="metar-content">
             <span class="metar-text loading" id="metar-dep">fetching...</span>
-            <button class="metar-decode-btn" onclick="showMetarDecode('dep')">Decode</button>
+            <button class="metar-decode-btn" id="metar-decode-dep" onclick="showMetarDecode('dep')" style="display:none">Decode</button>
           </div>
         </div>
       </div>
@@ -2655,7 +2748,7 @@ function renderResults(dep, arr) {
           <span class="metar-label">METAR</span>
           <div class="metar-content">
             <span class="metar-text loading" id="metar-arr">fetching...</span>
-            <button class="metar-decode-btn" onclick="showMetarDecode('arr')">Decode</button>
+            <button class="metar-decode-btn" id="metar-decode-arr" onclick="showMetarDecode('arr')" style="display:none">Decode</button>
           </div>
         </div>
       </div>
@@ -3027,6 +3120,8 @@ async function fetchMetar(side, icao) {
     if (metar && metar.length > 5 && !metar.toLowerCase().startsWith('no ') && !metar.startsWith('<')) {
       el.textContent = metar;
       el.className = 'metar-text';
+      const btn = document.getElementById('metar-decode-' + side);
+      if (btn) btn.style.display = 'inline-block';
     } else {
       el.textContent = 'No METAR available for this airport';
       el.className = 'metar-text unavailable';
@@ -3241,11 +3336,38 @@ function showHelpModal() {
   const modal = document.getElementById('help-modal');
   const body  = document.getElementById('help-modal-body');
   modal.classList.add('open');
-  if (body.dataset.loaded) return;
+  if (body.dataset.loaded) {
+    // Show/hide feedback based on current auth state
+    const fb = document.getElementById('help-feedback-section');
+    if (fb) fb.style.display = currentUser ? 'block' : 'none';
+    return;
+  }
   fetch('help.html?v=' + Date.now())
     .then(r => r.text())
-    .then(html => { body.innerHTML = html; body.dataset.loaded = '1'; })
+    .then(html => {
+      body.innerHTML = html;
+      body.dataset.loaded = '1';
+      const fb = document.getElementById('help-feedback-section');
+      if (fb) fb.style.display = currentUser ? 'block' : 'none';
+    })
     .catch(() => { body.innerHTML = '<p style="color:var(--text2);padding:20px;">Could not load help content.</p>'; });
+}
+
+async function submitHelpFeedback() {
+  const text = document.getElementById('help-feedback-text')?.value.trim();
+  const msg  = document.getElementById('help-feedback-msg');
+  if (!text) { msg.textContent = 'Please enter some feedback.'; return; }
+  if (!currentUser) return;
+  const { error } = await _sb.from('feedback').insert({
+    user_id: currentUser.id,
+    email: currentUser.email,
+    message: text,
+  });
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = 'Failed to send. Try again.'; return; }
+  document.getElementById('help-feedback-text').value = '';
+  msg.style.color = 'var(--green)';
+  msg.textContent = 'Thanks for your feedback!';
+  setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);
 }
 function closeHelpModal() {
   document.getElementById('help-modal').classList.remove('open');

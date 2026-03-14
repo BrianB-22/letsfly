@@ -2,60 +2,167 @@
 <div class="modal-title" style="margin-bottom:20px;">✈ About SimLetsFly</div>
 
 <p style="color:var(--text2);font-size:14px;line-height:1.75;margin:0 0 20px 0;">
-  SimLetsFly started as a personal tool to break out of flying the same old routes — a habit that's easy to fall into going all the way back to FSX. With the incredible scenery in today's simulators, there's a whole world worth exploring. This app makes it easy to discover flights you'd never think to plan yourself.
+  SimLetsFly started as a personal tool to break out of flying the same old routes — a habit that's easy to fall into going back to the FSX days. With the incredible scenery in today's simulators, there's a whole world worth exploring. This app makes it easy to discover flights you'd never think to plan yourself. All airports are compatible with MSFS 2020.
 </p>
 
+<!-- HOW IT WORKS -->
 <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
   <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">How It Works</div>
-  <p style="color:var(--text2);font-size:14px;line-height:1.75;margin:0;">
-    Set your search parameters and hit <strong style="color:var(--text);">Let's Fly</strong>. SimLetsFly will find a random departure and arrival airport that match your criteria. Not happy with the result? Hit it again for a different pairing, or lock in your departure and randomize only the arrival.
+  <p style="color:var(--text2);font-size:14px;line-height:1.75;margin:0 0 10px 0;">
+    Set your search parameters and hit <strong style="color:var(--text);">Let's Fly!</strong>. SimLetsFly picks a random departure and arrival that match your criteria. Not happy? Hit it again or lock your departure and randomize only the arrival.
   </p>
-  <p style="color:var(--text2);font-size:13px;line-height:1.7;margin:12px 0 0 0;">
-    SimLetsFly is not a full flight planner — once you have your airports, use MSFS 2020 or your preferred tools to set up the actual flight (VFR/IFR, SID/STAR, etc). Think of it as your destination picker. All airports are compatible with MSFS 2020.
+  <p style="color:var(--text2);font-size:13px;line-height:1.7;margin:0;">
+    SimLetsFly is not a full flight planner — once you have your airports, use MSFS or your preferred tools to plan the actual route (VFR/IFR, SID/STAR, etc). Think of it as your destination picker.
   </p>
 </div>
 
+<!-- DEPARTURE OPTIONS -->
+<div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Departure Options</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Enter Specific Airport</div>
+      <div style="color:var(--text3);font-size:12px;">Type an ICAO code and hit Validate, or search by airport name or city to find the ICAO if you don't know it.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Favorite Airports</div>
+      <div style="color:var(--text3);font-size:12px;">Pin airports you fly from regularly. Requires a free account. The app randomly picks one of your pinned airports as departure.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Random — Match Criteria</div>
+      <div style="color:var(--text3);font-size:12px;">Let SimLetsFly pick a random departure based on your location, airport type, runway, and fuel filters.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SEARCH PARAMETERS -->
 <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
   <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Search Parameters</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Location</div>
-      <div style="color:var(--text3);font-size:12px;">Continent, Country, Region, or fully Random</div>
+      <div style="color:var(--text3);font-size:12px;">Continent, Country, Region/State, or fully Random</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Range</div>
-      <div style="color:var(--text3);font-size:12px;">Min and Max distance in nautical miles</div>
+      <div style="color:var(--text3);font-size:12px;">Min and Max distance in nautical miles between departure and arrival</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Airport Size</div>
-      <div style="color:var(--text3);font-size:12px;">Small, Medium, Large, and more</div>
+      <div style="color:var(--text3);font-size:12px;">Small, Medium, Large, Seaplane Base, Heliport</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Runway Surface</div>
-      <div style="color:var(--text3);font-size:12px;">Concrete, Grass, Water, and more</div>
+      <div style="color:var(--text3);font-size:12px;">Hard (paved), Soft (grass/gravel), Water, Helicopter pad</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Runway Length</div>
-      <div style="color:var(--text3);font-size:12px;">Min and Max length in feet</div>
+      <div style="color:var(--text3);font-size:12px;">Min and Max runway length in feet</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Fuel</div>
-      <div style="color:var(--text3);font-size:12px;">AvGas and/or Jet-A availability</div>
+      <div style="color:var(--text3);font-size:12px;">Filter by AvGas and/or Jet-A availability</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;grid-column:1/-1;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Nav Aids</div>
-      <div style="color:var(--text3);font-size:12px;">Filter by ALS, VASI, and/or ILS availability</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Nav Aids (Arrival)</div>
+      <div style="color:var(--text3);font-size:12px;">Filter arrival airports by ALS (approach lighting), VASI/PAPI, and/or ILS availability</div>
     </div>
   </div>
 </div>
 
-<div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:4px;">
-  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Saving & Sharing</div>
-  <p style="color:var(--text2);font-size:14px;line-height:1.75;margin:0;">
-    Create a free account to save flights to your profile and share them with other pilots via a unique link. Saved flights can be reloaded at any time.
+<!-- FLIGHT RESULTS -->
+<div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Flight Results</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Airport Cards</div>
+      <div style="color:var(--text3);font-size:12px;">Each result shows ICAO, name, type, elevation, max runway, fuel, nav aids, and live METAR weather.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">METAR Weather</div>
+      <div style="color:var(--text3);font-size:12px;">Live METAR is fetched for both airports when a flight is generated. Click <strong style="color:var(--text);">Decode</strong> to get a plain-English breakdown of the raw METAR string.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Flight Summary</div>
+      <div style="color:var(--text3);font-size:12px;">Shows distance in nautical miles, bearing with a compass rose, estimated flight time based on your cruise speed, and a route map.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Cruise Speed</div>
+      <div style="color:var(--text3);font-size:12px;">Set your aircraft's cruise speed (knots) to get an accurate estimated flight time. Logged-in users have their speed saved automatically.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Next Hop</div>
+      <div style="color:var(--text3);font-size:12px;">Chain flights together — Next Hop sets your current arrival as the next departure and finds a new random arrival.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SAVING & SHARING -->
+<div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Saving &amp; Sharing</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Save Flight</div>
+      <div style="color:var(--text3);font-size:12px;">Saves the current flight to your account. Requires a free account.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Copy to Clipboard</div>
+      <div style="color:var(--text3);font-size:12px;">Copies a full flight brief to your clipboard including airport details, runway info, fuel, nav aids, METAR, distance, bearing, and estimated time. Great for pasting into a notes app before flying.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Share Flight</div>
+      <div style="color:var(--text3);font-size:12px;">Saves the flight as public and copies a shareable link. Anyone with the link can open it and see the same flight — they can also save it to their own account.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MY FLIGHTS -->
+<div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">My Flights (Logbook)</div>
+  <p style="color:var(--text2);font-size:14px;line-height:1.75;margin:0 0 10px 0;">
+    Access your saved flights at <strong style="color:var(--text);">My Flights</strong> in the header (requires sign in). Your logbook lets you:
   </p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Rate Your Flight</div>
+      <div style="color:var(--text3);font-size:12px;">1–5 stars across 8 categories: Takeoff, Landing, Procedures, Navigation, Scenery, ATC, Fun Factor, and Overall.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Pilot Notes</div>
+      <div style="color:var(--text3);font-size:12px;">Add free-form notes about the flight — weather encountered, challenges, memorable moments.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Mark Completed</div>
+      <div style="color:var(--text3);font-size:12px;">Track which flights you've actually flown vs. flights saved for later.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Route Map</div>
+      <div style="color:var(--text3);font-size:12px;">View an interactive map of any saved flight showing departure and arrival positions.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;grid-column:1/-1;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Public Sharing</div>
+      <div style="color:var(--text3);font-size:12px;">Toggle any saved flight to Public and copy a share link. Other pilots can open it, see your notes and ratings if you leave them, and save the flight to their own account.</div>
+    </div>
+  </div>
+</div>
+
+<!-- FEEDBACK (logged-in only) -->
+<div id="help-feedback-section" style="display:none;border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Leave Feedback</div>
+  <p style="color:var(--text2);font-size:13px;line-height:1.7;margin:0 0 12px 0;">
+    Have a suggestion, bug report, or just want to say hello? Leave a note below.
+  </p>
+  <textarea id="help-feedback-text" placeholder="Your feedback…"
+    style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--body);font-size:13px;padding:10px;resize:vertical;min-height:80px;outline:none;"></textarea>
+  <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+    <button onclick="submitHelpFeedback()"
+      style="font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:7px 16px;background:rgba(0,180,216,0.1);border:1px solid rgba(0,180,216,0.35);color:var(--accent);border-radius:4px;cursor:pointer;">
+      Send Feedback
+    </button>
+    <span id="help-feedback-msg" style="font-family:var(--mono);font-size:11px;color:var(--text3);"></span>
+  </div>
 </div>
 
 <div style="margin-top:20px;text-align:center;">
-  <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;">For entertainment purposes only · SimLetsFly v3.0 Beta</div>
+  <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;">For entertainment purposes only · SimLetsFly.com</div>
 </div>
