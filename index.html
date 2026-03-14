@@ -1305,6 +1305,30 @@
     transition: all 0.15s;
   }
   .fav-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+  /* ── METAR ── */
+  .metar-row {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .metar-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .metar-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.6;
+    word-break: break-all;
+  }
+  .metar-text.loading { color: var(--text3); font-style: italic; }
+  .metar-text.unavailable { color: var(--text3); }
 </style>
 </head>
 <body>
@@ -2488,6 +2512,10 @@ function renderResults(dep, arr) {
           <div class="stat-item"><div class="stat-label">Location</div><div class="stat-value">${dep.city || '—'}, ${dep.country}</div></div>
         </div>
         <div class="tags" style="margin-top:10px">${makeTags(dep, true)}</div>
+        <div class="metar-row">
+          <span class="metar-label">METAR</span>
+          <span class="metar-text loading" id="metar-dep">fetching...</span>
+        </div>
       </div>
     </div>
 
@@ -2508,6 +2536,10 @@ function renderResults(dep, arr) {
           <div class="stat-item"><div class="stat-label">Location</div><div class="stat-value">${arr.city || '—'}, ${arr.country}</div></div>
         </div>
         <div class="tags" style="margin-top:10px">${makeTags(arr, false)}</div>
+        <div class="metar-row">
+          <span class="metar-label">METAR</span>
+          <span class="metar-text loading" id="metar-arr">fetching...</span>
+        </div>
       </div>
     </div>
 
@@ -2538,6 +2570,8 @@ function renderResults(dep, arr) {
   `;
 
   document.getElementById('text-results').innerHTML = html;
+  fetchMetar('dep', dep.id);
+  fetchMetar('arr', arr.id);
   document.getElementById('results-area').classList.add('visible');
   document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -2807,6 +2841,25 @@ Bearing:   ${bear.toFixed(1)}° (${bearingName(bear)})
 Est. Time: ${(dist/speed).toFixed(1)} hours @ ${speed} kts
 [FOR ENTERTAINMENT PURPOSES ONLY]`;
   navigator.clipboard.writeText(txt).then(() => setStatus('Copied to clipboard!', 'ok'));
+}
+
+async function fetchMetar(side, icao) {
+  const el = document.getElementById('metar-' + side);
+  if (!el) return;
+  try {
+    const resp = await fetch(`https://aviationweather.gov/api/data/metar?ids=${icao}&format=raw`);
+    const text = (await resp.text()).trim();
+    if (text && text.length > 5 && !text.toLowerCase().startsWith('no ')) {
+      el.textContent = text;
+      el.className = 'metar-text';
+    } else {
+      el.textContent = 'No METAR available for this airport';
+      el.className = 'metar-text unavailable';
+    }
+  } catch(e) {
+    el.textContent = 'METAR unavailable';
+    el.className = 'metar-text unavailable';
+  }
 }
 
 function openWeather() {
