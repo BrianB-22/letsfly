@@ -157,6 +157,8 @@
     .btn-pub   { background: transparent; border-color: var(--border2); color: var(--text3); }
     .btn-pub.public  { background: rgba(0,180,216,0.08); border-color: rgba(0,180,216,0.3); color: var(--accent); }
     .btn-pub:hover   { border-color: var(--border2); color: var(--text2); }
+    .btn-copy-link   { background: rgba(0,180,216,0.06); border-color: rgba(0,180,216,0.25); color: var(--accent); }
+    .btn-copy-link:hover { background: rgba(0,180,216,0.15); border-color: rgba(0,180,216,0.5); }
     .btn-delete { background: transparent; border-color: rgba(231,111,81,0.25); color: var(--red); opacity: 0.65; margin-left: auto; }
     .btn-delete:hover { opacity: 1; background: rgba(231,111,81,0.1); }
 
@@ -471,6 +473,7 @@ function buildCard(f) {
         <button class="btn btn-pub${f.is_public ? ' public' : ''}" id="pub-${f.id}" onclick="togglePublic('${f.id}')">
           ${f.is_public ? '🔓 Public' : '🔒 Private'}
         </button>
+        ${f.is_public && f.share_token ? `<button class="btn btn-copy-link" id="copylink-${f.id}" onclick="copyShareLink('${f.share_token}')">Copy Link</button>` : `<span id="copylink-${f.id}"></span>`}
         <button class="btn btn-delete" onclick="deleteFlight('${f.id}')">Delete</button>
       </div>
     </div>
@@ -565,7 +568,20 @@ async function togglePublic(id) {
     btn.className = 'btn btn-pub' + (newVal ? ' public' : '');
     btn.textContent = newVal ? '🔓 Public' : '🔒 Private';
   }
+  const linkSlot = document.getElementById('copylink-' + id);
+  if (linkSlot) {
+    if (newVal && f.share_token) {
+      linkSlot.outerHTML = `<button class="btn btn-copy-link" id="copylink-${id}" onclick="copyShareLink('${f.share_token}')">Copy Link</button>`;
+    } else {
+      linkSlot.outerHTML = `<span id="copylink-${id}"></span>`;
+    }
+  }
   showToast(newVal ? 'Flight is now public.' : 'Flight set to private.', 'ok');
+}
+
+function copyShareLink(token) {
+  const url = `https://simletsfly.com/?flight=${token}`;
+  navigator.clipboard.writeText(url).then(() => showToast('Share link copied!', 'ok'));
 }
 
 // ── ROUTE MAP ──
