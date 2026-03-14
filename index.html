@@ -3,7 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SimLetsFly — Sim Flight Finder</title>
+<title>SimLetsFly — Random Flight Finder for MSFS & Flight Simulators</title>
+<meta name="description" content="SimLetsFly generates random flight plans for Microsoft Flight Simulator, X-Plane, and other sims. Filter by location, range, airport size, runway type, fuel, and nav aids. Break out of the same old routes and explore the world.">
+<meta name="keywords" content="flight simulator random flight, MSFS random flight, Microsoft Flight Simulator flight planner, random airport generator, sim flight finder, MSFS2020 routes, flight sim tools, X-Plane flight planner, random flight generator">
+<meta name="author" content="SimLetsFly">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://simletsfly.com/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://simletsfly.com/">
+<meta property="og:title" content="SimLetsFly — Random Flight Finder for Flight Simulators">
+<meta property="og:description" content="Stop flying the same routes. SimLetsFly finds random departure and arrival airports based on your criteria — location, range, runway type, fuel, nav aids, and more. Built for MSFS 2020 and beyond.">
+<meta property="og:site_name" content="SimLetsFly">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SimLetsFly — Random Flight Finder for Flight Simulators">
+<meta name="twitter:description" content="Stop flying the same routes. SimLetsFly finds random departure and arrival airports based on your criteria. Built for MSFS 2020 and beyond.">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1210,6 +1227,7 @@
       <span class="pulse-dot"></span>
       DB: <span id="db-count">Loading...</span> airports
     </div>
+    <button class="auth-btn auth-btn-ghost" onclick="showHelpModal()" style="letter-spacing:1px;">Help</button>
     <form action="https://www.paypal.com/donate" method="post" target="_top" style="display:inline-flex;align-items:center;">
       <input type="hidden" name="business" value="LGAHVLVHW8ZEQ" />
       <input type="hidden" name="no_recurring" value="0" />
@@ -2575,6 +2593,16 @@ function openWeather() {
 }
 
 // ═══════════════════════════════════════════════════════
+// HELP MODAL
+// ═══════════════════════════════════════════════════════
+function showHelpModal() {
+  document.getElementById('help-modal').classList.add('open');
+}
+function closeHelpModal() {
+  document.getElementById('help-modal').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 loadAirports();
@@ -2612,6 +2640,73 @@ document.getElementById('arr-jeta').addEventListener('change', function() { if(t
     <button class="modal-btn modal-btn-primary" id="modal-submit" onclick="authSubmit()">Sign In</button>
     <div class="modal-switch" id="modal-switch">
       No account? <a onclick="setAuthMode('signup')">Create one</a>
+    </div>
+  </div>
+</div>
+
+<!-- HELP MODAL -->
+<div class="modal-overlay" id="help-modal" onclick="if(event.target===this)closeHelpModal()">
+  <div class="modal" style="max-width:560px;max-height:85vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeHelpModal()">×</button>
+    <div class="modal-title" style="margin-bottom:20px;">✈ About SimLetsFly</div>
+
+    <p style="color:var(--text2);font-size:14px;line-height:1.75;margin:0 0 20px 0;">
+      SimLetsFly started as a personal tool to break out of flying the same old routes — a habit that's easy to fall into going all the way back to FSX. With the incredible scenery in today's simulators, there's a whole world worth exploring. This app makes it easy to discover flights you'd never think to plan yourself.
+    </p>
+
+    <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">How It Works</div>
+      <p style="color:var(--text2);font-size:14px;line-height:1.75;margin:0;">
+        Set your search parameters and hit <strong style="color:var(--text);">Let's Fly</strong>. SimLetsFly will find a random departure and arrival airport that match your criteria. Not happy with the result? Hit it again for a different pairing, or lock in your departure and randomize only the arrival.
+      </p>
+      <p style="color:var(--text2);font-size:13px;line-height:1.7;margin:12px 0 0 0;">
+        SimLetsFly is not a full flight planner — once you have your airports, use MSFS 2020 or your preferred tools to set up the actual flight (VFR/IFR, SID/STAR, etc). Think of it as your destination picker. All airports are compatible with MSFS 2020.
+      </p>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Search Parameters</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Location</div>
+          <div style="color:var(--text3);font-size:12px;">Continent, Country, Region, or fully Random</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Range</div>
+          <div style="color:var(--text3);font-size:12px;">Min and Max distance in nautical miles</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Airport Size</div>
+          <div style="color:var(--text3);font-size:12px;">Small, Medium, Large, and more</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Runway Surface</div>
+          <div style="color:var(--text3);font-size:12px;">Concrete, Grass, Water, and more</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Runway Length</div>
+          <div style="color:var(--text3);font-size:12px;">Min and Max length in feet</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Fuel</div>
+          <div style="color:var(--text3);font-size:12px;">AvGas and/or Jet-A availability</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;grid-column:1/-1;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Nav Aids</div>
+          <div style="color:var(--text3);font-size:12px;">Filter by ALS, VASI, and/or ILS availability</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:4px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Saving & Sharing</div>
+      <p style="color:var(--text2);font-size:14px;line-height:1.75;margin:0;">
+        Create a free account to save flights to your profile and share them with other pilots via a unique link. Saved flights can be reloaded at any time.
+      </p>
+    </div>
+
+    <div style="margin-top:20px;text-align:center;">
+      <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;">For entertainment purposes only · SimLetsFly v3.0 Beta</div>
     </div>
   </div>
 </div>
