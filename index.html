@@ -2172,18 +2172,26 @@ async function loadUserPrefs() {
   if (!currentUser) return;
   const { data } = await _sb
     .from('profiles')
-    .select('cruise_speed')
+    .select('cruise_speed, range_min, range_max')
     .eq('user_id', currentUser.id)
     .single();
-  if (data?.cruise_speed) {
-    document.getElementById('cruise-speed').value = data.cruise_speed;
-  }
+  if (data?.cruise_speed) document.getElementById('cruise-speed').value = data.cruise_speed;
+  if (data?.range_min)   document.getElementById('arr-min').value = data.range_min;
+  if (data?.range_max)   document.getElementById('arr-max').value = data.range_max;
 }
 
 async function saveUserPrefs() {
   if (!currentUser) return;
-  const speed = parseInt(document.getElementById('cruise-speed').value) || 280;
-  await _sb.from('profiles').upsert({ user_id: currentUser.id, cruise_speed: speed, updated_at: new Date().toISOString() });
+  const speed    = parseInt(document.getElementById('cruise-speed').value) || 280;
+  const rangeMin = parseInt(document.getElementById('arr-min').value) || 100;
+  const rangeMax = parseInt(document.getElementById('arr-max').value) || 1000;
+  await _sb.from('profiles').upsert({
+    user_id: currentUser.id,
+    cruise_speed: speed,
+    range_min: rangeMin,
+    range_max: rangeMax,
+    updated_at: new Date().toISOString()
+  });
 }
 
 async function loadFavorites() {
