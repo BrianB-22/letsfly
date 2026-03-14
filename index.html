@@ -1329,6 +1329,50 @@
   }
   .metar-text.loading { color: var(--text3); font-style: italic; }
   .metar-text.unavailable { color: var(--text3); }
+  .metar-decode-btn {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    vertical-align: middle;
+    opacity: 0.8;
+  }
+  .metar-decode-btn:hover { opacity: 1; background: rgba(99,179,237,0.08); }
+  /* METAR decode modal rows */
+  .decode-row {
+    display: flex;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .decode-row:last-child { border-bottom: none; }
+  .decode-key {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 110px;
+    padding-top: 1px;
+  }
+  .decode-val { color: var(--text); }
+  .decode-raw {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    word-break: break-all;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-bottom: 14px;
+  }
 </style>
 </head>
 <body>
@@ -2515,6 +2559,7 @@ function renderResults(dep, arr) {
         <div class="metar-row">
           <span class="metar-label">METAR</span>
           <span class="metar-text loading" id="metar-dep">fetching...</span>
+          <button class="metar-decode-btn" onclick="showMetarDecode('dep')" title="Decode METAR">Decode</button>
         </div>
       </div>
     </div>
@@ -2539,6 +2584,7 @@ function renderResults(dep, arr) {
         <div class="metar-row">
           <span class="metar-label">METAR</span>
           <span class="metar-text loading" id="metar-arr">fetching...</span>
+          <button class="metar-decode-btn" onclick="showMetarDecode('arr')" title="Decode METAR">Decode</button>
         </div>
       </div>
     </div>
@@ -2866,6 +2912,149 @@ async function fetchMetar(side, icao) {
   }
 }
 
+function decodeMetar(raw) {
+  const parts = raw.trim().split(/\s+/);
+  let i = 0;
+  const rows = [];
+
+  // Station
+  const station = parts[i++];
+  rows.push({ key: 'Station', val: station });
+
+  // Date/Time: DDHHMMz
+  if (/^\d{6}Z$/i.test(parts[i])) {
+    const dt = parts[i++];
+    const day = dt.slice(0,2), hh = dt.slice(2,4), mm = dt.slice(4,6);
+    rows.push({ key: 'Time (UTC)', val: `Day ${day} at ${hh}:${mm}Z` });
+  }
+
+  // AUTO / COR
+  if (/^(AUTO|COR)$/.test(parts[i])) {
+    rows.push({ key: 'Report Type', val: parts[i++] === 'AUTO' ? 'Automated' : 'Corrected' });
+  }
+
+  // Wind: dddssKT, dddssGggKT, VRBssKT
+  if (/^(VRB|\d{3})\d{2,3}(G\d{2,3})?(KT|MPS|KMH)$/i.test(parts[i])) {
+    const w = parts[i++];
+    const dir = w.slice(0,3).toUpperCase() === 'VRB' ? 'Variable' : w.slice(0,3) + '°';
+    const ktMatch = w.match(/^(?:VRB|\d{3})(\d{2,3})(?:G(\d{2,3}))?(KT|MPS|KMH)/i);
+    if (ktMatch) {
+      const spd = ktMatch[1], gust = ktMatch[2], unit = ktMatch[3].toUpperCase();
+      let txt = `${dir} at ${parseInt(spd)} ${unit}`;
+      if (gust) txt += `, gusting ${parseInt(gust)} ${unit}`;
+      rows.push({ key: 'Wind', val: txt });
+    }
+  }
+
+  // Variable wind dir: dddVddd
+  if (/^\d{3}V\d{3}$/.test(parts[i])) {
+    const v = parts[i++];
+    rows.push({ key: 'Wind Variable', val: `${v.slice(0,3)}° to ${v.slice(4)}°` });
+  }
+
+  // Visibility
+  // Handle fractions like "1/2SM" or "1 1/2SM" combined
+  let visStr = '';
+  if (/^\d+$/.test(parts[i]) && /^\d+\/\d+SM$/i.test(parts[i+1])) {
+    visStr = parts[i] + ' ' + parts[i+1]; i += 2;
+  } else if (/^\d+(\/\d+)?SM$/i.test(parts[i])) {
+    visStr = parts[i++];
+  } else if (/^\d{4}$/.test(parts[i])) {
+    visStr = parseInt(parts[i++]) + ' meters';
+  } else if (/^9999$/.test(parts[i])) {
+    visStr = '10+ km (excellent)'; i++;
+  }
+  if (visStr) {
+    visStr = visStr.replace(/SM$/i, ' statute miles');
+    rows.push({ key: 'Visibility', val: visStr });
+  }
+
+  // RVR: R28L/2400FT etc — skip
+  while (/^R\d{2}[LCR]?\//i.test(parts[i])) i++;
+
+  // Weather phenomena
+  const wxCodes = {
+    'RA':'Rain','SN':'Snow','DZ':'Drizzle','GR':'Hail','GS':'Small Hail','PL':'Ice Pellets',
+    'TS':'Thunderstorm','FG':'Fog','BR':'Mist','HZ':'Haze','FU':'Smoke','DU':'Dust','SA':'Sand',
+    'VA':'Volcanic Ash','SQ':'Squall','FC':'Funnel Cloud','SS':'Sandstorm','DS':'Duststorm',
+    'IC':'Ice Crystals','UP':'Unknown Precip','FZDZ':'Freezing Drizzle','FZRA':'Freezing Rain',
+    'FZFG':'Freezing Fog','TSRA':'Thunderstorm with Rain','TSSN':'Thunderstorm with Snow',
+    'SHRA':'Rain Showers','SHSN':'Snow Showers','SHGR':'Hail Showers'
+  };
+  const intensityMap = {'-':'Light ','+':"Heavy ",'VC':'In Vicinity '};
+  const wxPhenomena = [];
+  while (i < parts.length && /^[-+]?(VC)?[A-Z]{2,}$/.test(parts[i]) && !/^(FEW|SCT|BKN|OVC|VV|CLR|SKC|CAVOK|NSC|NCD|TX|TN|A\d|Q\d|RMK|NOSIG|TEMPO|BECMG|PROB)/.test(parts[i])) {
+    let wx = parts[i++];
+    let prefix = '';
+    if (wx.startsWith('-') || wx.startsWith('+')) { prefix = intensityMap[wx[0]]; wx = wx.slice(1); }
+    else if (wx.startsWith('VC')) { prefix = 'In Vicinity '; wx = wx.slice(2); }
+    const decoded = wxCodes[wx] || wx;
+    wxPhenomena.push(prefix + decoded);
+  }
+  if (wxPhenomena.length) rows.push({ key: 'Weather', val: wxPhenomena.join(', ') });
+
+  // Sky conditions
+  const skyMap = { 'FEW':'Few','SCT':'Scattered','BKN':'Broken','OVC':'Overcast','VV':'Vertical Visibility' };
+  const skyCond = [];
+  while (i < parts.length && /^(FEW|SCT|BKN|OVC|VV)\d{3}(CB|TCU)?$/.test(parts[i])) {
+    const s = parts[i++];
+    const type = s.slice(0,s.match(/\d/) ? s.search(/\d/) : 3);
+    const altStr = s.match(/\d{3}/);
+    const cb = s.endsWith('CB') ? ' (Cumulonimbus)' : s.endsWith('TCU') ? ' (Towering Cumulus)' : '';
+    const alt = altStr ? parseInt(altStr[0]) * 100 : null;
+    skyCond.push(`${skyMap[type] || type}${alt !== null ? ' at ' + alt.toLocaleString() + ' ft' : ''}${cb}`);
+  }
+  if (/^(CLR|SKC|CAVOK|NSC|NCD)$/.test(parts[i])) {
+    const t = parts[i++];
+    const clearMap = { CLR:'Clear below 12,000 ft', SKC:'Sky Clear', CAVOK:'Ceiling and Visibility OK', NSC:'No Significant Cloud', NCD:'No Cloud Detected' };
+    skyCond.push(clearMap[t] || t);
+  }
+  if (skyCond.length) rows.push({ key: 'Sky', val: skyCond.join('; ') });
+
+  // Temp/Dewpoint: TT/DD or M-prefixed negatives
+  if (i < parts.length && /^(M?\d{2})\/(M?\d{2})$/.test(parts[i])) {
+    const td = parts[i++].split('/');
+    const parseT = s => s.startsWith('M') ? -parseInt(s.slice(1)) : parseInt(s);
+    const t = parseT(td[0]), d = parseT(td[1]);
+    rows.push({ key: 'Temp / Dewpoint', val: `${t}°C / ${d}°C` });
+  }
+
+  // Altimeter: A2992 (inches) or Q1013 (hPa)
+  if (i < parts.length && /^A\d{4}$/.test(parts[i])) {
+    const a = parts[i++];
+    const inHg = (parseInt(a.slice(1)) / 100).toFixed(2);
+    rows.push({ key: 'Altimeter', val: `${inHg} inHg` });
+  } else if (i < parts.length && /^Q\d{4}$/.test(parts[i])) {
+    rows.push({ key: 'Altimeter', val: `${parts[i++].slice(1)} hPa` });
+  }
+
+  // Remarks
+  if (i < parts.length && parts[i] === 'RMK') {
+    i++;
+    const rmk = parts.slice(i).join(' ');
+    if (rmk) rows.push({ key: 'Remarks', val: rmk });
+  }
+
+  return rows;
+}
+
+function showMetarDecode(side) {
+  const el = document.getElementById('metar-' + side);
+  if (!el) return;
+  const raw = el.textContent.trim();
+  if (!raw || el.classList.contains('loading') || el.classList.contains('unavailable')) {
+    showToast('No METAR data available to decode');
+    return;
+  }
+  const rows = decodeMetar(raw);
+  const body = document.getElementById('metar-modal-body');
+  body.innerHTML = `
+    <div class="decode-raw">${raw}</div>
+    ${rows.map(r => `<div class="decode-row"><span class="decode-key">${r.key}</span><span class="decode-val">${r.val}</span></div>`).join('')}
+  `;
+  document.getElementById('metar-modal').classList.add('open');
+}
+
 function openWeather() {
   if (!currentArr) return;
   window.open(`https://forecast.weather.gov/MapClick.php?lat=${currentArr.lat}&lon=${currentArr.lon}`, '_blank');
@@ -2980,6 +3169,15 @@ document.getElementById('arr-jeta').addEventListener('change', function() { if(t
 <div class="modal-overlay" id="help-modal" onclick="if(event.target===this)closeHelpModal()">
   <div class="modal" style="max-width:560px;max-height:85vh;overflow-y:auto;" id="help-modal-body">
     <p style="color:var(--text2);padding:20px;text-align:center;">Loading...</p>
+  </div>
+</div>
+
+<!-- METAR DECODE MODAL -->
+<div class="modal-overlay" id="metar-modal" onclick="if(event.target===this)document.getElementById('metar-modal').classList.remove('open')">
+  <div class="modal" style="max-width:500px;max-height:85vh;overflow-y:auto;">
+    <button class="modal-close" onclick="document.getElementById('metar-modal').classList.remove('open')">×</button>
+    <div class="modal-title" style="margin-bottom:16px;">METAR Decoded</div>
+    <div id="metar-modal-body"></div>
   </div>
 </div>
 
