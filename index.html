@@ -2492,7 +2492,7 @@ function filterAirports(prefix) {
       return rwys.some(r => {
         if (r === 'hard') return a.hard === 1;
         if (r === 'soft') return a.soft === 1;
-        if (r === 'water') return a.water === 1;
+        if (r === 'water') return a.water === 1 || a.type === 'Seaplane Base';
         if (r === 'heli') return a.heli === 1;
         return false;
       });
@@ -2687,7 +2687,7 @@ function renderResults(dep, arr) {
     let tags = '';
     if (airport.hard===1) tags += '<span class="tag tag-gray">Hard</span>';
     if (airport.soft===1) tags += '<span class="tag tag-gray">Soft</span>';
-    if (airport.water===1) tags += '<span class="tag tag-blue">Water</span>';
+    if (airport.water===1 || airport.type==='Seaplane Base') tags += '<span class="tag tag-blue">Water</span>';
     if (airport.heli===1) tags += '<span class="tag tag-gray">Heli</span>';
     if (airport.avgas===1) tags += '<span class="tag tag-amber">AVGAS</span>';
     if (airport.jeta===1) tags += '<span class="tag tag-amber">JET A</span>';
