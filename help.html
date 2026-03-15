@@ -88,7 +88,7 @@
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Cruise Speed</div>
-      <div style="color:var(--text3);font-size:12px;">Set your aircraft's cruise speed (knots) to get an accurate estimated flight time. Logged-in users have their speed saved automatically.</div>
+      <div style="color:var(--text3);font-size:12px;">Set your aircraft's cruise speed (knots) to get an accurate estimated flight time. Logged-in users have their speed saved automatically when clicking Let's Fly.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Next Hop</div>
@@ -103,7 +103,7 @@
   <div style="display:flex;flex-direction:column;gap:8px;">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Save Flight</div>
-      <div style="color:var(--text3);font-size:12px;">Saves the current flight to your account. Requires a free account.</div>
+      <div style="color:var(--text3);font-size:12px;">Saves the current flight to your account. Requires a free account. Each time you click Let's Fly while signed in, your search preferences are also saved — location filters, airport types, runway surface, range, cruise speed, and display theme — and restored automatically next time you log in.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Copy to Clipboard</div>
@@ -144,6 +144,25 @@
       <div style="color:var(--text3);font-size:12px;">Toggle any saved flight to Public and copy a share link. Other pilots can open it, see your notes and ratings if you leave them, and save the flight to their own account.</div>
     </div>
   </div>
+</div>
+
+<!-- YOUR DATA -->
+<div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Your Data &amp; Privacy</div>
+  <p style="color:var(--text2);font-size:13px;line-height:1.8;margin:0 0 8px 0;">
+    SimLetsFly is a personal hobby project. Here's exactly what is stored if you create a free account:
+  </p>
+  <ul style="color:var(--text3);font-size:12px;line-height:2;margin:0 0 10px 16px;">
+    <li>Your email address (used for sign-in only)</li>
+    <li>Saved flights, ratings, and pilot notes you choose to add</li>
+    <li>Search preferences and cruise speed (to restore your setup on login)</li>
+    <li>Favorite airports you pin</li>
+  </ul>
+  <p style="color:var(--text2);font-size:13px;line-height:1.8;margin:0;">
+    Your data is never sold, shared, or used for advertising. No tracking scripts or analytics are running on this site.
+    Account data is stored securely via <a href="https://supabase.com" target="_blank" style="color:var(--accent);">Supabase</a>.
+    You can request deletion of your account and all associated data at any time by leaving a note in the feedback box below.
+  </p>
 </div>
 
 <!-- FEEDBACK (logged-in only) -->
