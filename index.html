@@ -2115,25 +2115,29 @@ function setAuthMode(mode) {
   const forgot  = document.getElementById('modal-forgot');
   document.getElementById('modal-err').textContent = '';
 
+  const privacy = document.getElementById('modal-privacy');
   if (mode === 'signin') {
     document.getElementById('modal-title').textContent  = 'Sign In';
     document.getElementById('modal-submit').textContent = 'Sign In';
-    pwField.style.display = 'block';
-    forgot.style.display  = 'block';
+    pwField.style.display  = 'block';
+    forgot.style.display   = 'block';
+    privacy.style.display  = 'none';
     document.getElementById('modal-switch').innerHTML =
       `No account? <a onclick="setAuthMode('signup')">Create one</a>`;
   } else if (mode === 'signup') {
     document.getElementById('modal-title').textContent  = 'Create Account';
     document.getElementById('modal-submit').textContent = 'Create Account';
-    pwField.style.display = 'block';
-    forgot.style.display  = 'none';
+    pwField.style.display  = 'block';
+    forgot.style.display   = 'none';
+    privacy.style.display  = 'block';
     document.getElementById('modal-switch').innerHTML =
       `Have an account? <a onclick="setAuthMode('signin')">Sign in</a>`;
   } else if (mode === 'reset') {
     document.getElementById('modal-title').textContent  = 'Reset Password';
     document.getElementById('modal-submit').textContent = 'Send Reset Link';
-    pwField.style.display = 'none';
-    forgot.style.display  = 'none';
+    pwField.style.display  = 'none';
+    forgot.style.display   = 'none';
+    privacy.style.display  = 'none';
     document.getElementById('modal-switch').innerHTML =
       `<a onclick="setAuthMode('signin')">← Back to sign in</a>`;
   }
@@ -3765,6 +3769,13 @@ document.getElementById('arr-jeta').addEventListener('change', function() { if(t
     <button class="modal-btn modal-btn-primary" id="modal-submit" onclick="authSubmit()">Sign In</button>
     <div class="modal-switch" id="modal-switch">
       No account? <a onclick="setAuthMode('signup')">Create one</a>
+    </div>
+    <div id="modal-privacy" style="display:none;margin-top:14px;padding:10px 12px;background:rgba(0,180,216,0.06);border:1px solid rgba(0,180,216,0.18);border-radius:5px;font-size:11px;color:var(--text3);line-height:1.6;">
+      🔒 <strong style="color:var(--text2);">Your data is safe.</strong>
+      SimLetsFly is a free service — no ads, no selling of data.
+      An account lets you save flights and preferences across devices, but
+      <strong style="color:var(--text2);">sign-up is completely optional.</strong>
+      We only store your email and the flights you choose to save.
     </div>
   </div>
 </div>
