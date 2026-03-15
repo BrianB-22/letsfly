@@ -3368,12 +3368,16 @@ function alsLabel(code) {
   return `<span class="rwy-badge rwy-badge-als">${names[code] || 'ALS'}</span>`;
 }
 function surfLabel(surf) {
-  if (!surf) return '';
+  if (!surf) return 'Unknown';
+  // apt.dat numeric surface codes
+  const numMap = {'1':'Hard','2':'Hard','3':'Soft','4':'Soft','5':'Soft',
+                  '12':'Soft','13':'Water','14':'Soft','15':'Hard'};
+  if (numMap[surf]) return numMap[surf];
   const s = surf.toUpperCase();
   if (/ASP|ASPH|CON|CONC|PEM|TAR|BIT/.test(s)) return 'Hard';
   if (/WAT|H2O/.test(s)) return 'Water';
   if (/TUR|GRS|GRA|DIR|SOD|GRV|GVL|EAR/.test(s)) return 'Soft';
-  return surf.substring(0,4);
+  return 'Unknown';
 }
 
 function makeRunwayList(airport, side) {
