@@ -151,10 +151,14 @@
     font-weight: 600;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    padding: 6px 16px;
+    height: 28px;
+    padding: 0 14px;
     border-radius: 3px;
     cursor: pointer;
     transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .auth-btn-ghost {
@@ -1299,13 +1303,16 @@
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
-    padding: 4px 10px;
+    height: 28px;
+    padding: 0 10px;
     border-radius: 3px;
     cursor: pointer;
     background: transparent;
     border: 1px solid var(--border2);
     color: var(--text3);
     transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
   }
   .user-chip .signout-btn:hover { border-color: var(--red); color: var(--red); }
   /* Toast notification */
@@ -1507,14 +1514,14 @@
       <span class="pulse-dot"></span>
       DB: <span id="db-count">Loading...</span> airports
     </div>
-    <button id="theme-toggle" class="auth-btn auth-btn-ghost" onclick="toggleTheme()" title="Toggle light/dark mode" style="font-size:13px;padding:2px 6px;min-width:26px;line-height:1;">🌙</button>
+    <button id="theme-toggle" class="auth-btn auth-btn-ghost" onclick="toggleTheme()" title="Toggle light/dark mode" style="padding:0 8px;font-size:14px;">🌙</button>
     <button class="auth-btn auth-btn-ghost" onclick="showHelpModal()" style="letter-spacing:1px;">Help</button>
     <form action="https://www.paypal.com/donate" method="post" target="_top" style="display:inline-flex;align-items:center;">
       <input type="hidden" name="business" value="LGAHVLVHW8ZEQ" />
       <input type="hidden" name="no_recurring" value="0" />
       <input type="hidden" name="item_name" value="Thanks for supporting this project, as well as future projects!" />
       <input type="hidden" name="currency_code" value="USD" />
-      <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" width="74" height="21" />
+      <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" width="62" height="18" style="opacity:0.85;vertical-align:middle;" />
       <img alt="" border="0" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
     </form>
     <div id="auth-header">
