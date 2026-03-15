@@ -47,6 +47,27 @@
     --cond: 'Barlow Condensed', sans-serif;
   }
 
+  /* ── LIGHT MODE ── */
+  body.light-mode {
+    --bg0: #f0f4f8;
+    --bg1: #e4eaf0;
+    --bg2: #d8e0ea;
+    --bg3: #ccd5e0;
+    --panel: #dce4ed;
+    --border: #b8c8d8;
+    --border2: #a8baca;
+    --accent: #0077a8;
+    --accent2: #005580;
+    --accent-glow: rgba(0,119,168,0.12);
+    --amber: #c0622a;
+    --amber-glow: rgba(192,98,42,0.12);
+    --green: #2d7a55;
+    --red: #c0392b;
+    --text: #1a2a38;
+    --text2: #3a5570;
+    --text3: #6a8098;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -1486,6 +1507,7 @@
       <span class="pulse-dot"></span>
       DB: <span id="db-count">Loading...</span> airports
     </div>
+    <button id="theme-toggle" class="auth-btn auth-btn-ghost" onclick="toggleTheme()" title="Toggle light/dark mode" style="font-size:16px;padding:4px 8px;min-width:32px;">🌙</button>
     <button class="auth-btn auth-btn-ghost" onclick="showHelpModal()" style="letter-spacing:1px;">Help</button>
     <form action="https://www.paypal.com/donate" method="post" target="_top" style="display:inline-flex;align-items:center;">
       <input type="hidden" name="business" value="LGAHVLVHW8ZEQ" />
@@ -1848,6 +1870,26 @@
 
 <script>
 // ═══════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════
+(function() {
+  const saved = localStorage.getItem('slf-theme');
+  if (saved === 'light') {
+    document.body.classList.add('light-mode');
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('theme-toggle');
+      if (btn) btn.textContent = '☀️';
+    });
+  }
+})();
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('slf-theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-toggle').textContent = isLight ? '☀️' : '🌙';
+}
+
+// ═══════════════════════════════════════════════════════
 // SUPABASE
 // ═══════════════════════════════════════════════════════
 const _sb = window.supabase.createClient(
@@ -2172,12 +2214,55 @@ async function loadUserPrefs() {
   if (!currentUser) return;
   const { data } = await _sb
     .from('profiles')
-    .select('cruise_speed, range_min, range_max')
+    .select('cruise_speed, range_min, range_max, dep_continent, dep_country, dep_region, dep_types, dep_rwys, arr_continent, arr_country, arr_region, arr_types, arr_rwys')
     .eq('user_id', currentUser.id)
     .single();
-  if (data?.cruise_speed) document.getElementById('cruise-speed').value = data.cruise_speed;
-  if (data?.range_min)   document.getElementById('arr-min').value = data.range_min;
-  if (data?.range_max)   document.getElementById('arr-max').value = data.range_max;
+  if (!data) return;
+  if (data.cruise_speed) document.getElementById('cruise-speed').value = data.cruise_speed;
+  if (data.range_min)    document.getElementById('arr-min').value = data.range_min;
+  if (data.range_max)    document.getElementById('arr-max').value = data.range_max;
+
+  // Restore departure location filters
+  if (data.dep_continent) {
+    document.getElementById('dep-continent').value = data.dep_continent;
+    updateDepCountry();
+  }
+  if (data.dep_country) {
+    document.getElementById('dep-country').value = data.dep_country;
+    updateDepRegion();
+  }
+  if (data.dep_region) document.getElementById('dep-region').value = data.dep_region;
+
+  // Restore arrival location filters
+  if (data.arr_continent) {
+    document.getElementById('arr-continent').value = data.arr_continent;
+    updateArrCountry();
+  }
+  if (data.arr_country) {
+    document.getElementById('arr-country').value = data.arr_country;
+    updateArrRegion();
+  }
+  if (data.arr_region) document.getElementById('arr-region').value = data.arr_region;
+
+  // Restore airport type checkboxes
+  if (data.dep_types) {
+    const depTypes = JSON.parse(data.dep_types);
+    document.querySelectorAll('.dep-type').forEach(cb => cb.checked = depTypes.includes(cb.value));
+  }
+  if (data.arr_types) {
+    const arrTypes = JSON.parse(data.arr_types);
+    document.querySelectorAll('.arr-type').forEach(cb => cb.checked = arrTypes.includes(cb.value));
+  }
+
+  // Restore runway surface checkboxes
+  if (data.dep_rwys) {
+    const depRwys = JSON.parse(data.dep_rwys);
+    document.querySelectorAll('.dep-rwy').forEach(cb => cb.checked = depRwys.includes(cb.value));
+  }
+  if (data.arr_rwys) {
+    const arrRwys = JSON.parse(data.arr_rwys);
+    document.querySelectorAll('.arr-rwy').forEach(cb => cb.checked = arrRwys.includes(cb.value));
+  }
 }
 
 async function saveUserPrefs() {
@@ -2185,12 +2270,28 @@ async function saveUserPrefs() {
   const speed    = parseInt(document.getElementById('cruise-speed').value) || 280;
   const rangeMin = parseInt(document.getElementById('arr-min').value) || 100;
   const rangeMax = parseInt(document.getElementById('arr-max').value) || 1000;
+
+  const depTypes = getCheckedValues('dep-type');
+  const depRwys  = getCheckedValues('dep-rwy');
+  const arrTypes = getCheckedValues('arr-type');
+  const arrRwys  = getCheckedValues('arr-rwy');
+
   await _sb.from('profiles').upsert({
-    user_id: currentUser.id,
-    cruise_speed: speed,
-    range_min: rangeMin,
-    range_max: rangeMax,
-    updated_at: new Date().toISOString()
+    user_id:       currentUser.id,
+    cruise_speed:  speed,
+    range_min:     rangeMin,
+    range_max:     rangeMax,
+    dep_continent: document.getElementById('dep-continent').value || null,
+    dep_country:   document.getElementById('dep-country').value   || null,
+    dep_region:    document.getElementById('dep-region').value    || null,
+    dep_types:     JSON.stringify(depTypes),
+    dep_rwys:      JSON.stringify(depRwys),
+    arr_continent: document.getElementById('arr-continent').value || null,
+    arr_country:   document.getElementById('arr-country').value   || null,
+    arr_region:    document.getElementById('arr-region').value    || null,
+    arr_types:     JSON.stringify(arrTypes),
+    arr_rwys:      JSON.stringify(arrRwys),
+    updated_at:    new Date().toISOString()
   });
 }
 

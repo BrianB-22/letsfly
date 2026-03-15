@@ -19,6 +19,13 @@
       --sans: 'Barlow', sans-serif;
       --cond: 'Barlow Condensed', sans-serif;
     }
+    body.light-mode {
+      --bg0: #f0f4f8; --bg1: #e4eaf0; --bg2: #d8e0ea; --bg3: #ccd5e0;
+      --panel: #dce4ed; --border: #b8c8d8; --border2: #a8baca;
+      --accent: #0077a8; --accent-glow: rgba(0,119,168,0.12);
+      --amber: #c0622a; --green: #2d7a55; --red: #c0392b;
+      --text: #1a2a38; --text2: #3a5570; --text3: #6a8098;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg0); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; }
     body::before {
@@ -213,6 +220,7 @@
   <a href="index.html" class="logo-mark">✈ SimLetsFly</a>
   <div class="header-right">
     <a href="index.html" class="back-link">← Back to App</a>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--text2);cursor:pointer;font-size:16px;padding:3px 8px;">🌙</button>
     <div id="auth-header"></div>
   </div>
 </header>
@@ -281,6 +289,22 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// Theme - apply before render to avoid flash
+(function() {
+  if (localStorage.getItem('slf-theme') === 'light') {
+    document.body.classList.add('light-mode');
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('theme-toggle');
+      if (btn) btn.textContent = '☀️';
+    });
+  }
+})();
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('slf-theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-toggle').textContent = isLight ? '☀️' : '🌙';
+}
+
 const _sb = window.supabase.createClient(
   'https://blxugbnoitkxhdjgfkff.supabase.co',
   'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY'
