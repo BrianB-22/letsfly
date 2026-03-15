@@ -30,7 +30,7 @@
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Random — Match Criteria</div>
-      <div style="color:var(--text3);font-size:12px;">Let SimLetsFly pick a random departure based on your location, airport type, runway, and fuel filters.</div>
+      <div style="color:var(--text3);font-size:12px;">Let SimLetsFly pick a random departure based on your location, airport type, and runway filters. If you're signed in, your last-used filters are restored automatically on login.</div>
     </div>
   </div>
 </div>
@@ -59,10 +59,6 @@
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Runway Length</div>
       <div style="color:var(--text3);font-size:12px;">Min and Max runway length in feet</div>
     </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Fuel</div>
-      <div style="color:var(--text3);font-size:12px;">Filter by AvGas and/or Jet-A availability</div>
-    </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;grid-column:1/-1;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Nav Aids (Arrival)</div>
       <div style="color:var(--text3);font-size:12px;">Filter arrival airports by ALS (approach lighting), VASI/PAPI, and/or ILS availability</div>
@@ -76,7 +72,11 @@
   <div style="display:flex;flex-direction:column;gap:8px;">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Airport Cards</div>
-      <div style="color:var(--text3);font-size:12px;">Each result shows ICAO, name, type, elevation, max runway, fuel, nav aids, and live METAR weather.</div>
+      <div style="color:var(--text3);font-size:12px;">Each result shows ICAO, name, type, elevation, location (region, country, continent), nav aid tags, and live METAR weather.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Runway List</div>
+      <div style="color:var(--text3);font-size:12px;">Each airport card shows all individual runways with length, surface type, and nav aids (VASI/PAPI, ALS) labeled per runway end. Once METAR loads, the recommended runway is shown based on current wind direction with headwind and crosswind components.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">METAR Weather</div>
@@ -85,6 +85,10 @@
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Flight Summary</div>
       <div style="color:var(--text3);font-size:12px;">Shows distance in nautical miles, bearing with a compass rose, estimated flight time based on your cruise speed, and a route map.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Export to SimBrief</div>
+      <div style="color:var(--text3);font-size:12px;">Opens SimBrief with your departure and arrival pre-filled for full IFR route planning.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Cruise Speed</div>
