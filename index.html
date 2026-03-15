@@ -3382,17 +3382,24 @@ function makeRunwayList(airport, side) {
   const rwys = airport.runways;
   if (!rwys || rwys.length === 0) return '';
   const items = rwys.map(r => {
+    const parts = r.id.split('/');
+    const leId  = parts[0] || '';
+    const heId  = parts[1] || '';
     const leAids = (vasiLabel(r.le_vasi) || '') + (alsLabel(r.le_als) || '');
     const heAids = (vasiLabel(r.he_vasi) || '') + (alsLabel(r.he_als) || '');
-    const allAids = leAids || heAids
-      ? `<div class="runway-aids">${leAids}${heAids}</div>` : '';
+    let aidHtml = '';
+    if (leAids || heAids) {
+      const leBlock = leAids ? `<span style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-right:2px;">${leId}</span>${leAids}` : '';
+      const heBlock = heAids ? `<span style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-right:2px;margin-left:6px;">${heId}</span>${heAids}` : '';
+      aidHtml = `<div class="runway-aids">${leBlock}${heBlock}</div>`;
+    }
     const len = r.length > 0 ? r.length.toLocaleString() + ' ft' : '—';
     const surf = surfLabel(r.surface || '');
     return `<div class="runway-item" id="rwy-${side}-${r.id.replace('/','_')}">
       <span class="runway-id">${r.id}</span>
       <span class="runway-len">${len}</span>
       <span class="runway-surf">${surf}</span>
-      ${allAids}
+      ${aidHtml}
     </div>`;
   }).join('');
   return `<div class="runway-list">
