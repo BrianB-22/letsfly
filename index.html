@@ -1509,6 +1509,83 @@
     padding: 8px 10px;
     margin-bottom: 14px;
   }
+
+  /* ── Runway list ── */
+  .runway-list {
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+  .runway-list-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .runway-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .runway-item:last-child { border-bottom: none; }
+  .runway-item.wind-best {
+    background: rgba(0,180,216,0.06);
+    margin: 0 -4px;
+    padding: 4px 4px;
+    border-radius: 3px;
+    border-bottom: none;
+  }
+  .runway-id {
+    font-family: var(--mono);
+    font-weight: 700;
+    color: var(--text);
+    min-width: 52px;
+  }
+  .runway-len  { color: var(--text2); min-width: 72px; font-size: 11px; }
+  .runway-surf { color: var(--text3); min-width: 36px; font-size: 11px; }
+  .runway-aids { display: flex; gap: 3px; flex-wrap: wrap; flex: 1; }
+  .rwy-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+  .rwy-badge-papi  { color: #f4a261; border-color: rgba(244,162,97,0.4); }
+  .rwy-badge-vasi  { color: #e9c46a; border-color: rgba(233,196,106,0.4); }
+  .rwy-badge-als   { color: var(--accent); border-color: rgba(0,180,216,0.35); }
+  .rwy-badge-ils   { color: #a8d8a8; border-color: rgba(168,216,168,0.4); }
+  .rwy-wind-badge  {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: rgba(0,180,216,0.15);
+    border: 1px solid rgba(0,180,216,0.4);
+    color: var(--accent);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .wind-runway-row {
+    margin-top: 6px;
+    padding: 5px 8px;
+    background: rgba(0,180,216,0.07);
+    border: 1px solid rgba(0,180,216,0.2);
+    border-radius: 4px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .wind-runway-label { font-family: var(--mono); font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+  .wind-runway-value { font-family: var(--mono); font-weight: 700; color: var(--accent); font-size: 13px; }
+  .wind-runway-detail { color: var(--text3); font-size: 11px; }
 </style>
 </head>
 <body>
@@ -2884,6 +2961,7 @@ function renderResults(dep, arr) {
             <button class="metar-decode-btn" id="metar-decode-dep" onclick="showMetarDecode('dep')" style="display:none">Decode</button>
           </div>
         </div>
+        ${makeRunwayList(dep, 'dep')}
       </div>
     </div>
 
@@ -2911,6 +2989,7 @@ function renderResults(dep, arr) {
             <button class="metar-decode-btn" id="metar-decode-arr" onclick="showMetarDecode('arr')" style="display:none">Decode</button>
           </div>
         </div>
+        ${makeRunwayList(arr, 'arr')}
       </div>
     </div>
 
@@ -3274,6 +3353,106 @@ function copyFlight() {
   });
 }
 
+// ── Runway list helpers ────────────────────────────────────────────────────
+function vasiLabel(code) {
+  if (!code) return '';
+  if (code === 1 || code === 5) return '<span class="rwy-badge rwy-badge-vasi">VASI</span>';
+  if (code >= 2) return '<span class="rwy-badge rwy-badge-papi">PAPI</span>';
+  return '';
+}
+function alsLabel(code) {
+  if (!code) return '';
+  const names = {1:'ALSF-I',2:'ALSF-II',3:'CALVERT',4:'CALVERT II/III',
+                 5:'SSALR',6:'SSALF',7:'MALS',8:'MALSF',9:'MALSR',
+                 10:'SALS',11:'SALSF',12:'ODALS',13:'RAIL'};
+  return `<span class="rwy-badge rwy-badge-als">${names[code] || 'ALS'}</span>`;
+}
+function surfLabel(surf) {
+  if (!surf) return '';
+  const s = surf.toUpperCase();
+  if (/ASP|ASPH|CON|CONC|PEM|TAR|BIT/.test(s)) return 'Hard';
+  if (/WAT|H2O/.test(s)) return 'Water';
+  if (/TUR|GRS|GRA|DIR|SOD|GRV|GVL|EAR/.test(s)) return 'Soft';
+  return surf.substring(0,4);
+}
+
+function makeRunwayList(airport, side) {
+  const rwys = airport.runways;
+  if (!rwys || rwys.length === 0) return '';
+  const items = rwys.map(r => {
+    const leAids = (vasiLabel(r.le_vasi) || '') + (alsLabel(r.le_als) || '');
+    const heAids = (vasiLabel(r.he_vasi) || '') + (alsLabel(r.he_als) || '');
+    const allAids = leAids || heAids
+      ? `<div class="runway-aids">${leAids}${heAids}</div>` : '';
+    const len = r.length > 0 ? r.length.toLocaleString() + ' ft' : '—';
+    const surf = surfLabel(r.surface || '');
+    return `<div class="runway-item" id="rwy-${side}-${r.id.replace('/','_')}">
+      <span class="runway-id">${r.id}</span>
+      <span class="runway-len">${len}</span>
+      <span class="runway-surf">${surf}</span>
+      ${allAids}
+    </div>`;
+  }).join('');
+  return `<div class="runway-list">
+    <div class="runway-list-label">Runways</div>
+    ${items}
+    <div id="wind-rwy-${side}"></div>
+  </div>`;
+}
+
+function parseMetarWind(raw) {
+  if (!raw) return null;
+  const m = raw.match(/\b(VRB|\d{3})(\d{2,3})(?:G\d{2,3})?KT\b/);
+  if (!m) return null;
+  if (m[1] === 'VRB') return { dir: null, speed: parseInt(m[2]) };
+  return { dir: parseInt(m[1]), speed: parseInt(m[2]) };
+}
+
+function updateWindRunway(side, metarRaw) {
+  const airport = side === 'dep' ? currentDep : currentArr;
+  const container = document.getElementById('wind-rwy-' + side);
+  if (!container || !airport || !airport.runways || airport.runways.length === 0) return;
+
+  const wind = parseMetarWind(metarRaw);
+  if (!wind || wind.dir === null) return;
+
+  let best = null, bestHw = -Infinity;
+  for (const rwy of airport.runways) {
+    const parts = rwy.id.split('/');
+    const ends = [];
+    if (rwy.le_heading !== undefined) {
+      ends.push({ id: parts[0] || '', heading: rwy.le_heading });
+    } else if (parts[0] && /^\d+/.test(parts[0])) {
+      ends.push({ id: parts[0], heading: parseInt(parts[0]) * 10 });
+    }
+    if (rwy.he_heading !== undefined) {
+      ends.push({ id: parts[1] || '', heading: rwy.he_heading });
+    } else if (parts[1] && /^\d+/.test(parts[1])) {
+      ends.push({ id: parts[1], heading: parseInt(parts[1]) * 10 });
+    }
+    for (const end of ends) {
+      const diff = ((wind.dir - end.heading + 540) % 360) - 180;
+      const hw = Math.cos(diff * Math.PI / 180);
+      if (hw > bestHw) { bestHw = hw; best = { ...end, rwy }; }
+    }
+  }
+
+  if (!best) return;
+  const xw = Math.round(Math.abs(Math.sin(
+    ((wind.dir - best.heading + 540) % 360 - 180) * Math.PI / 180
+  ) * wind.speed));
+  const hw = Math.round(bestHw * wind.speed);
+  const detail = hw > 0
+    ? `${hw} kt headwind · ${xw} kt crosswind`
+    : `${Math.abs(hw)} kt tailwind · ${xw} kt crosswind`;
+
+  container.innerHTML = `<div class="wind-runway-row">
+    <span class="wind-runway-label">Use</span>
+    <span class="wind-runway-value">RWY ${best.id}</span>
+    <span class="wind-runway-detail">${detail}</span>
+  </div>`;
+}
+
 async function fetchMetar(side, icao) {
   const el = document.getElementById('metar-' + side);
   if (!el) return;
@@ -3289,6 +3468,7 @@ async function fetchMetar(side, icao) {
       el.className = 'metar-text';
       const btn = document.getElementById('metar-decode-' + side);
       if (btn) btn.style.display = 'inline-block';
+      updateWindRunway(side, metar);
     } else {
       el.textContent = 'No METAR available for this airport';
       el.className = 'metar-text unavailable';
