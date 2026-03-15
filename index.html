@@ -3268,7 +3268,10 @@ function copyFlight() {
   txt += `\n${divider}\n`;
   txt += `  For entertainment purposes only · SimLetsFly.com\n`;
 
-  navigator.clipboard.writeText(txt).then(() => setStatus('Copied to clipboard!', 'ok'));
+  navigator.clipboard.writeText(txt).then(() => {
+    setStatus('Copied!', 'ok');
+    showToast('Flight plan briefing copied to clipboard', 'ok');
+  });
 }
 
 async function fetchMetar(side, icao) {
