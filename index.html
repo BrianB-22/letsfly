@@ -1885,12 +1885,17 @@
 
 function toggleTheme() {
   const isLight = document.body.classList.toggle('light-mode');
-  localStorage.setItem('slf-theme', isLight ? 'light' : 'dark');
+  const val = isLight ? 'light' : 'dark';
+  localStorage.setItem('slf-theme', val);
   document.getElementById('theme-toggle').textContent = isLight ? '☀️' : '🌙';
   // Re-render map tiles if map is visible
   if (mapTileLayer && mapInstance) {
     mapTileLayer.remove();
     mapTileLayer = L.tileLayer(getMapTileUrl(), { maxZoom: 19 }).addTo(mapInstance);
+  }
+  // Save to profile immediately if logged in
+  if (currentUser) {
+    _sb.from('profiles').upsert({ user_id: currentUser.id, theme: val, updated_at: new Date().toISOString() });
   }
 }
 
@@ -2224,10 +2229,22 @@ async function loadUserPrefs() {
   if (!currentUser) return;
   const { data } = await _sb
     .from('profiles')
-    .select('cruise_speed, range_min, range_max, dep_continent, dep_country, dep_region, dep_types, dep_rwys, arr_continent, arr_country, arr_region, arr_types, arr_rwys')
+    .select('cruise_speed, range_min, range_max, theme, dep_continent, dep_country, dep_region, dep_types, dep_rwys, arr_continent, arr_country, arr_region, arr_types, arr_rwys')
     .eq('user_id', currentUser.id)
     .single();
   if (!data) return;
+
+  // Apply saved theme (profile takes precedence over localStorage)
+  if (data.theme) {
+    const wantsLight = data.theme === 'light';
+    const isLight = document.body.classList.contains('light-mode');
+    if (wantsLight !== isLight) {
+      document.body.classList.toggle('light-mode', wantsLight);
+      document.getElementById('theme-toggle').textContent = wantsLight ? '☀️' : '🌙';
+    }
+    localStorage.setItem('slf-theme', data.theme);
+  }
+
   if (data.cruise_speed) document.getElementById('cruise-speed').value = data.cruise_speed;
   if (data.range_min)    document.getElementById('arr-min').value = data.range_min;
   if (data.range_max)    document.getElementById('arr-max').value = data.range_max;
@@ -2291,6 +2308,7 @@ async function saveUserPrefs() {
     cruise_speed:  speed,
     range_min:     rangeMin,
     range_max:     rangeMax,
+    theme:         document.body.classList.contains('light-mode') ? 'light' : 'dark',
     dep_continent: document.getElementById('dep-continent').value || null,
     dep_country:   document.getElementById('dep-country').value   || null,
     dep_region:    document.getElementById('dep-region').value    || null,

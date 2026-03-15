@@ -301,7 +301,8 @@
 })();
 function toggleTheme() {
   const isLight = document.body.classList.toggle('light-mode');
-  localStorage.setItem('slf-theme', isLight ? 'light' : 'dark');
+  const val = isLight ? 'light' : 'dark';
+  localStorage.setItem('slf-theme', val);
   document.getElementById('theme-toggle').textContent = isLight ? '☀️' : '🌙';
   // Swap tile layers on any open maps
   const tileUrl = `https://{s}.basemaps.cartocdn.com/${isLight ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
@@ -309,6 +310,10 @@ function toggleTheme() {
     map.eachLayer(layer => { if (layer._url) map.removeLayer(layer); });
     L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
   });
+  // Save to profile immediately if logged in
+  if (currentUser) {
+    _sb.from('profiles').upsert({ user_id: currentUser.id, theme: val, updated_at: new Date().toISOString() });
+  }
 }
 
 const _sb = window.supabase.createClient(
@@ -347,7 +352,22 @@ function renderAuthHeader() {
 async function signOut() { await _sb.auth.signOut(); }
 
 // ── LOAD ──
+async function loadThemePref() {
+  if (!currentUser) return;
+  const { data } = await _sb.from('profiles').select('theme').eq('user_id', currentUser.id).single();
+  if (data?.theme) {
+    const wantsLight = data.theme === 'light';
+    const isLight = document.body.classList.contains('light-mode');
+    if (wantsLight !== isLight) {
+      document.body.classList.toggle('light-mode', wantsLight);
+      document.getElementById('theme-toggle').textContent = wantsLight ? '☀️' : '🌙';
+    }
+    localStorage.setItem('slf-theme', data.theme);
+  }
+}
+
 async function loadFlights() {
+  loadThemePref();
   const { data, error } = await _sb
     .from('saved_flights')
     .select('*')
