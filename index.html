@@ -2951,7 +2951,7 @@ function renderResults(dep, arr) {
           <div class="stat-item"><div class="stat-label">Type</div><div class="stat-value">${dep.type}</div></div>
           <div class="stat-item"><div class="stat-label">Elevation</div><div class="stat-value">${dep.elev} ft</div></div>
           <div class="stat-item"><div class="stat-label">Max Runway</div><div class="stat-value">${dep.runway > 0 ? dep.runway.toLocaleString() + ' ft' : '—'}</div></div>
-          <div class="stat-item"><div class="stat-label">Location</div><div class="stat-value">${dep.city || '—'}, ${dep.country}</div></div>
+          <div class="stat-item"><div class="stat-label">Location</div><div class="stat-value">${[dep.region, dep.country, dep.continent].filter(Boolean).join(', ')}</div></div>
         </div>
         <div class="tags" style="margin-top:10px">${makeTags(dep, true)}</div>
         <div class="metar-row">
@@ -2979,7 +2979,7 @@ function renderResults(dep, arr) {
           <div class="stat-item"><div class="stat-label">Type</div><div class="stat-value">${arr.type}</div></div>
           <div class="stat-item"><div class="stat-label">Elevation</div><div class="stat-value">${arr.elev} ft</div></div>
           <div class="stat-item"><div class="stat-label">Max Runway</div><div class="stat-value">${arr.runway > 0 ? arr.runway.toLocaleString() + ' ft' : '—'}</div></div>
-          <div class="stat-item"><div class="stat-label">Location</div><div class="stat-value">${arr.city || '—'}, ${arr.country}</div></div>
+          <div class="stat-item"><div class="stat-label">Location</div><div class="stat-value">${[arr.region, arr.country, arr.continent].filter(Boolean).join(', ')}</div></div>
         </div>
         <div class="tags" style="margin-top:10px">${makeTags(arr, false)}</div>
         <div class="metar-row">
