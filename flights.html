@@ -220,7 +220,7 @@
   <a href="index.html" class="logo-mark">✈ SimLetsFly</a>
   <div class="header-right">
     <a href="index.html" class="back-link">← Back to App</a>
-    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--text2);cursor:pointer;font-size:16px;padding:3px 8px;">🌙</button>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--text2);cursor:pointer;font-size:13px;padding:2px 6px;line-height:1;">🌙</button>
     <div id="auth-header"></div>
   </div>
 </header>
@@ -303,6 +303,12 @@ function toggleTheme() {
   const isLight = document.body.classList.toggle('light-mode');
   localStorage.setItem('slf-theme', isLight ? 'light' : 'dark');
   document.getElementById('theme-toggle').textContent = isLight ? '☀️' : '🌙';
+  // Swap tile layers on any open maps
+  const tileUrl = `https://{s}.basemaps.cartocdn.com/${isLight ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
+  Object.values(leafletMaps).forEach(map => {
+    map.eachLayer(layer => { if (layer._url) map.removeLayer(layer); });
+    L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
+  });
 }
 
 const _sb = window.supabase.createClient(
@@ -626,14 +632,18 @@ function toggleMap(id) {
       if (leafletMaps[id]) { leafletMaps[id].invalidateSize(); return; }
       const f = flights.find(f => f.id === id);
       if (!f) return;
+      const light = document.body.classList.contains('light-mode');
+      const tileStyle = light ? 'light_all' : 'dark_all';
       const map = L.map('leafmap-' + id, { zoomControl: true, attributionControl: false });
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+      L.tileLayer(`https://{s}.basemaps.cartocdn.com/${tileStyle}/{z}/{x}/{y}{r}.png`, { maxZoom: 19 }).addTo(map);
+      const bg  = light ? 'rgba(240,244,248,0.95)' : 'rgba(10,13,16,0.9)';
+      const txt = light ? '#1a2a38' : '#ffffff';
       const pin = (label, icao, color) => L.divIcon({
         html: `<div style="display:flex;align-items:flex-start;gap:5px">
-          <div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid rgba(0,0,0,0.4);flex-shrink:0;margin-top:3px;box-shadow:0 0 5px ${color}88"></div>
-          <div style="background:rgba(10,13,16,0.9);border:1px solid ${color}55;border-radius:4px;padding:3px 8px;white-space:nowrap">
+          <div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid rgba(0,0,0,0.3);flex-shrink:0;margin-top:3px;box-shadow:0 0 5px ${color}88"></div>
+          <div style="background:${bg};border:1px solid ${color}55;border-radius:4px;padding:3px 8px;white-space:nowrap">
             <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:${color};letter-spacing:1px;margin-bottom:1px">${label}</div>
-            <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:#fff;font-weight:700">${icao}</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:${txt};font-weight:700">${icao}</div>
           </div></div>`,
         className: '', iconAnchor: [-2, 7]
       });

@@ -1507,7 +1507,7 @@
       <span class="pulse-dot"></span>
       DB: <span id="db-count">Loading...</span> airports
     </div>
-    <button id="theme-toggle" class="auth-btn auth-btn-ghost" onclick="toggleTheme()" title="Toggle light/dark mode" style="font-size:16px;padding:4px 8px;min-width:32px;">🌙</button>
+    <button id="theme-toggle" class="auth-btn auth-btn-ghost" onclick="toggleTheme()" title="Toggle light/dark mode" style="font-size:13px;padding:2px 6px;min-width:26px;line-height:1;">🌙</button>
     <button class="auth-btn auth-btn-ghost" onclick="showHelpModal()" style="letter-spacing:1px;">Help</button>
     <form action="https://www.paypal.com/donate" method="post" target="_top" style="display:inline-flex;align-items:center;">
       <input type="hidden" name="business" value="LGAHVLVHW8ZEQ" />
@@ -1887,6 +1887,16 @@ function toggleTheme() {
   const isLight = document.body.classList.toggle('light-mode');
   localStorage.setItem('slf-theme', isLight ? 'light' : 'dark');
   document.getElementById('theme-toggle').textContent = isLight ? '☀️' : '🌙';
+  // Re-render map tiles if map is visible
+  if (mapTileLayer && mapInstance) {
+    mapTileLayer.remove();
+    mapTileLayer = L.tileLayer(getMapTileUrl(), { maxZoom: 19 }).addTo(mapInstance);
+  }
+}
+
+function getMapTileUrl() {
+  const style = document.body.classList.contains('light-mode') ? 'light_all' : 'dark_all';
+  return `https://{s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}{r}.png`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2921,12 +2931,12 @@ function renderResults(dep, arr) {
 // ═══════════════════════════════════════════════════════
 // MAP
 // ═══════════════════════════════════════════════════════
+let mapTileLayer = null;
+
 function renderMap(dep, arr) {
   if (!mapInstance) {
     mapInstance = L.map('map', { zoomControl: true, attributionControl: false });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19
-    }).addTo(mapInstance);
+    mapTileLayer = L.tileLayer(getMapTileUrl(), { maxZoom: 19 }).addTo(mapInstance);
   }
 
   if (mapLayer) { mapLayer.remove(); mapLayer = null; }
@@ -2935,13 +2945,17 @@ function renderMap(dep, arr) {
   mapLayer = g;
 
   function makeMarker(role, icao, name, color) {
+    const light = document.body.classList.contains('light-mode');
+    const bg    = light ? 'rgba(240,244,248,0.95)' : 'rgba(10,13,16,0.88)';
+    const txt   = light ? '#1a2a38' : '#ffffff';
+    const sub   = light ? '#3a5570' : '#7a92a8';
     const html = `
       <div style="display:flex;align-items:flex-start;gap:6px;">
-        <div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid rgba(0,0,0,0.4);flex-shrink:0;margin-top:3px;box-shadow:0 0 6px ${color}88;"></div>
-        <div style="background:rgba(10,13,16,0.88);border:1px solid ${color}55;border-radius:4px;padding:4px 8px;white-space:nowrap;backdrop-filter:blur(4px);">
+        <div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid rgba(0,0,0,0.3);flex-shrink:0;margin-top:3px;box-shadow:0 0 6px ${color}88;"></div>
+        <div style="background:${bg};border:1px solid ${color}55;border-radius:4px;padding:4px 8px;white-space:nowrap;backdrop-filter:blur(4px);">
           <div style="font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:${color};margin-bottom:2px;">${role}</div>
-          <div style="font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:700;color:#fff;letter-spacing:2px;">${icao}</div>
-          <div style="font-family:'Barlow',sans-serif;font-size:11px;color:#7a92a8;margin-top:1px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:700;color:${txt};letter-spacing:2px;">${icao}</div>
+          <div style="font-family:'Barlow',sans-serif;font-size:11px;color:${sub};margin-top:1px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
         </div>
       </div>`;
     return L.divIcon({ html, className: '', iconAnchor: [-2, 8] });
