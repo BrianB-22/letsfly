@@ -1,0 +1,4 @@
+# Source data files (large, not needed in repo)
+data/
+.DS_Store
+OldCode/
