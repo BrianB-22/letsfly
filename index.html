@@ -935,6 +935,15 @@
     border-color: rgba(122,146,168,0.6);
     color: var(--text);
   }
+  .action-btn-simbrief {
+    background: rgba(255,160,50,0.08);
+    border-color: rgba(255,160,50,0.3);
+    color: #ffa032;
+  }
+  .action-btn-simbrief:hover {
+    background: rgba(255,160,50,0.18);
+    border-color: rgba(255,160,50,0.6);
+  }
   .action-btn-hop {
     background: rgba(244,162,97,0.12);
     border-color: rgba(244,162,97,0.4);
@@ -1813,6 +1822,7 @@
         <button class="action-btn action-btn-save" onclick="saveFlight()">Save Flight</button>
         <button class="action-btn action-btn-copy" onclick="copyFlight()">Copy to Clipboard</button>
         <button class="action-btn action-btn-share" onclick="shareFlight()">Share Flight</button>
+        <button class="action-btn action-btn-simbrief" onclick="exportToSimBrief()">Export to SimBrief</button>
 
         <div style="flex:1"></div>
         <button class="action-btn action-btn-hop" id="btn-add-hop" onclick="addHop()" style="display:none">+ Add Hop</button>
@@ -2204,6 +2214,12 @@ async function saveFlight() {
 }
 
 // ── SHARE FLIGHT ──
+function exportToSimBrief() {
+  if (!currentDep || !currentArr) { showToast('Generate a flight first', 'err'); return; }
+  const url = `https://www.simbrief.com/system/dispatch.php?orig=${currentDep.id}&dest=${currentArr.id}`;
+  window.open(url, '_blank');
+}
+
 async function shareFlight() {
   if (!currentUser) { showAuthModal('signin'); return; }
   if (!currentDep || !currentArr) return;
