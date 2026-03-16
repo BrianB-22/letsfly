@@ -22,8 +22,8 @@ All events are anonymous — no personal data is collected.
 ## Query
 
 ```sql
-SELECT page_name, SUM(view_count) AS total
-FROM page_view
-GROUP BY page_name
+SELECT page, SUM(count) AS total
+FROM page_views
+GROUP BY page
 ORDER BY total DESC;
 ```
