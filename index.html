@@ -3146,8 +3146,11 @@ function onRangeMaxInput() {
 
 function updateRangeStep() {
   const step = rangeMode === 'hrs' ? '0.5' : '50';
-  document.getElementById('arr-min').step = step;
-  document.getElementById('arr-max').step = step;
+  const min  = rangeMode === 'hrs' ? '0.5' : '1';
+  ['arr-min', 'arr-max'].forEach(id => {
+    document.getElementById(id).step = step;
+    document.getElementById(id).min  = min;
+  });
 }
 
 function updateRangeHint() {
