@@ -33,7 +33,7 @@ function buildRoute(nodes: any[]): string {
     }
   }
 
-  return parts.join(' ');
+  return parts.join(' - ');
 }
 
 async function fetchRoute(fromICAO: string, toICAO: string, high: boolean): Promise<string | null> {
