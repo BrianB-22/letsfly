@@ -1977,9 +1977,10 @@
             <button id="range-nm-btn" class="active" onclick="setRangeMode('nm')">NM</button>
             <button id="range-hrs-btn" onclick="setRangeMode('hrs')">HRS</button>
           </div>
-          <input type="number" id="arr-min" value="100" min="0.1" step="any" style="width:80px;text-align:center">
+          <input type="number" id="arr-min" value="100" min="0.1" step="any" style="width:80px;text-align:center" oninput="updateRangeHint()">
           <span class="range-sep">—</span>
-          <input type="number" id="arr-max" value="1000" min="0.1" step="any" style="width:80px;text-align:center">
+          <input type="number" id="arr-max" value="1000" min="0.1" step="any" style="width:80px;text-align:center" oninput="updateRangeHint()">
+          <span id="range-hint" style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;display:none"></span>
         </div>
 
         <div class="section">
@@ -3104,6 +3105,20 @@ function setRangeMode(mode) {
     document.getElementById('arr-min').value = Math.round(curMin * spd);
     document.getElementById('arr-max').value = Math.round(curMax * spd);
   }
+  updateRangeHint();
+}
+
+function updateRangeHint() {
+  const hint = document.getElementById('range-hint');
+  if (!hint) return;
+  if (rangeMode !== 'hrs') { hint.style.display = 'none'; return; }
+  const spd = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const min = parseFloat(document.getElementById('arr-min').value) || 0;
+  const max = parseFloat(document.getElementById('arr-max').value) || 0;
+  const minNm = Math.round(min * spd);
+  const maxNm = Math.round(max * spd);
+  hint.textContent = `(${spd} kts = ${minNm}–${maxNm} nm)`;
+  hint.style.display = '';
 }
 
 function getRangeNm() {
@@ -3122,6 +3137,7 @@ function initRangeMode() {
     document.getElementById('range-nm-btn').classList.remove('active');
     document.getElementById('range-label').textContent = 'Range (hrs)';
   }
+  updateRangeHint();
 }
 
 function findChallengeFlight() {
