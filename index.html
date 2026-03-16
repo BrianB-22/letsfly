@@ -3693,11 +3693,17 @@ async function pullRoute(fromICAO, toICAO, btn) {
 
   try {
     const { data: { session } } = await _sb.auth.getSession();
+    if (!session?.access_token) throw new Error('no_session');
+
     const url = `https://blxugbnoitkxhdjgfkff.supabase.co/functions/v1/pull-route?from=${fromICAO}&to=${toICAO}`;
     const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${session?.access_token}` },
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': 'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY',
+      },
     });
 
+    if (res.status === 401) throw new Error('auth_failed');
     if (!res.ok) throw new Error('non-200');
 
     const data = await res.json();
@@ -3729,6 +3735,8 @@ async function pullRoute(fromICAO, toICAO, btn) {
   } catch (e) {
     if (e.message === 'no_route') {
       showToast('No IFR route available for this airport pair — try SimBrief for VFR or direct routing', 'err');
+    } else if (e.message === 'no_session' || e.message === 'auth_failed') {
+      showToast('Session expired — please sign out and sign back in', 'err');
     } else {
       showToast('Failed to pull route information, try again later', 'err');
     }
