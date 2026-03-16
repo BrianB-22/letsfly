@@ -2161,10 +2161,12 @@ const _sb = window.supabase.createClient(
 try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'index' })).catch(() => {}); } catch(e) {}
 
 let currentUser = null;
+let currentToken = null;
 
 // Watch auth state changes (sign in / sign out / session restore)
 _sb.auth.onAuthStateChange((event, session) => {
   currentUser = session?.user ?? null;
+  currentToken = session?.access_token ?? null;
   renderAuthHeader();
   if (event === 'PASSWORD_RECOVERY') {
     showNewPasswordModal();
@@ -3692,18 +3694,13 @@ async function pullRoute(fromICAO, toICAO, btn) {
   btn.textContent = 'Pulling...';
 
   try {
-    const { data: { session } } = await _sb.auth.getSession();
-    if (!session?.access_token) throw new Error('no_session');
-
     const url = `https://blxugbnoitkxhdjgfkff.supabase.co/functions/v1/pull-route?from=${fromICAO}&to=${toICAO}`;
     const res = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
         'apikey': 'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY',
       },
     });
 
-    if (res.status === 401) throw new Error('auth_failed');
     if (!res.ok) throw new Error('non-200');
 
     const data = await res.json();
