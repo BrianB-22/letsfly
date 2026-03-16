@@ -9,6 +9,7 @@ All events are anonymous — no personal data is collected.
 | `flights` | flights.html loads |
 | `help` | Help/About modal opened (first time per session) |
 | `generate_flight` | Successful Let's Fly! result |
+| `challenge_flight` | Successful ⚡ Challenge flight result |
 | `pull_route` | Successful route pull |
 | `export_xp12` | X-Plane 12 sim file downloaded |
 | `export_xp11` | X-Plane 11 sim file downloaded |

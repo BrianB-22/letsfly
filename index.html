@@ -702,6 +702,38 @@
 
   .btn-fly:active { transform: translateY(0); }
 
+  /* ── CHALLENGE BUTTON ── */
+  .btn-challenge {
+    flex: 0 0 auto;
+    padding: 0 20px;
+    height: 52px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid rgba(255,107,107,0.35);
+    background: rgba(255,107,107,0.07);
+    color: #ff6b6b;
+    transition: background 0.2s, border-color 0.2s, transform 0.1s, box-shadow 0.2s;
+    white-space: nowrap;
+  }
+  .btn-challenge:hover {
+    background: rgba(255,107,107,0.15);
+    border-color: rgba(255,107,107,0.6);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(255,107,107,0.2);
+  }
+  .btn-challenge:active { transform: translateY(0); }
+  .btn-challenge.active {
+    background: rgba(255,107,107,0.2);
+    border-color: rgba(255,107,107,0.8);
+    box-shadow: 0 0 12px rgba(255,107,107,0.3);
+  }
+  .btn-challenge:disabled { background: var(--bg3); color: var(--text3); border-color: var(--border); cursor: not-allowed; }
+
   .btn-fly:disabled {
     background: var(--bg3);
     color: var(--text3);
@@ -884,6 +916,7 @@
   .tag-amber { color: var(--amber); border-color: rgba(244,162,97,0.3); background: rgba(244,162,97,0.08); }
   .tag-blue  { color: var(--accent); border-color: rgba(0,180,216,0.3); background: rgba(0,180,216,0.08); }
   .tag-gray  { color: var(--text3); border-color: var(--border); background: var(--bg2); }
+  .tag-red   { color: #ff6b6b; border-color: rgba(255,107,107,0.3); background: rgba(255,107,107,0.08); }
 
   /* Flight summary strip */
   .flight-summary {
@@ -2021,6 +2054,7 @@
       </div>
     </div>
     <button class="btn-fly" id="btn-fly" onclick="findFlight()">✈ LET'S FLY!</button>
+    <button class="btn-challenge" id="btn-challenge" onclick="findChallengeFlight()" title="Find a challenging arrival — short runway, high elevation, or no instrument approach">⚡ CHALLENGE</button>
   </div>
 
   <!-- ── STATUS ── -->
@@ -2996,6 +3030,47 @@ function validate() {
 // ═══════════════════════════════════════════════════════
 // MAIN FLIGHT FINDER
 // ═══════════════════════════════════════════════════════
+// Returns an array of challenge factor strings for an airport (empty = not challenging)
+function getChallengeFactors(a) {
+  const factors = [];
+  const rwy = parseInt(a.runway) || 0;
+  const elev = parseFloat(a.elev) || 0;
+  if (rwy > 0 && rwy < 3000)  factors.push('SHORT RUNWAY');
+  if (elev > 5000)             factors.push('HIGH ELEVATION');
+  if (!a.ils && !a.vasi)       factors.push('NO ILS');
+  if (!a.hard)                 factors.push('UNPAVED');
+  return factors;
+}
+
+let challengeMode = false;
+
+function findChallengeFlight() {
+  if (!AIRPORTS.length) { setStatus('Airport database not loaded.', 'err'); return; }
+  const errors = validate();
+  if (errors.length) { setStatus('⚠ ' + errors[0], 'err'); return; }
+  saveUserPrefs();
+
+  const flyBtn  = document.getElementById('btn-fly');
+  const chalBtn = document.getElementById('btn-challenge');
+  flyBtn.disabled  = true;
+  chalBtn.disabled = true;
+  chalBtn.textContent = '⟳ Searching...';
+
+  setTimeout(() => {
+    try {
+      challengeMode = true;
+      _doFind();
+    } catch(e) {
+      setStatus('Error: ' + e.message, 'err');
+    } finally {
+      challengeMode = false;
+    }
+    flyBtn.disabled  = false;
+    chalBtn.disabled = false;
+    chalBtn.textContent = '⚡ CHALLENGE';
+  }, 80);
+}
+
 function findFlight() {
   if (!AIRPORTS.length) {
     setStatus('Airport database not loaded.', 'err');
@@ -3052,11 +3127,15 @@ function _doFind() {
   }
 
   // ── ARRIVAL ──
-  const arrPool = filterAirports('arr');
+  let arrPool = filterAirports('arr');
+  if (challengeMode) arrPool = arrPool.filter(a => getChallengeFactors(a).length > 0);
   document.getElementById('arr-match').textContent = arrPool.length.toLocaleString() + ' match';
 
   if (!arrPool.length) {
-    setStatus('No arrival airports match your criteria — try relaxing the filters.', 'err');
+    const msg = challengeMode
+      ? 'No challenge airports match your criteria — try widening the arrival filters or distance range.'
+      : 'No arrival airports match your criteria — try relaxing the filters.';
+    setStatus(msg, 'err');
     return;
   }
 
@@ -3082,16 +3161,21 @@ function _doFind() {
   currentDep = dep;
   currentArr = arr;
 
-  renderResults(dep, arr);
-  setStatus(`Found ${candidates.length.toLocaleString()} matching arrival airports. Click LET'S FLY! again for a different flight!`, 'ok');
+  renderResults(dep, arr, challengeMode);
+  if (challengeMode) {
+    setStatus(`⚡ Challenge flight! Found ${candidates.length.toLocaleString()} challenge arrivals. Hit ⚡ CHALLENGE again for a different one!`, 'ok');
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'challenge_flight' })).catch(() => {}); } catch(e) {}
+  } else {
+    setStatus(`Found ${candidates.length.toLocaleString()} matching arrival airports. Click LET'S FLY! again for a different flight!`, 'ok');
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'generate_flight' })).catch(() => {}); } catch(e) {}
+  }
   document.getElementById('btn-next-hop').style.display = 'inline-flex';
-  try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'generate_flight' })).catch(() => {}); } catch(e) {}
 }
 
 // ═══════════════════════════════════════════════════════
 // RENDER RESULTS
 // ═══════════════════════════════════════════════════════
-function renderResults(dep, arr) {
+function renderResults(dep, arr, isChallenge = false) {
   const dist = distNm(dep.lat, dep.lon, arr.lat, arr.lon);
   const bear = bearing(dep.lat, dep.lon, arr.lat, arr.lon);
   const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
@@ -3157,7 +3241,7 @@ function renderResults(dep, arr) {
     <div class="airport-card arr-card">
       <div class="airport-card-header">
         <div>
-          <div class="card-role">Arrival</div>
+          <div class="card-role">${isChallenge ? '⚡ Challenge Arrival' : 'Arrival'}</div>
           <div class="card-ident">${arr.id}</div>
         </div>
         <a class="card-airnav" href="https://skyvector.com/airport/${arr.id}" target="_blank">Airport Info ↗</a>
@@ -3170,7 +3254,7 @@ function renderResults(dep, arr) {
           <div class="stat-item"><div class="stat-label">Max Runway</div><div class="stat-value">${arr.runway > 0 ? arr.runway.toLocaleString() + ' ft' : '—'}</div></div>
           <div class="stat-item"><div class="stat-label">Location</div><div class="stat-value">${[arr.region, arr.country, arr.continent].filter(Boolean).join(', ')}</div></div>
         </div>
-        <div class="tags" style="margin-top:10px">${makeTags(arr, false)}</div>
+        <div class="tags" style="margin-top:10px">${makeTags(arr, false)}${isChallenge ? getChallengeFactors(arr).map(f => `<span class="tag tag-red">⚡ ${f}</span>`).join('') : ''}</div>
         <div class="metar-row">
           <span class="metar-label">METAR</span>
           <div class="metar-content">
