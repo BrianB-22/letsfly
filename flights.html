@@ -440,7 +440,10 @@ async function loadFlights() {
 
 // Rough ICAO prefix → region name (first letter)
 const ICAO_REGIONS = {
-  K: 'USA', P: 'USA/Pacific', C: 'Canada', M: 'C. America',
+  // US airports: K prefix (ICAO) or digit/letter prefix (FAA identifiers)
+  K: 'USA', '0': 'USA', '1': 'USA', '2': 'USA', '3': 'USA', '4': 'USA',
+             '5': 'USA', '6': 'USA', '7': 'USA', '8': 'USA', '9': 'USA',
+  P: 'USA/Pacific', C: 'Canada', M: 'C. America',
   T: 'Caribbean', S: 'S. America',
   E: 'N. Europe', L: 'S. Europe', U: 'Russia/CIS',
   Z: 'China', R: 'E. Asia', V: 'S. Asia', O: 'Middle East',
