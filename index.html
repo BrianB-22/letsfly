@@ -630,10 +630,16 @@
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 4px;
-    min-width: 150px;
+    min-width: 160px;
     z-index: 200;
     display: none;
     overflow: hidden;
+  }
+
+  /* Opens upward — used in the bottom action bar */
+  .export-menu-up {
+    top: auto;
+    bottom: calc(100% + 4px);
   }
 
   .export-menu.open { display: block; }
@@ -2011,7 +2017,16 @@
         <button class="action-btn action-btn-save" onclick="saveFlight()">Save Flight</button>
         <button class="action-btn action-btn-copy" onclick="copyFlight()">Copy to Clipboard</button>
         <button class="action-btn action-btn-share" onclick="shareFlight()">Share Flight</button>
-        <button class="action-btn action-btn-simbrief" onclick="exportToSimBrief()">Export to SimBrief</button>
+        <div class="export-wrap">
+          <button class="action-btn action-btn-simbrief" onclick="toggleExportMenu(event)">Export ▾</button>
+          <div class="export-menu export-menu-up" id="export-menu">
+            <button onclick="exportToSimBrief()">Export to SimBrief</button>
+            <button onclick="exportFlightPlan('xp12')">X-Plane 12</button>
+            <button onclick="exportFlightPlan('xp11')">X-Plane 11</button>
+            <button onclick="exportFlightPlan('msfs2020')">MSFS 2020</button>
+            <button onclick="exportFlightPlan('msfs2024')">MSFS 2024</button>
+          </div>
+        </div>
 
         <div style="flex:1"></div>
         <button class="action-btn action-btn-hop" id="btn-add-hop" onclick="addHop()" style="display:none">+ Add Hop</button>
@@ -3145,18 +3160,7 @@ function renderResults(dep, arr) {
     <div class="pilot-notes" style="grid-column:1/-1">
       <div class="pilot-notes-header">
         <label>Pilot Notes</label>
-        <div style="display:flex;gap:6px;align-items:center">
-          <button class="btn-pull-route" onclick="pullRoute('${dep.id}','${arr.id}',this)">Pull Route</button>
-          <div class="export-wrap" id="export-wrap" style="display:none">
-            <button class="btn-pull-route" onclick="toggleExportMenu(event)">Export ▾</button>
-            <div class="export-menu" id="export-menu">
-              <button onclick="exportFlightPlan('xp12')">X-Plane 12</button>
-              <button onclick="exportFlightPlan('xp11')">X-Plane 11</button>
-              <button onclick="exportFlightPlan('msfs2020')">MSFS 2020</button>
-              <button onclick="exportFlightPlan('msfs2024')">MSFS 2024</button>
-            </div>
-          </div>
-        </div>
+        <button class="btn-pull-route" onclick="pullRoute('${dep.id}','${arr.id}',this)">Pull Route</button>
       </div>
       <textarea placeholder="Add your flight notes here..."></textarea>
     </div>
@@ -3651,10 +3655,6 @@ async function pullRoute(fromICAO, toICAO, btn) {
       ? existing + '\n\n--- Route ---\n' + lines.join('\n')
       : '--- Route ---\n' + lines.join('\n');
 
-    // Show export button
-    const wrap = document.getElementById('export-wrap');
-    if (wrap) wrap.style.display = 'inline-block';
-
   } catch (e) {
     showToast('Failed to pull route information, try again later', 'err');
   }
@@ -3755,7 +3755,9 @@ function exportFlightPlan(sim) {
   const pref  = getAirwayPref();
   const nodes = pulledNodes[pref] ?? pulledNodes[pref === 'high' ? 'low' : 'high'];
   if (!nodes || !currentDep || !currentArr) {
-    showToast('Pull a route first', 'err');
+    showToast('Click Pull Route Button & Review before exporting to sim', 'err');
+    const m = document.getElementById('export-menu');
+    if (m) m.classList.remove('open');
     return;
   }
 
