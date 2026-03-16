@@ -2628,8 +2628,14 @@ async function loadUserPrefs() {
   }
 
   if (data.cruise_speed) document.getElementById('cruise-speed').value = data.cruise_speed;
-  if (data.range_min)    document.getElementById('arr-min').value = data.range_min;
-  if (data.range_max)    document.getElementById('arr-max').value = data.range_max;
+  if (data.range_min || data.range_max) {
+    const spd = parseFloat(data.cruise_speed) || 280;
+    const mode = data.range_mode || 'nm';
+    const minVal = mode === 'hrs' ? Math.round((data.range_min / spd) * 10) / 10 : data.range_min;
+    const maxVal = mode === 'hrs' ? Math.round((data.range_max / spd) * 10) / 10 : data.range_max;
+    if (data.range_min) document.getElementById('arr-min').value = minVal;
+    if (data.range_max) document.getElementById('arr-max').value = maxVal;
+  }
 
   // Restore departure location filters
   if (data.dep_continent) {
@@ -2689,9 +2695,9 @@ async function loadUserPrefs() {
 
 async function saveUserPrefs() {
   if (!currentUser) return;
-  const speed    = parseInt(document.getElementById('cruise-speed').value) || 280;
-  const rangeMin = parseInt(document.getElementById('arr-min').value) || 100;
-  const rangeMax = parseInt(document.getElementById('arr-max').value) || 1000;
+  const speed = parseInt(document.getElementById('cruise-speed').value) || 280;
+  // Always save range as NM so it restores correctly regardless of mode
+  const [rangeMin, rangeMax] = getRangeNm().map(v => Math.round(v));
 
   const depTypes = getCheckedValues('dep-type');
   const depRwys  = getCheckedValues('dep-rwy');
