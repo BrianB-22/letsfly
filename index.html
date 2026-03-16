@@ -1977,9 +1977,9 @@
             <button id="range-nm-btn" class="active" onclick="setRangeMode('nm')">NM</button>
             <button id="range-hrs-btn" onclick="setRangeMode('hrs')">HRS</button>
           </div>
-          <input type="number" id="arr-min" value="100" min="0.1" step="any" style="width:80px;text-align:center" oninput="onRangeMinInput()">
+          <input type="number" id="arr-min" value="100" min="0.1" step="50" style="width:80px;text-align:center" oninput="onRangeMinInput()">
           <span class="range-sep">—</span>
-          <input type="number" id="arr-max" value="1000" min="0.1" step="any" style="width:80px;text-align:center" oninput="onRangeMaxInput()">
+          <input type="number" id="arr-max" value="1000" min="0.1" step="50" style="width:80px;text-align:center" oninput="onRangeMaxInput()">
           <span id="range-hint" style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;display:none"></span>
         </div>
 
@@ -3113,6 +3113,7 @@ function setRangeMode(mode) {
     document.getElementById('arr-min').value = Math.round(curMin * spd);
     document.getElementById('arr-max').value = Math.round(curMax * spd);
   }
+  updateRangeStep();
   updateRangeHint();
 }
 
@@ -3139,7 +3140,14 @@ function onRangeMaxInput() {
       ? Math.max(0.1, Math.round((max - 0.5) * 10) / 10)
       : Math.max(1, Math.round(max - 100));
   }
+  updateRangeStep();
   updateRangeHint();
+}
+
+function updateRangeStep() {
+  const step = rangeMode === 'hrs' ? '0.5' : '50';
+  document.getElementById('arr-min').step = step;
+  document.getElementById('arr-max').step = step;
 }
 
 function updateRangeHint() {
@@ -3171,6 +3179,7 @@ function initRangeMode() {
     document.getElementById('range-nm-btn').classList.remove('active');
     document.getElementById('range-label').textContent = 'Range (hrs)';
   }
+  updateRangeStep();
   updateRangeHint();
 }
 
