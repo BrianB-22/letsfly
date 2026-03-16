@@ -2136,6 +2136,9 @@ const _sb = window.supabase.createClient(
   'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY'
 );
 
+// Fire-and-forget page view counter
+_sb.rpc('increment_page_view', { page_name: 'index' }).catch(() => {});
+
 let currentUser = null;
 
 // Watch auth state changes (sign in / sign out / session restore)

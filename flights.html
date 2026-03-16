@@ -372,6 +372,9 @@ const _sb = window.supabase.createClient(
   'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY'
 );
 
+// Fire-and-forget page view counter
+_sb.rpc('increment_page_view', { page_name: 'flights' }).catch(() => {});
+
 let currentUser = null;
 let flights = [];
 let leafletMaps = {};
