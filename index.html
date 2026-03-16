@@ -3712,7 +3712,7 @@ async function pullRoute(fromICAO, toICAO, btn) {
     const selected = pref === 'low' ? data.low : data.high;
     const fallback = pref === 'low' ? data.high : data.low;
     const chosen = selected ?? fallback;
-    if (!chosen) throw new Error('No route data');
+    if (!chosen) throw new Error('no_route');
 
     const label = pref === 'low' ? 'LOW' : 'HIGH';
     const lines = [
@@ -3727,7 +3727,11 @@ async function pullRoute(fromICAO, toICAO, btn) {
       : '--- Route ---\n' + lines.join('\n');
 
   } catch (e) {
-    showToast('Failed to pull route information, try again later', 'err');
+    if (e.message === 'no_route') {
+      showToast('No IFR route available for this airport pair — try SimBrief for VFR or direct routing', 'err');
+    } else {
+      showToast('Failed to pull route information, try again later', 'err');
+    }
   }
 
   btn.disabled = false;
