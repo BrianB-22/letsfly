@@ -17,13 +17,13 @@ function buildRoute(nodes: any[]): string {
 
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
-    if (node.type === 'airport') continue;
+    if (node.type === 'APT') continue;  // skip departure/arrival airports
 
     parts.push(node.ident);
 
     // If the next waypoint starts a different en-route airway, insert the airway name
     const next = nodes[i + 1];
-    if (next && next.type !== 'airport') {
+    if (next && next.type !== 'APT') {
       const nextType = next.via?.type ?? '';
       const nextAwy  = next.via?.ident ?? '';
       const currAwy  = node.via?.ident  ?? '';
@@ -47,7 +47,8 @@ async function fetchRoute(fromICAO: string, toICAO: string, high: boolean): Prom
     cruiseAlt: high ? 35000 : 8000,
   };
 
-  const res = await fetch(`${FPD_BASE}/auto/generate`, {
+  // Step 1: generate the plan — returns metadata with an id
+  const genRes = await fetch(`${FPD_BASE}/auto/generate`, {
     method: 'POST',
     headers: {
       'Authorization': fpdAuth(),
@@ -56,13 +57,27 @@ async function fetchRoute(fromICAO: string, toICAO: string, high: boolean): Prom
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`FPD ${res.status}: ${text}`);
+  if (!genRes.ok) {
+    const text = await genRes.text();
+    throw new Error(`FPD generate ${genRes.status}: ${text}`);
   }
 
-  const data = await res.json();
-  const nodes = data?.route?.nodes ?? data?.nodes ?? [];
+  const plan = await genRes.json();
+  const planId = plan?.id;
+  if (!planId) throw new Error('No plan ID returned');
+
+  // Step 2: fetch the full plan to get route nodes
+  const planRes = await fetch(`${FPD_BASE}/plan/${planId}`, {
+    headers: { 'Authorization': fpdAuth() },
+  });
+
+  if (!planRes.ok) {
+    const text = await planRes.text();
+    throw new Error(`FPD plan ${planRes.status}: ${text}`);
+  }
+
+  const fullPlan = await planRes.json();
+  const nodes = fullPlan?.route?.nodes ?? [];
   if (!nodes.length) return null;
 
   return buildRoute(nodes);
@@ -73,9 +88,9 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const url    = new URL(req.url);
-  const from   = (url.searchParams.get('from') ?? '').toUpperCase().trim();
-  const to     = (url.searchParams.get('to')   ?? '').toUpperCase().trim();
+  const url  = new URL(req.url);
+  const from = (url.searchParams.get('from') ?? '').toUpperCase().trim();
+  const to   = (url.searchParams.get('to')   ?? '').toUpperCase().trim();
 
   if (!from || !to) {
     return new Response(JSON.stringify({ error: 'Missing from or to parameter' }), {
