@@ -3980,7 +3980,7 @@ function exportFlightPlan(sim) {
   } else {
     content  = buildMSFSPLN(exportNodes, currentDep, currentArr, isHigh);
     filename = `${currentDep.id}-${currentArr.id}${routeSuffix}.pln`;
-    mime     = 'application/xml';
+    mime     = 'text/plain';
   }
 
   const blob = new Blob([content], { type: mime });
