@@ -319,6 +319,18 @@
       <div class="center-title">Loading Flights...</div>
     </div>
   </div>
+
+  <!-- VISITED AIRPORTS MAP -->
+  <div id="visited-map-section" style="display:none;margin-top:32px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Visited Airports Map</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="visited-map-sub"></div>
+      </div>
+    </div>
+    <div id="visited-leafmap" style="width:100%;height:480px;border-radius:4px;border:1px solid var(--border);overflow:hidden;"></div>
+  </div>
+
 </div>
 
 <!-- AUTH MODAL -->
@@ -366,6 +378,12 @@ function toggleTheme() {
     map.eachLayer(layer => { if (layer._url) map.removeLayer(layer); });
     L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
   });
+  // Rebuild visited map so marker labels update for new theme
+  if (visitedMap) {
+    visitedMap.remove();
+    visitedMap = null;
+    buildVisitedMap();
+  }
   // Save to profile immediately if logged in
   if (currentUser) {
     _sb.from('profiles').upsert({ user_id: currentUser.id, theme: val, updated_at: new Date().toISOString() });
@@ -509,6 +527,8 @@ function renderStats() {
   document.getElementById('stat-longest-route').textContent = longest ? `${longest.dep_id} → ${longest.arr_id}` : '';
   document.getElementById('stat-regions').textContent       = regionSet.size;
   document.getElementById('stat-regions-list').textContent  = regionList;
+
+  buildVisitedMap();
 }
 
 function sortBy(mode, btn) {
@@ -786,6 +806,78 @@ function toggleMap(id) {
       leafletMaps[id] = map;
     }, 50);
   }
+}
+
+// ── VISITED AIRPORTS MAP ──
+let visitedMap = null;
+
+function buildVisitedMap() {
+  // Collect all unique airports with their coordinates
+  const airportMap = {};
+  flights.forEach(f => {
+    if (f.dep_lat && f.dep_lon) {
+      if (!airportMap[f.dep_id]) airportMap[f.dep_id] = { id: f.dep_id, name: f.dep_name, lat: f.dep_lat, lon: f.dep_lon, deps: 0, arrs: 0 };
+      airportMap[f.dep_id].deps++;
+    }
+    if (f.arr_lat && f.arr_lon) {
+      if (!airportMap[f.arr_id]) airportMap[f.arr_id] = { id: f.arr_id, name: f.arr_name, lat: f.arr_lat, lon: f.arr_lon, deps: 0, arrs: 0 };
+      airportMap[f.arr_id].arrs++;
+    }
+  });
+
+  const airports = Object.values(airportMap);
+  if (!airports.length) return;
+
+  document.getElementById('visited-map-section').style.display = 'block';
+  document.getElementById('visited-map-sub').textContent =
+    `${airports.length} airport${airports.length !== 1 ? 's' : ''} · ${flights.length} flight${flights.length !== 1 ? 's' : ''}`;
+
+  // Init map (or re-use)
+  setTimeout(() => {
+    if (visitedMap) {
+      visitedMap.invalidateSize();
+      return;
+    }
+
+    const light = document.body.classList.contains('light-mode');
+    const tileStyle = light ? 'light_all' : 'dark_all';
+    visitedMap = L.map('visited-leafmap', { zoomControl: true, attributionControl: false });
+    L.tileLayer(`https://{s}.basemaps.cartocdn.com/${tileStyle}/{z}/{x}/{y}{r}.png`, { maxZoom: 19 }).addTo(visitedMap);
+
+    const bg  = light ? 'rgba(240,244,248,0.95)' : 'rgba(10,13,16,0.9)';
+    const txt = light ? '#1a2a38' : '#c8d8e8';
+
+    // Draw route lines first (under markers)
+    flights.forEach(f => {
+      if (!f.dep_lat || !f.arr_lat) return;
+      const isChallenge = f.is_challenge;
+      L.polyline([[f.dep_lat, f.dep_lon], [f.arr_lat, f.arr_lon]], {
+        color: isChallenge ? '#ff6b6b' : '#00b4d8',
+        weight: 1.5, opacity: 0.35, dashArray: '6 5'
+      }).addTo(visitedMap);
+    });
+
+    // Draw airport markers
+    airports.forEach(a => {
+      const total = a.deps + a.arrs;
+      const color = a.deps > 0 && a.arrs > 0 ? '#c8b400' : a.deps > 0 ? '#f4a261' : '#00b4d8';
+      const role  = a.deps > 0 && a.arrs > 0 ? 'DEP + ARR' : a.deps > 0 ? 'DEPARTURE' : 'ARRIVAL';
+      const icon  = L.divIcon({
+        html: `<div style="display:flex;align-items:flex-start;gap:4px">
+          <div style="width:9px;height:9px;border-radius:50%;background:${color};border:2px solid rgba(0,0,0,0.3);flex-shrink:0;margin-top:3px;box-shadow:0 0 6px ${color}99"></div>
+          <div style="background:${bg};border:1px solid ${color}55;border-radius:3px;padding:2px 6px;white-space:nowrap">
+            <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:${color};letter-spacing:1px;">${role} · ${total}x</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:${txt};font-weight:700;">${a.id}</div>
+          </div></div>`,
+        className: '', iconAnchor: [-2, 6]
+      });
+      L.marker([a.lat, a.lon], { icon }).addTo(visitedMap);
+    });
+
+    // Fit to all airports
+    const bounds = L.latLngBounds(airports.map(a => [a.lat, a.lon]));
+    visitedMap.fitBounds(bounds, { padding: [40, 40] });
+  }, 100);
 }
 
 // ── AUTH REQUIRED ──
