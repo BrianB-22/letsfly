@@ -1576,6 +1576,7 @@
   }
   .metar-text.loading { color: var(--text3); font-style: italic; }
   .metar-text.unavailable { color: var(--text3); }
+  .taf-text { white-space: pre-wrap; line-height: 1.6; }
   .metar-content {
     display: flex;
     align-items: flex-start;
@@ -3094,6 +3095,10 @@ function renderResults(dep, arr) {
             <button class="metar-decode-btn" id="metar-decode-dep" onclick="showMetarDecode('dep')" style="display:none">Decode</button>
           </div>
         </div>
+        <div class="metar-row">
+          <span class="metar-label">TAF</span>
+          <span class="metar-text loading taf-text" id="taf-dep">fetching...</span>
+        </div>
         ${makeRunwayList(dep, 'dep')}
       </div>
     </div>
@@ -3121,6 +3126,10 @@ function renderResults(dep, arr) {
             <span class="metar-text loading" id="metar-arr">fetching...</span>
             <button class="metar-decode-btn" id="metar-decode-arr" onclick="showMetarDecode('arr')" style="display:none">Decode</button>
           </div>
+        </div>
+        <div class="metar-row">
+          <span class="metar-label">TAF</span>
+          <span class="metar-text loading taf-text" id="taf-arr">fetching...</span>
         </div>
         ${makeRunwayList(arr, 'arr')}
       </div>
@@ -3171,6 +3180,8 @@ function renderResults(dep, arr) {
   document.getElementById('text-results').innerHTML = html;
   fetchMetar('dep', dep.id);
   fetchMetar('arr', arr.id);
+  fetchTaf('dep', dep.id);
+  fetchTaf('arr', arr.id);
   document.getElementById('results-area').classList.add('visible');
   document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -3827,6 +3838,29 @@ async function fetchMetar(side, icao) {
     }
   } catch(e) {
     el.textContent = 'METAR unavailable';
+    el.className = 'metar-text unavailable';
+  }
+}
+
+async function fetchTaf(side, icao) {
+  const el = document.getElementById('taf-' + side);
+  if (!el) return;
+  try {
+    const resp = await fetch(
+      `https://aviationweather.gov/api/data/taf?ids=${icao}&format=raw`
+    );
+    if (!resp.ok) throw new Error('fetch failed');
+    const text = (await resp.text()).trim();
+    const valid = text.length > 5 && !text.startsWith('<') && !text.toLowerCase().startsWith('no ');
+    if (valid) {
+      el.textContent = text;
+      el.className = 'metar-text taf-text';
+    } else {
+      el.textContent = 'No TAF available for this airport';
+      el.className = 'metar-text unavailable';
+    }
+  } catch(e) {
+    el.textContent = 'TAF unavailable';
     el.className = 'metar-text unavailable';
   }
 }
