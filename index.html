@@ -3126,7 +3126,10 @@ function renderResults(dep, arr) {
             <span class="taf-chevron">▶</span> TAF Forecast
           </button>
           <div class="taf-body">
-            <span class="metar-text loading taf-text" id="taf-dep">fetching...</span>
+            <div class="metar-content">
+              <span class="metar-text loading taf-text" id="taf-dep">fetching...</span>
+              <button class="metar-decode-btn" id="taf-decode-dep" onclick="showTafDecode('dep')" style="display:none">Decode</button>
+            </div>
           </div>
         </div>
         ${makeRunwayList(dep, 'dep')}
@@ -3162,7 +3165,10 @@ function renderResults(dep, arr) {
             <span class="taf-chevron">▶</span> TAF Forecast
           </button>
           <div class="taf-body">
-            <span class="metar-text loading taf-text" id="taf-arr">fetching...</span>
+            <div class="metar-content">
+              <span class="metar-text loading taf-text" id="taf-arr">fetching...</span>
+              <button class="metar-decode-btn" id="taf-decode-arr" onclick="showTafDecode('arr')" style="display:none">Decode</button>
+            </div>
           </div>
         </div>
         ${makeRunwayList(arr, 'arr')}
@@ -3923,6 +3929,8 @@ async function fetchTaf(side, icao) {
     if (taf) {
       el.textContent = taf;
       el.className = 'metar-text taf-text';
+      const btn = document.getElementById('taf-decode-' + side);
+      if (btn) btn.style.display = 'inline-block';
     } else {
       el.textContent = 'No TAF available for this airport';
       el.className = 'metar-text unavailable';
@@ -4076,6 +4084,154 @@ function showMetarDecode(side) {
     <div class="decode-raw">${raw}</div>
     ${rows.map(r => `<div class="decode-row"><span class="decode-key">${r.key}</span><span class="decode-val">${r.val}</span></div>`).join('')}
   `;
+  document.querySelector('#metar-modal .modal-title').textContent = 'METAR Decoded';
+  document.getElementById('metar-modal').classList.add('open');
+}
+
+function decodeTaf(raw) {
+  const text = raw.replace(/\n\s*/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const wxDesc = {
+    RA:'Rain', SN:'Snow', DZ:'Drizzle', GR:'Hail', GS:'Small hail',
+    IC:'Ice crystals', PL:'Ice pellets', TS:'Thunderstorm', FG:'Fog',
+    BR:'Mist', HZ:'Haze', FU:'Smoke', SA:'Sand', DU:'Dust', SQ:'Squall',
+    FC:'Funnel cloud', SS:'Sandstorm', DS:'Dust storm', VA:'Volcanic ash', UP:'Unknown precip',
+  };
+
+  function decodeWx(token) {
+    let t = token;
+    const intens = t.startsWith('+') ? 'Heavy ' : t.startsWith('-') ? 'Light ' : '';
+    if (intens) t = t.slice(1);
+    let desc = t.startsWith('VC') ? 'In vicinity ' : '';
+    if (t.startsWith('VC')) t = t.slice(2);
+    for (let j = 0; j < t.length; j += 2) desc += (wxDesc[t.slice(j, j+2)] || t.slice(j, j+2)) + ' ';
+    return (intens + desc).trim();
+  }
+
+  function fmtDDHH(ddhh) {
+    return `Day ${ddhh.slice(0,2)} at ${ddhh.slice(2,4)}:00Z`;
+  }
+  function fmtDDHHMM(ddhhmm) {
+    return `Day ${ddhhmm.slice(0,2)} at ${ddhhmm.slice(2,4)}:${ddhhmm.slice(4,6)}Z`;
+  }
+
+  function parseConditions(tokens) {
+    const rows = []; let i = 0;
+    // Wind
+    if (i < tokens.length && /^(VRB|\d{3})\d{2,3}(G\d{2,3})?(KT|MPS|KMH)$/i.test(tokens[i])) {
+      const w = tokens[i++];
+      const dir = w.slice(0,3).toUpperCase() === 'VRB' ? 'Variable' : w.slice(0,3) + '°';
+      const m = w.match(/^(?:VRB|\d{3})(\d{2,3})(?:G(\d{2,3}))?(KT|MPS|KMH)/i);
+      if (m) {
+        let txt = `${dir} at ${parseInt(m[1])} ${m[3].toUpperCase()}`;
+        if (m[2]) txt += `, gusting ${parseInt(m[2])} ${m[3].toUpperCase()}`;
+        rows.push({ key: 'Wind', val: txt });
+      }
+    }
+    // Visibility
+    if (i < tokens.length) {
+      const v = tokens[i];
+      if (v === 'CAVOK')                          { rows.push({ key: 'Visibility', val: 'CAVOK (≥10km, no sig cloud/wx)' }); i++; }
+      else if (v === 'P6SM')                      { rows.push({ key: 'Visibility', val: 'Greater than 6 statute miles' }); i++; }
+      else if (/^\d+(SM)$/.test(v))               { rows.push({ key: 'Visibility', val: v }); i++; }
+      else if (/^\d+\/\d+SM$/.test(v))            { rows.push({ key: 'Visibility', val: v }); i++; }
+      else if (/^\d{4}$/.test(v))                 { rows.push({ key: 'Visibility', val: parseInt(v) + ' meters' }); i++; }
+    }
+    // Weather phenomena
+    const wxTokens = [];
+    while (i < tokens.length && /^[-+]?(VC)?(MI|BC|PR|DR|BL|SH|TS|FZ)?(DZ|RA|SN|SG|IC|PL|GR|GS|UP|FG|BR|HZ|FU|SA|DU|SQ|FC|SS|DS|VA)/.test(tokens[i])) {
+      wxTokens.push(decodeWx(tokens[i++]));
+    }
+    if (wxTokens.length) rows.push({ key: 'Weather', val: wxTokens.join(', ') });
+    // Clouds
+    const cNames = { FEW:'Few', SCT:'Scattered', BKN:'Broken', OVC:'Overcast' };
+    const clouds = [];
+    while (i < tokens.length) {
+      const c = tokens[i];
+      if (/^(SKC|CLR|NSC|NCD)$/.test(c))                   { clouds.push('Sky clear'); i++; }
+      else if (/^(FEW|SCT|BKN|OVC)\d{3}(CB|TCU)?$/.test(c)) {
+        const m = c.match(/^(FEW|SCT|BKN|OVC)(\d{3})(CB|TCU)?$/);
+        let txt = `${cNames[m[1]]} at ${(parseInt(m[2])*100).toLocaleString()} ft`;
+        if (m[3]) txt += ` (${m[3]==='CB'?'Cumulonimbus':'Towering Cumulus'})`;
+        clouds.push(txt); i++;
+      } else break;
+    }
+    if (clouds.length) rows.push({ key: 'Clouds', val: clouds.join(' · ') });
+    return rows;
+  }
+
+  // Split into groups at FM/TEMPO/BECMG/PROB keywords
+  const parts = text.split(/\b(FM\d{6}|TEMPO|BECMG|PROB\d{2})\b/);
+  const sections = [];
+
+  // Header
+  const ht = parts[0].trim().split(/\s+/);
+  let hi = 0;
+  if (/^TAF$/i.test(ht[hi])) hi++;
+  if (/^(AMD|COR)$/i.test(ht[hi])) hi++;
+  const station = ht[hi++] || '';
+  const issued  = ht[hi++] || '';
+  const valid   = ht[hi++] || '';
+  const hrows = [{ key: 'Station', val: station }];
+  if (/^\d{6}Z$/i.test(issued)) hrows.push({ key: 'Issued (UTC)', val: fmtDDHHMM(issued.slice(0,6)) });
+  if (/^\d{4}\/\d{4}$/.test(valid)) {
+    const [f, t] = valid.split('/');
+    hrows.push({ key: 'Valid', val: `${fmtDDHH(f)} → ${fmtDDHH(t)}` });
+  }
+  hrows.push(...parseConditions(ht.slice(hi)));
+  sections.push({ title: 'Base Forecast', rows: hrows });
+
+  // Groups
+  for (let gi = 1; gi < parts.length; gi += 2) {
+    const kw   = parts[gi];
+    const body = (parts[gi+1] || '').trim().split(/\s+/);
+    let title  = '', bi = 0;
+    if (/^FM\d{6}$/.test(kw)) {
+      title = `From ${fmtDDHHMM(kw.slice(2))}`;
+    } else if (kw === 'TEMPO' || kw === 'BECMG') {
+      const period = body[bi] || '';
+      if (/^\d{4}\/\d{4}$/.test(period)) {
+        const [f, t] = period.split('/');
+        title = `${kw === 'TEMPO' ? 'Temporary' : 'Becoming'} ${fmtDDHH(f)} → ${fmtDDHH(t)}`;
+        bi++;
+      } else title = kw === 'TEMPO' ? 'Temporary' : 'Becoming';
+    } else if (/^PROB\d{2}$/.test(kw)) {
+      const pct = kw.slice(4), period = body[bi] || '';
+      if (/^\d{4}\/\d{4}$/.test(period)) {
+        const [f, t] = period.split('/');
+        title = `${pct}% Probability ${fmtDDHH(f)} → ${fmtDDHH(t)}`;
+        bi++;
+      } else title = `${pct}% Probability`;
+      if (body[bi] === 'TEMPO') bi++;
+    }
+    const crows = parseConditions(body.slice(bi));
+    sections.push({ title, rows: crows });
+  }
+  return sections;
+}
+
+function showTafDecode(side) {
+  const el = document.getElementById('taf-' + side);
+  if (!el) return;
+  const raw = el.textContent.trim();
+  if (!raw || el.classList.contains('loading') || el.classList.contains('unavailable')) {
+    showToast('No TAF data available to decode');
+    return;
+  }
+  const sections = decodeTaf(raw);
+  const body = document.getElementById('metar-modal-body');
+  body.innerHTML = `
+    <div class="decode-raw" style="white-space:pre-wrap;">${raw}</div>
+    ${sections.map(s => `
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">${s.title}</div>
+        ${s.rows.length
+          ? s.rows.map(r => `<div class="decode-row"><span class="decode-key">${r.key}</span><span class="decode-val">${r.val}</span></div>`).join('')
+          : '<div class="decode-row"><span class="decode-val" style="color:var(--text3);">No significant changes from previous period</span></div>'
+        }
+      </div>`).join('')}
+  `;
+  document.querySelector('#metar-modal .modal-title').textContent = 'TAF Decoded';
   document.getElementById('metar-modal').classList.add('open');
 }
 
