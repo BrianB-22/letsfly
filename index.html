@@ -1977,9 +1977,9 @@
             <button id="range-nm-btn" class="active" onclick="setRangeMode('nm')">NM</button>
             <button id="range-hrs-btn" onclick="setRangeMode('hrs')">HRS</button>
           </div>
-          <input type="number" id="arr-min" value="100" min="0.1" step="any" style="width:80px;text-align:center" oninput="updateRangeHint()">
+          <input type="number" id="arr-min" value="100" min="0.1" step="any" style="width:80px;text-align:center" oninput="onRangeMinInput()">
           <span class="range-sep">—</span>
-          <input type="number" id="arr-max" value="1000" min="0.1" step="any" style="width:80px;text-align:center" oninput="updateRangeHint()">
+          <input type="number" id="arr-max" value="1000" min="0.1" step="any" style="width:80px;text-align:center" oninput="onRangeMaxInput()">
           <span id="range-hint" style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;display:none"></span>
         </div>
 
@@ -3104,6 +3104,32 @@ function setRangeMode(mode) {
     const curMax = parseFloat(document.getElementById('arr-max').value) || 4;
     document.getElementById('arr-min').value = Math.round(curMin * spd);
     document.getElementById('arr-max').value = Math.round(curMax * spd);
+  }
+  updateRangeHint();
+}
+
+function onRangeMinInput() {
+  const minEl = document.getElementById('arr-min');
+  const maxEl = document.getElementById('arr-max');
+  const min = parseFloat(minEl.value);
+  const max = parseFloat(maxEl.value);
+  if (min && max && min >= max) {
+    maxEl.value = rangeMode === 'hrs'
+      ? Math.round((min + 0.5) * 10) / 10
+      : Math.round(min + 100);
+  }
+  updateRangeHint();
+}
+
+function onRangeMaxInput() {
+  const minEl = document.getElementById('arr-min');
+  const maxEl = document.getElementById('arr-max');
+  const min = parseFloat(minEl.value);
+  const max = parseFloat(maxEl.value);
+  if (min && max && max <= min) {
+    minEl.value = rangeMode === 'hrs'
+      ? Math.max(0.1, Math.round((max - 0.5) * 10) / 10)
+      : Math.max(1, Math.round(max - 100));
   }
   updateRangeHint();
 }
