@@ -3060,11 +3060,9 @@ async function addRadarLayer() {
     const data = await res.json();
     const path = data.radar.past[data.radar.past.length - 1].path;
     const tileUrl = `https://tilecache.rainviewer.com${path}/256/{z}/{x}/{y}/2/1_1.png`;
-    console.log('[Radar] tile URL:', tileUrl);
     radarLayer = L.tileLayer(tileUrl, { opacity: 0.7, zIndex: 2, maxZoom: 19 })
       .addTo(mapInstance);
-    console.log('[Radar] layer added to map');
-  } catch (e) { console.warn('[Radar] layer failed:', e); }
+  } catch (e) { /* radar unavailable, fail silently */ }
 }
 
 function renderMap(dep, arr) {
