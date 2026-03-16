@@ -3918,7 +3918,7 @@ function buildMSFSPLN(nodes, dep, arr, isHigh) {
 
   const waypoints = nodes.map(n => {
     const wpType = wpTypeMap[n.type] ?? 'Intersection';
-    const alt    = n.type === 'APT' ? (n.alt ?? 0) : cruiseAlt;
+    const alt    = n.type === 'APT' ? (parseFloat(n.alt) || 0) : cruiseAlt;
     const altStr = (alt >= 0 ? '+' : '') + alt.toFixed(2).padStart(9, '0');
     const pos    = `${decimalToDMS(n.lat, true)},${decimalToDMS(n.lon, false)},${altStr}`;
     return `    <ATCWaypoint id="${n.ident}">
@@ -3983,14 +3983,17 @@ function exportFlightPlan(sim) {
     mime     = 'text/plain';
   }
 
-  const blob = new Blob([content], { type: mime });
-  const a    = Object.assign(document.createElement('a'), {
-    href:     URL.createObjectURL(blob),
-    download: filename,
-  });
-  a.click();
-  URL.revokeObjectURL(a.href);
-  try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: `export_${sim}` })).catch(() => {}); } catch(e) {}
+  try {
+    const blobUrl = URL.createObjectURL(new Blob([content], { type: mime }));
+    const a = Object.assign(document.createElement('a'), { href: blobUrl, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: `export_${sim}` })).catch(() => {}); } catch(e) {}
+  } catch(err) {
+    showToast('Export failed: ' + err.message, 'err');
+  }
 
   const m = document.getElementById('export-menu');
   if (m) m.classList.remove('open');
