@@ -373,7 +373,7 @@ const _sb = window.supabase.createClient(
 );
 
 // Fire-and-forget page view counter
-_sb.rpc('increment_page_view', { page_name: 'flights' }).catch(() => {});
+Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'flights' })).catch(() => {});
 
 let currentUser = null;
 let flights = [];
