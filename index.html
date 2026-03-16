@@ -3517,50 +3517,122 @@ function setStatus(msg, type='') {
 
 function copyFlight() {
   if (!currentDep || !currentArr) return;
-  const dist = distNm(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
-  const bear = bearing(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const dist  = distNm(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
+  const bear  = bearing(currentDep.lat, currentDep.lon, currentArr.lat, currentArr.lon);
   const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
   const estTime = dist / speed;
-  const hrs = Math.floor(estTime);
+  const hrs  = Math.floor(estTime);
   const mins = Math.round((estTime - hrs) * 60);
-  const notes = document.querySelector('#text-results textarea')?.value?.trim();
+
+  const notes    = document.querySelector('#text-results textarea')?.value?.trim();
   const depMetar = document.getElementById('metar-dep')?.textContent?.trim();
   const arrMetar = document.getElementById('metar-arr')?.textContent?.trim();
-  const metarLine = s => (s && !s.startsWith('No METAR') && !s.startsWith('METAR unavailable') && !s.startsWith('fetching')) ? s : 'N/A';
+  const depTaf   = document.getElementById('taf-dep')?.textContent?.trim();
+  const arrTaf   = document.getElementById('taf-arr')?.textContent?.trim();
+
+  const validMetar = s => s && !s.startsWith('No METAR') && !s.startsWith('METAR unavailable') && !s.startsWith('fetching') ? s : 'N/A';
+  const validTaf   = s => s && !s.startsWith('No TAF') && !s.startsWith('fetching') && !s.startsWith('unavailable') ? s : null;
 
   function airportFlags(a) {
-    const surface = [a.hard && 'Hard', a.soft && 'Soft', a.water && 'Water', a.heli && 'Heli'].filter(Boolean).join('/') || '—';
-    const fuel    = [a.avgas && 'AvGas', a.jeta && 'Jet-A'].filter(Boolean).join(', ') || 'None';
-    const nav     = [a.ils && 'ILS', a.vasi && 'VASI', a.als && 'ALS'].filter(Boolean).join(', ') || 'None';
-    return { surface, fuel, nav };
+    const fuel = [a.avgas && 'AvGas', a.jeta && 'Jet-A'].filter(Boolean).join(', ') || 'None';
+    const nav  = [a.ils && 'ILS', a.vasi && 'VASI', a.als && 'ALS'].filter(Boolean).join(', ') || 'None';
+    return { fuel, nav };
+  }
+
+  // Format each runway as a text line: ID  length  surface  [nav aids]
+  function formatRunwaysText(airport) {
+    const rwys = airport.runways;
+    if (!rwys || rwys.length === 0) return null;
+    return rwys.map(r => {
+      const len  = r.length > 0 ? r.length.toLocaleString() + ' ft' : '—';
+      const surf = surfLabel(r.surface || '');
+      const aids = [];
+      if (r.le_vasi || r.he_vasi) {
+        const hasPapi = (r.le_vasi >= 2 && r.le_vasi !== 5) || (r.he_vasi >= 2 && r.he_vasi !== 5);
+        aids.push(hasPapi ? 'PAPI' : 'VASI');
+      }
+      if (r.le_als || r.he_als) aids.push('ALS');
+      const aidStr = aids.length ? '  [' + aids.join(', ') + ']' : '';
+      return `             ${r.id.padEnd(9)} ${len.padEnd(10)} ${surf}${aidStr}`;
+    }).join('\n');
+  }
+
+  // Compute suggested runway from METAR wind — same logic as updateWindRunway but returns a string
+  function suggestedRwyText(airport, metarRaw) {
+    if (!airport.runways || airport.runways.length === 0 || !metarRaw) return null;
+    const wind = parseMetarWind(metarRaw);
+    if (!wind || wind.dir === null) return null;
+    let best = null, bestHw = -Infinity;
+    for (const rwy of airport.runways) {
+      const parts = rwy.id.split('/');
+      const ends  = [];
+      if (rwy.le_heading !== undefined) {
+        ends.push({ id: parts[0] || '', heading: rwy.le_heading });
+      } else if (parts[0] && /^\d+/.test(parts[0])) {
+        ends.push({ id: parts[0], heading: parseInt(parts[0]) * 10 });
+      }
+      if (rwy.he_heading !== undefined) {
+        ends.push({ id: parts[1] || '', heading: rwy.he_heading });
+      } else if (parts[1] && /^\d+/.test(parts[1])) {
+        ends.push({ id: parts[1], heading: parseInt(parts[1]) * 10 });
+      }
+      for (const end of ends) {
+        const diff = ((wind.dir - end.heading + 540) % 360) - 180;
+        const hw   = Math.cos(diff * Math.PI / 180);
+        if (hw > bestHw) { bestHw = hw; best = { ...end }; }
+      }
+    }
+    if (!best) return null;
+    const xw     = Math.round(Math.abs(Math.sin(((wind.dir - best.heading + 540) % 360 - 180) * Math.PI / 180) * wind.speed));
+    const hw     = Math.round(bestHw * wind.speed);
+    const detail = hw > 0 ? `${hw} kt headwind · ${xw} kt crosswind` : `${Math.abs(hw)} kt tailwind · ${xw} kt crosswind`;
+    return `RWY ${best.id}  (${detail})`;
   }
 
   const dep = currentDep, arr = currentArr;
-  const df = airportFlags(dep), af = airportFlags(arr);
+  const df  = airportFlags(dep), af = airportFlags(arr);
+  const pad = '             ';
   const divider = '─'.repeat(52);
+
+  const depRwys    = formatRunwaysText(dep);
+  const arrRwys    = formatRunwaysText(arr);
+  const depSuggest = suggestedRwyText(dep, depMetar);
+  const arrSuggest = suggestedRwyText(arr, arrMetar);
+  const depTafStr  = validTaf(depTaf);
+  const arrTafStr  = validTaf(arrTaf);
 
   let txt = `SimLetsFly — Flight Brief\n${divider}\n\n`;
 
   txt += `  DEPARTURE  ${dep.id} · ${dep.name}\n`;
-  txt += `             ${dep.city || '—'}, ${dep.country}\n`;
-  txt += `             Type: ${dep.type}  ·  Elev: ${dep.elev} ft\n`;
-  txt += `             Runway: ${dep.runway > 0 ? dep.runway.toLocaleString() + ' ft' : '—'}  ·  Surface: ${df.surface}\n`;
-  txt += `             Fuel: ${df.fuel}\n`;
-  txt += `  METAR      ${metarLine(depMetar)}\n\n`;
+  txt += `${pad}${dep.city || '—'}, ${dep.country}\n`;
+  txt += `${pad}Type: ${dep.type}  ·  Elev: ${dep.elev} ft\n`;
+  txt += `${pad}Fuel: ${df.fuel}\n`;
+  if (depRwys) {
+    txt += `  RUNWAYS\n${depRwys}\n`;
+  }
+  if (depSuggest) txt += `  SUGGEST    ${depSuggest}\n`;
+  txt += `  METAR      ${validMetar(depMetar)}\n`;
+  if (depTafStr)  txt += `  TAF        ${depTafStr.replace(/\n/g, `\n${pad}`)}\n`;
+  txt += '\n';
 
   txt += `  ARRIVAL    ${arr.id} · ${arr.name}\n`;
-  txt += `             ${arr.city || '—'}, ${arr.country}\n`;
-  txt += `             Type: ${arr.type}  ·  Elev: ${arr.elev} ft\n`;
-  txt += `             Runway: ${arr.runway > 0 ? arr.runway.toLocaleString() + ' ft' : '—'}  ·  Surface: ${af.surface}\n`;
-  txt += `             Fuel: ${af.fuel}  ·  Nav Aids: ${af.nav}\n`;
-  txt += `  METAR      ${metarLine(arrMetar)}\n\n`;
+  txt += `${pad}${arr.city || '—'}, ${arr.country}\n`;
+  txt += `${pad}Type: ${arr.type}  ·  Elev: ${arr.elev} ft\n`;
+  txt += `${pad}Fuel: ${af.fuel}  ·  Nav Aids: ${af.nav}\n`;
+  if (arrRwys) {
+    txt += `  RUNWAYS\n${arrRwys}\n`;
+  }
+  if (arrSuggest) txt += `  SUGGEST    ${arrSuggest}\n`;
+  txt += `  METAR      ${validMetar(arrMetar)}\n`;
+  if (arrTafStr)  txt += `  TAF        ${arrTafStr.replace(/\n/g, `\n${pad}`)}\n`;
+  txt += '\n';
 
   txt += `${divider}\n`;
   txt += `  DISTANCE   ${dist.toFixed(0)} nm\n`;
   txt += `  BEARING    ${bear.toFixed(1)}° (${bearingName(bear)})\n`;
   txt += `  CRUISE     ${speed} kts\n`;
   txt += `  EST. TIME  ${hrs}h ${mins.toString().padStart(2,'0')}m\n`;
-  if (notes) txt += `\n  NOTES      ${notes.replace(/\n/g, '\n             ')}\n`;
+  if (notes) txt += `\n  NOTES      ${notes.replace(/\n/g, `\n${pad}`)}\n`;
   txt += `\n${divider}\n`;
   txt += `  For entertainment purposes only · SimLetsFly.com\n`;
 
