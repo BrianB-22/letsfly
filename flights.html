@@ -528,6 +528,8 @@ function renderStats() {
   document.getElementById('stat-regions').textContent       = regionSet.size;
   document.getElementById('stat-regions-list').textContent  = regionList;
 
+  // Rebuild visited map fresh so it reflects any completed status changes
+  if (visitedMap) { visitedMap.remove(); visitedMap = null; }
   buildVisitedMap();
 }
 
