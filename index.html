@@ -3525,6 +3525,8 @@ async function pullRoute(fromICAO, toICAO, btn) {
     if (data.high) lines.push(`HIGH: ${data.high}`);
     if (!lines.length) throw new Error('No route data');
 
+    lines.push('Using data from the Flight Plan Database (https://flightplandatabase.com)');
+
     const ta = btn.closest('.pilot-notes').querySelector('textarea');
     const existing = ta.value.trim();
     ta.value = existing
