@@ -812,9 +812,13 @@ function toggleMap(id) {
 let visitedMap = null;
 
 function buildVisitedMap() {
+  // Only include completed flights
+  const completedFlights = flights.filter(f => f.completed);
+  if (!completedFlights.length) return;
+
   // Collect all unique airports with their coordinates
   const airportMap = {};
-  flights.forEach(f => {
+  completedFlights.forEach(f => {
     if (f.dep_lat && f.dep_lon) {
       if (!airportMap[f.dep_id]) airportMap[f.dep_id] = { id: f.dep_id, name: f.dep_name, lat: f.dep_lat, lon: f.dep_lon, deps: 0, arrs: 0 };
       airportMap[f.dep_id].deps++;
@@ -830,7 +834,7 @@ function buildVisitedMap() {
 
   document.getElementById('visited-map-section').style.display = 'block';
   document.getElementById('visited-map-sub').textContent =
-    `${airports.length} airport${airports.length !== 1 ? 's' : ''} · ${flights.length} flight${flights.length !== 1 ? 's' : ''}`;
+    `${airports.length} airport${airports.length !== 1 ? 's' : ''} · ${completedFlights.length} completed flight${completedFlights.length !== 1 ? 's' : ''}`;
 
   // Init map (or re-use)
   setTimeout(() => {
@@ -848,7 +852,7 @@ function buildVisitedMap() {
     const txt = light ? '#1a2a38' : '#c8d8e8';
 
     // Draw route lines first (under markers)
-    flights.forEach(f => {
+    completedFlights.forEach(f => {
       if (!f.dep_lat || !f.arr_lat) return;
       const isChallenge = f.is_challenge;
       L.polyline([[f.dep_lat, f.dep_lon], [f.arr_lat, f.arr_lon]], {
