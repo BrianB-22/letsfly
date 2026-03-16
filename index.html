@@ -1166,6 +1166,13 @@
     border-color: var(--accent);
   }
 
+  .pilot-notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
   .pilot-notes label {
     font-family: var(--mono);
     font-size: 9px;
@@ -1173,8 +1180,26 @@
     color: var(--text3);
     text-transform: uppercase;
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 0;
   }
+
+  .btn-pull-route {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: none;
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 2px 8px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+  }
+
+  .btn-pull-route:hover { opacity: 1; }
+  .btn-pull-route:disabled { opacity: 0.4; cursor: default; }
 
   /* Pulsing dot for LIVE */
   @keyframes pulse {
@@ -3027,7 +3052,10 @@ function renderResults(dep, arr) {
     </div>
 
     <div class="pilot-notes" style="grid-column:1/-1">
-      <label>Pilot Notes</label>
+      <div class="pilot-notes-header">
+        <label>Pilot Notes</label>
+        <button class="btn-pull-route" onclick="pullRoute('${dep.id}','${arr.id}',this)">Pull Route</button>
+      </div>
       <textarea placeholder="Add your flight notes here..."></textarea>
     </div>
   `;
@@ -3475,6 +3503,40 @@ function updateWindRunway(side, metarRaw) {
     <span class="wind-runway-value">RWY ${best.id}</span>
     <span class="wind-runway-detail">${detail}</span>
   </div>`;
+}
+
+async function pullRoute(fromICAO, toICAO, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Pulling...';
+
+  try {
+    const url = `https://blxugbnoitkxhdjgfkff.supabase.co/functions/v1/pull-route?from=${fromICAO}&to=${toICAO}`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY` }
+    });
+
+    if (!res.ok) throw new Error('non-200');
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const lines = [];
+    if (data.low)  lines.push(`LOW:  ${data.low}`);
+    if (data.high) lines.push(`HIGH: ${data.high}`);
+    if (!lines.length) throw new Error('No route data');
+
+    const ta = btn.closest('.pilot-notes').querySelector('textarea');
+    const existing = ta.value.trim();
+    ta.value = existing
+      ? existing + '\n\n--- Route ---\n' + lines.join('\n')
+      : '--- Route ---\n' + lines.join('\n');
+
+  } catch (e) {
+    showToast('Failed to pull route information, try again later', 'err');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Pull Route';
 }
 
 async function fetchMetar(side, icao) {
