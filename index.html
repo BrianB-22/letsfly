@@ -574,6 +574,90 @@
     color: var(--text3);
   }
 
+  /* ── AIRWAY SELECT (High / Low radio) ── */
+  .airway-select {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 12px;
+  }
+
+  .airway-select > span {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text3);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .airway-select .radio-opts {
+    display: flex;
+    gap: 12px;
+  }
+
+  .airway-select label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text2);
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .airway-select input[type="radio"] {
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* ── EXPORT DROPDOWN ── */
+  .export-wrap {
+    position: relative;
+    display: inline-block;
+  }
+
+  .export-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    min-width: 150px;
+    z-index: 200;
+    display: none;
+    overflow: hidden;
+  }
+
+  .export-menu.open { display: block; }
+
+  .export-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    padding: 7px 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text2);
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .export-menu button:last-child { border-bottom: none; }
+  .export-menu button:hover { background: var(--bg2); color: var(--accent); }
+
   /* ── LETS FLY BUTTON ── */
   .btn-fly {
     flex: 1;
@@ -1899,6 +1983,13 @@
       <input type="number" id="cruise-speed" value="280" min="50" max="700" style="width:65px;text-align:center">
       <div class="unit">kts</div>
     </div>
+    <div class="airway-select">
+      <span>Airways</span>
+      <div class="radio-opts">
+        <label><input type="radio" name="airway-type" value="high" checked> High</label>
+        <label><input type="radio" name="airway-type" value="low"> Low</label>
+      </div>
+    </div>
     <button class="btn-fly" id="btn-fly" onclick="findFlight()">✈ LET'S FLY!</button>
   </div>
 
@@ -3054,7 +3145,18 @@ function renderResults(dep, arr) {
     <div class="pilot-notes" style="grid-column:1/-1">
       <div class="pilot-notes-header">
         <label>Pilot Notes</label>
-        <button class="btn-pull-route" onclick="pullRoute('${dep.id}','${arr.id}',this)">Pull Route</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn-pull-route" onclick="pullRoute('${dep.id}','${arr.id}',this)">Pull Route</button>
+          <div class="export-wrap" id="export-wrap" style="display:none">
+            <button class="btn-pull-route" onclick="toggleExportMenu(event)">Export ▾</button>
+            <div class="export-menu" id="export-menu">
+              <button onclick="exportFlightPlan('xp12')">X-Plane 12</button>
+              <button onclick="exportFlightPlan('xp11')">X-Plane 11</button>
+              <button onclick="exportFlightPlan('msfs2020')">MSFS 2020</button>
+              <button onclick="exportFlightPlan('msfs2024')">MSFS 2024</button>
+            </div>
+          </div>
+        </div>
       </div>
       <textarea placeholder="Add your flight notes here..."></textarea>
     </div>
@@ -3505,27 +3607,43 @@ function updateWindRunway(side, metarRaw) {
   </div>`;
 }
 
+// Stored route data for export
+let pulledNodes = { low: null, high: null };
+
+function getAirwayPref() {
+  const sel = document.querySelector('input[name="airway-type"]:checked');
+  return sel ? sel.value : 'high';
+}
+
 async function pullRoute(fromICAO, toICAO, btn) {
   btn.disabled = true;
   btn.textContent = 'Pulling...';
 
   try {
     const url = `https://blxugbnoitkxhdjgfkff.supabase.co/functions/v1/pull-route?from=${fromICAO}&to=${toICAO}`;
-    const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY` }
-    });
+    const res = await fetch(url);
 
     if (!res.ok) throw new Error('non-200');
 
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    const lines = [];
-    if (data.low)  lines.push(`LOW:  ${data.low}`);
-    if (data.high) lines.push(`HIGH: ${data.high}`);
-    if (!lines.length) throw new Error('No route data');
+    // Store nodes for export
+    pulledNodes.low  = data.low?.nodes  ?? null;
+    pulledNodes.high = data.high?.nodes ?? null;
 
-    lines.push('Using data from the Flight Plan Database (https://flightplandatabase.com)');
+    // Show only the selected airway in notes
+    const pref = getAirwayPref();
+    const selected = pref === 'low' ? data.low : data.high;
+    const fallback = pref === 'low' ? data.high : data.low;
+    const chosen = selected ?? fallback;
+    if (!chosen) throw new Error('No route data');
+
+    const label = pref === 'low' ? 'LOW' : 'HIGH';
+    const lines = [
+      `${label}: ${chosen.route}`,
+      'Using data from the Flight Plan Database (https://flightplandatabase.com)',
+    ];
 
     const ta = btn.closest('.pilot-notes').querySelector('textarea');
     const existing = ta.value.trim();
@@ -3533,12 +3651,137 @@ async function pullRoute(fromICAO, toICAO, btn) {
       ? existing + '\n\n--- Route ---\n' + lines.join('\n')
       : '--- Route ---\n' + lines.join('\n');
 
+    // Show export button
+    const wrap = document.getElementById('export-wrap');
+    if (wrap) wrap.style.display = 'inline-block';
+
   } catch (e) {
     showToast('Failed to pull route information, try again later', 'err');
   }
 
   btn.disabled = false;
   btn.textContent = 'Pull Route';
+}
+
+function toggleExportMenu(e) {
+  e.stopPropagation();
+  document.getElementById('export-menu').classList.toggle('open');
+}
+
+// Close export menu when clicking outside
+document.addEventListener('click', () => {
+  const m = document.getElementById('export-menu');
+  if (m) m.classList.remove('open');
+});
+
+// ── X-Plane FMS builder (.fms, works for XP11 & XP12) ──────────────────────
+function buildXPFMS(nodes, depICAO, arrICAO, isHigh) {
+  const typeMap = { APT: 1, NDB: 2, VOR: 3, FIX: 11 };
+  const cruiseAlt = isHigh ? 35000 : 8000;
+
+  const lines = [
+    'I',
+    '1100 Version',
+    'CYCLE 2101',
+    `ADEP ${depICAO}`,
+    `ADES ${arrICAO}`,
+    `NUMENR ${nodes.length}`,
+  ];
+
+  for (const n of nodes) {
+    const t   = typeMap[n.type] ?? 28;
+    const alt = n.type === 'APT' ? '0.000000' : cruiseAlt.toFixed(6);
+    const lat = n.lat.toFixed(6);
+    const lon = n.lon.toFixed(6);
+    if (n.type === 'APT') {
+      const role = n.ident === depICAO ? 'ADEP' : 'ADES';
+      lines.push(`${t} ${n.ident} ${role} ${alt} ${lat} ${lon}`);
+    } else {
+      lines.push(`${t} ${n.ident} ${alt} ${lat} ${lon}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+// ── MSFS PLN builder (.pln, works for MSFS 2020 & 2024) ────────────────────
+function decimalToDMS(deg, isLat) {
+  const dir = isLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
+  const abs = Math.abs(deg);
+  const d   = Math.floor(abs);
+  const mf  = (abs - d) * 60;
+  const m   = Math.floor(mf);
+  const s   = ((mf - m) * 60).toFixed(2);
+  return `${dir}${d}° ${m}' ${s}"`;
+}
+
+function buildMSFSPLN(nodes, dep, arr, isHigh) {
+  const cruiseAlt = isHigh ? 35000 : 8000;
+  const routeType = isHigh ? 'HighAlt' : 'LowAlt';
+  const wpTypeMap = { APT: 'Airport', VOR: 'VOR', NDB: 'NDB' };
+
+  const waypoints = nodes.map(n => {
+    const wpType = wpTypeMap[n.type] ?? 'Intersection';
+    const alt    = n.type === 'APT' ? (n.alt ?? 0) : cruiseAlt;
+    const altStr = (alt >= 0 ? '+' : '') + alt.toFixed(2).padStart(9, '0');
+    const pos    = `${decimalToDMS(n.lat, true)},${decimalToDMS(n.lon, false)},${altStr}`;
+    return `    <ATCWaypoint id="${n.ident}">
+      <ATCWaypointType>${wpType}</ATCWaypointType>
+      <WorldPosition>${pos}</WorldPosition>
+      <ICAO><ICAOIdent>${n.ident}</ICAOIdent></ICAO>
+    </ATCWaypoint>`;
+  }).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<SimBase.Document Type="AceXML" version="1,0">
+  <Descr>AceXML Document</Descr>
+  <FlightPlan.FlightPlan>
+    <Title>${dep.id} to ${arr.id}</Title>
+    <FPType>IFR</FPType>
+    <RouteType>${routeType}</RouteType>
+    <CruisingAlt>${cruiseAlt}</CruisingAlt>
+    <DepartureID>${dep.id}</DepartureID>
+    <DestinationID>${arr.id}</DestinationID>
+    <DepartureName>${dep.name ?? dep.id}</DepartureName>
+    <DestinationName>${arr.name ?? arr.id}</DestinationName>
+    <AppVersion><AppVersionMajor>11</AppVersionMajor><AppVersionBuild>282174</AppVersionBuild></AppVersion>
+${waypoints}
+  </FlightPlan.FlightPlan>
+</SimBase.Document>`;
+}
+
+// ── Export dispatcher ───────────────────────────────────────────────────────
+function exportFlightPlan(sim) {
+  const pref  = getAirwayPref();
+  const nodes = pulledNodes[pref] ?? pulledNodes[pref === 'high' ? 'low' : 'high'];
+  if (!nodes || !currentDep || !currentArr) {
+    showToast('Pull a route first', 'err');
+    return;
+  }
+
+  const isHigh = pref === 'high';
+  let content, filename, mime;
+
+  if (sim === 'xp11' || sim === 'xp12') {
+    content  = buildXPFMS(nodes, currentDep.id, currentArr.id, isHigh);
+    filename = `${currentDep.id}-${currentArr.id}.fms`;
+    mime     = 'text/plain';
+  } else {
+    content  = buildMSFSPLN(nodes, currentDep, currentArr, isHigh);
+    filename = `${currentDep.id}-${currentArr.id}.pln`;
+    mime     = 'application/xml';
+  }
+
+  const blob = new Blob([content], { type: mime });
+  const a    = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(blob),
+    download: filename,
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  const m = document.getElementById('export-menu');
+  if (m) m.classList.remove('open');
 }
 
 async function fetchMetar(side, icao) {

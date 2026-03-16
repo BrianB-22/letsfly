@@ -11,17 +11,16 @@ function fpdAuth(): string {
 }
 
 // Build a readable IFR route string from FPD nodes array.
-// Format: FIX AIRWAY FIX AIRWAY FIX (entry fix, then airway when it changes)
+// Format: FIX - AIRWAY - FIX (entry fix, then airway when it changes)
 function buildRoute(nodes: any[]): string {
   const parts: string[] = [];
 
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
-    if (node.type === 'APT') continue;  // skip departure/arrival airports
+    if (node.type === 'APT') continue;
 
     parts.push(node.ident);
 
-    // If the next waypoint starts a different en-route airway, insert the airway name
     const next = nodes[i + 1];
     if (next && next.type !== 'APT') {
       const nextType = next.via?.type ?? '';
@@ -36,7 +35,19 @@ function buildRoute(nodes: any[]): string {
   return parts.join(' - ');
 }
 
-async function fetchRoute(fromICAO: string, toICAO: string, high: boolean): Promise<string | null> {
+// Return only the fields the frontend needs for export (keeps response lean)
+function slimNodes(nodes: any[]): any[] {
+  return nodes.map(n => ({
+    type:  n.type,
+    ident: n.ident,
+    name:  n.name ?? null,
+    lat:   n.lat,
+    lon:   n.lon,
+    alt:   n.alt ?? 0,
+  }));
+}
+
+async function fetchRoute(fromICAO: string, toICAO: string, high: boolean): Promise<{ route: string; nodes: any[] } | null> {
   const body = {
     fromICAO,
     toICAO,
@@ -66,7 +77,7 @@ async function fetchRoute(fromICAO: string, toICAO: string, high: boolean): Prom
   const planId = plan?.id;
   if (!planId) throw new Error('No plan ID returned');
 
-  // Step 2: fetch the full plan to get route nodes
+  // Step 2: fetch the full plan to get route nodes with coordinates
   const planRes = await fetch(`${FPD_BASE}/plan/${planId}`, {
     headers: { 'Authorization': fpdAuth() },
   });
@@ -80,7 +91,7 @@ async function fetchRoute(fromICAO: string, toICAO: string, high: boolean): Prom
   const nodes = fullPlan?.route?.nodes ?? [];
   if (!nodes.length) return null;
 
-  return buildRoute(nodes);
+  return { route: buildRoute(nodes), nodes: slimNodes(nodes) };
 }
 
 Deno.serve(async (req) => {
