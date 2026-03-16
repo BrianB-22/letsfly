@@ -679,7 +679,7 @@ function toggleCompleted(id) {
   const text  = document.getElementById('toggle-text-' + id);
   track.classList.toggle('on', f.completed);
   text.textContent = f.completed ? 'Flight Completed' : 'Mark as Completed';
-  const badge = document.querySelector(`#card-${id} .badge`);
+  const badge = document.querySelector(`#card-${id} .badge-complete, #card-${id} .badge-pending`);
   if (badge) {
     badge.className = f.completed ? 'badge badge-complete' : 'badge badge-pending';
     badge.textContent = f.completed ? 'Completed' : 'Pending';
