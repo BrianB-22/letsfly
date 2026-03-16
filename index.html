@@ -599,6 +599,19 @@
     color: var(--text3);
   }
 
+  #aircraft-preset {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 3px 6px;
+    cursor: pointer;
+    max-width: 160px;
+  }
+  #aircraft-preset:focus { outline: none; border-color: var(--accent); }
+
   /* ── AIRWAY SELECT (High / Low radio) ── */
   .airway-select {
     display: flex;
@@ -2073,7 +2086,40 @@
   <div class="flight-controls">
     <div class="speed-field">
       <label>Cruise Speed</label>
-      <input type="number" id="cruise-speed" value="280" min="50" max="700" autocomplete="off" style="width:65px;text-align:center" oninput="updateRangeHint()">
+      <select id="aircraft-preset" onchange="applyAircraftPreset()" title="Select a preset aircraft">
+        <option value="">Aircraft...</option>
+        <optgroup label="── GA ──">
+          <option value="120">Piper Cherokee · 120 kts</option>
+          <option value="122">Cessna 172 · 122 kts</option>
+          <option value="145">Cessna 182 · 145 kts</option>
+          <option value="174">Beechcraft Bonanza · 174 kts</option>
+          <option value="175">Mooney M20 · 175 kts</option>
+          <option value="185">Cirrus SR22 · 185 kts</option>
+        </optgroup>
+        <optgroup label="── Turboprop ──">
+          <option value="175">Cessna 208 Caravan · 175 kts</option>
+          <option value="270">Pilatus PC-12 · 270 kts</option>
+          <option value="275">ATR 72 · 275 kts</option>
+          <option value="310">King Air 350 · 310 kts</option>
+          <option value="330">Daher TBM 930 · 330 kts</option>
+        </optgroup>
+        <optgroup label="── Regional ──">
+          <option value="447">CRJ-700 · 447 kts</option>
+          <option value="450">Embraer E175 · 450 kts</option>
+        </optgroup>
+        <optgroup label="── Airliner ──">
+          <option value="450">Airbus A320 · 450 kts</option>
+          <option value="450">Boeing 737 · 450 kts</option>
+          <option value="488">Boeing 787 · 488 kts</option>
+          <option value="488">Airbus A380 · 488 kts</option>
+        </optgroup>
+        <optgroup label="── Business Jet ──">
+          <option value="415">Citation CJ4 · 415 kts</option>
+          <option value="465">Learjet 75 · 465 kts</option>
+          <option value="516">Gulfstream G650 · 516 kts</option>
+        </optgroup>
+      </select>
+      <input type="number" id="cruise-speed" value="280" min="50" max="700" autocomplete="off" style="width:65px;text-align:center" oninput="onCruiseSpeedInput()">
       <div class="unit">kts</div>
     </div>
     <div class="airway-select">
@@ -3151,6 +3197,19 @@ function updateRangeStep() {
     document.getElementById(id).step = step;
     document.getElementById(id).min  = min;
   });
+}
+
+function applyAircraftPreset() {
+  const sel = document.getElementById('aircraft-preset');
+  if (!sel.value) return;
+  document.getElementById('cruise-speed').value = sel.value;
+  updateRangeHint();
+}
+
+function onCruiseSpeedInput() {
+  // If user manually edits speed, reset the preset dropdown
+  document.getElementById('aircraft-preset').value = '';
+  updateRangeHint();
 }
 
 function updateRangeHint() {
