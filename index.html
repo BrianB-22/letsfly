@@ -3037,9 +3037,9 @@ function getChallengeFactors(a) {
   const factors = [];
   const rwy = parseInt(a.runway) || 0;
   const elev = parseFloat(a.elev) || 0;
-  if (rwy > 0 && rwy < 3000)  factors.push('SHORT RUNWAY');
-  if (elev > 5000)             factors.push('HIGH ELEVATION');
-  if (!a.ils && !a.vasi)       factors.push('NO ILS');
+  if (rwy > 0 && rwy < 4500)  factors.push('SHORT RUNWAY');
+  if (elev > 3500)             factors.push('HIGH ELEVATION');
+  if (!a.ils)                  factors.push('NO ILS');
   if (!a.hard)                 factors.push('UNPAVED');
   return factors;
 }
@@ -3129,7 +3129,9 @@ function _doFind() {
   }
 
   // ── ARRIVAL ──
-  let arrPool = filterAirports('arr');
+  // In challenge mode bypass arrival type/surface filters — challenge airports are
+  // almost always small, so user's normal filters would exclude them. Use all airports.
+  let arrPool = challengeMode ? AIRPORTS : filterAirports('arr');
   if (challengeMode) arrPool = arrPool.filter(a => getChallengeFactors(a).length > 0);
   document.getElementById('arr-match').textContent = arrPool.length.toLocaleString() + ' match';
 
