@@ -2483,7 +2483,8 @@ async function saveFlight() {
     arr_id: currentArr.id, arr_name: currentArr.name,
     arr_lat: currentArr.lat, arr_lon: currentArr.lon,
     distance_nm: dist, bearing_deg: bear, speed_kts: speed,
-    pilot_notes: notes, is_public: false
+    pilot_notes: notes, is_public: false,
+    is_challenge: getChallengeFactors(currentArr).length > 0
   });
 
   if (error) { showToast('Save failed: ' + error.message, 'err'); return; }
@@ -2514,7 +2515,8 @@ async function shareFlight() {
     arr_id: currentArr.id, arr_name: currentArr.name,
     arr_lat: currentArr.lat, arr_lon: currentArr.lon,
     distance_nm: dist, bearing_deg: bear, speed_kts: speed,
-    pilot_notes: notes, is_public: true
+    pilot_notes: notes, is_public: true,
+    is_challenge: getChallengeFactors(currentArr).length > 0
   }).select('share_token').single();
 
   if (error) { showToast('Share failed: ' + error.message, 'err'); return; }

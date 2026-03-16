@@ -116,8 +116,9 @@
     .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
     .card-badges { display: flex; gap: 6px; align-items: center; }
     .badge { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; padding: 2px 7px; border-radius: 2px; text-transform: uppercase; border: 1px solid; }
-    .badge-complete { color: var(--green); border-color: rgba(82,183,136,0.35); background: rgba(82,183,136,0.08); }
-    .badge-pending { color: var(--text3); border-color: var(--border); background: transparent; }
+    .badge-complete   { color: var(--green); border-color: rgba(82,183,136,0.35); background: rgba(82,183,136,0.08); }
+    .badge-pending    { color: var(--text3); border-color: var(--border); background: transparent; }
+    .badge-challenge  { color: #ff6b6b; border-color: rgba(255,107,107,0.35); background: rgba(255,107,107,0.08); }
     .card-dist { font-family: var(--mono); font-size: 11px; color: var(--text3); }
     .card-date { font-family: var(--mono); font-size: 10px; color: var(--text3); }
     .stars-preview { display: flex; gap: 1px; }
@@ -265,6 +266,10 @@
       <div class="stat-chip">
         <div class="stat-chip-label">Avg Overall</div>
         <div class="stat-chip-value" id="stat-rating" style="color:var(--amber)">—</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">⚡ Challenges</div>
+        <div class="stat-chip-value" id="stat-challenge" style="color:#ff6b6b">—</div>
       </div>
     </div>
 
@@ -457,8 +462,9 @@ function renderStats() {
   document.getElementById('stats-section').style.display = 'block';
   document.getElementById('sort-bar').style.display = 'flex';
 
-  const completed = flights.filter(f => f.completed);
-  const totalDist = flights.reduce((s, f) => s + (f.distance_nm || 0), 0);
+  const completed  = flights.filter(f => f.completed);
+  const challenges = flights.filter(f => f.is_challenge);
+  const totalDist  = flights.reduce((s, f) => s + (f.distance_nm || 0), 0);
   const rated = flights.filter(f => f.rating_overall);
   const avg = rated.length
     ? (rated.reduce((s, f) => s + f.rating_overall, 0) / rated.length).toFixed(1)
@@ -470,6 +476,7 @@ function renderStats() {
   document.getElementById('stat-pending').textContent   = flights.length - completed.length;
   document.getElementById('stat-dist').textContent      = Math.round(totalDist).toLocaleString() + ' nm';
   document.getElementById('stat-rating').textContent    = avg !== '—' ? '★ ' + avg : '—';
+  document.getElementById('stat-challenge').textContent = challenges.length || '—';
   document.getElementById('flights-count').textContent  =
     flights.length + ' flight' + (flights.length !== 1 ? 's' : '');
 
@@ -579,6 +586,7 @@ function buildCard(f) {
       </div>
       <div class="card-right">
         <div class="card-badges">
+          ${f.is_challenge ? `<span class="badge badge-challenge">⚡ Challenge</span>` : ''}
           ${f.completed
             ? `<span class="badge badge-complete">Completed</span>`
             : `<span class="badge badge-pending">Pending</span>`}
