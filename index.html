@@ -462,6 +462,31 @@
     color: var(--text3);
   }
 
+  /* ── RANGE MODE TOGGLE ── */
+  .range-mode-toggle {
+    display: flex;
+    gap: 3px;
+    margin-left: 4px;
+  }
+  .range-mode-toggle button {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .range-mode-toggle button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
   /* ── VALIDATE BUTTON ── */
   .btn-validate {
     font-family: var(--mono);
@@ -1947,10 +1972,14 @@
       <div class="panel-body">
 
         <div class="field-row" style="margin-bottom:8px">
-          <label style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;white-space:nowrap">Range (nm)</label>
-          <input type="number" id="arr-min" value="100" min="1" style="width:80px;text-align:center">
+          <label id="range-label" style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;white-space:nowrap">Range (nm)</label>
+          <div class="range-mode-toggle">
+            <button id="range-nm-btn" class="active" onclick="setRangeMode('nm')">NM</button>
+            <button id="range-hrs-btn" onclick="setRangeMode('hrs')">HRS</button>
+          </div>
+          <input type="number" id="arr-min" value="100" min="0.1" step="any" style="width:80px;text-align:center">
           <span class="range-sep">—</span>
-          <input type="number" id="arr-max" value="1000" min="1" style="width:80px;text-align:center">
+          <input type="number" id="arr-max" value="1000" min="0.1" step="any" style="width:80px;text-align:center">
         </div>
 
         <div class="section">
@@ -2754,6 +2783,7 @@ async function loadAirports() {
     AIRPORTS = await resp.json();
     document.getElementById('db-count').textContent = AIRPORTS.length.toLocaleString();
     initDropdowns();
+    initRangeMode();
     loadSharedFlight();
   } catch(e) {
     // Fallback: show graceful message
@@ -3015,12 +3045,14 @@ function validate() {
     errors.push('Arrival: Min runway length cannot be greater than Max runway length.');
   }
 
-  // Range (nm) sanity
-  const minNm = parseFloat(document.getElementById('arr-min').value);
-  const maxNm = parseFloat(document.getElementById('arr-max').value);
-  if (!minNm || minNm < 1) errors.push('Arrival range: Min distance must be at least 1 nm.');
-  if (!maxNm || maxNm < 1) errors.push('Arrival range: Max distance must be at least 1 nm.');
-  if (minNm && maxNm && minNm >= maxNm) errors.push('Arrival range: Min distance must be less than Max distance.');
+  // Range sanity
+  const [minNm, maxNm] = getRangeNm();
+  const rangeUnit = rangeMode === 'hrs' ? 'hrs' : 'nm';
+  const minRaw = parseFloat(document.getElementById('arr-min').value);
+  const maxRaw = parseFloat(document.getElementById('arr-max').value);
+  if (!minRaw || minRaw <= 0) errors.push(`Arrival range: Min ${rangeUnit} must be greater than 0.`);
+  if (!maxRaw || maxRaw <= 0) errors.push(`Arrival range: Max ${rangeUnit} must be greater than 0.`);
+  if (minRaw && maxRaw && minRaw >= maxRaw) errors.push(`Arrival range: Min must be less than Max.`);
 
   // Cruise speed
   const speed = parseFloat(document.getElementById('cruise-speed').value);
@@ -3045,6 +3077,52 @@ function getChallengeFactors(a) {
 }
 
 let challengeMode = false;
+
+// ── RANGE MODE (nm vs hrs) ──
+let rangeMode = localStorage.getItem('rangeMode') || 'nm';
+
+function setRangeMode(mode) {
+  rangeMode = mode;
+  localStorage.setItem('rangeMode', mode);
+  document.getElementById('range-nm-btn').classList.toggle('active', mode === 'nm');
+  document.getElementById('range-hrs-btn').classList.toggle('active', mode === 'hrs');
+  const label = document.getElementById('range-label');
+  if (mode === 'hrs') {
+    label.textContent = 'Range (hrs)';
+    // Convert current NM values to hours using cruise speed
+    const spd = parseFloat(document.getElementById('cruise-speed').value) || 280;
+    const curMin = parseFloat(document.getElementById('arr-min').value) || 100;
+    const curMax = parseFloat(document.getElementById('arr-max').value) || 1000;
+    document.getElementById('arr-min').value = Math.round((curMin / spd) * 10) / 10;
+    document.getElementById('arr-max').value = Math.round((curMax / spd) * 10) / 10;
+  } else {
+    label.textContent = 'Range (nm)';
+    // Convert current HRS values back to NM
+    const spd = parseFloat(document.getElementById('cruise-speed').value) || 280;
+    const curMin = parseFloat(document.getElementById('arr-min').value) || 0.5;
+    const curMax = parseFloat(document.getElementById('arr-max').value) || 4;
+    document.getElementById('arr-min').value = Math.round(curMin * spd);
+    document.getElementById('arr-max').value = Math.round(curMax * spd);
+  }
+}
+
+function getRangeNm() {
+  const min = parseFloat(document.getElementById('arr-min').value);
+  const max = parseFloat(document.getElementById('arr-max').value);
+  if (rangeMode === 'hrs') {
+    const spd = parseFloat(document.getElementById('cruise-speed').value) || 280;
+    return [min * spd, max * spd];
+  }
+  return [min, max];
+}
+
+function initRangeMode() {
+  if (rangeMode === 'hrs') {
+    document.getElementById('range-hrs-btn').classList.add('active');
+    document.getElementById('range-nm-btn').classList.remove('active');
+    document.getElementById('range-label').textContent = 'Range (hrs)';
+  }
+}
 
 function findChallengeFlight() {
   if (!AIRPORTS.length) { setStatus('Airport database not loaded.', 'err'); return; }
@@ -3143,8 +3221,7 @@ function _doFind() {
     return;
   }
 
-  const minNm = parseFloat(document.getElementById('arr-min').value);
-  const maxNm = parseFloat(document.getElementById('arr-max').value);
+  const [minNm, maxNm] = getRangeNm();
 
   // Filter by distance from departure, exclude same airport
   const candidates = arrPool.filter(a => {
@@ -3154,8 +3231,11 @@ function _doFind() {
   });
 
   if (!candidates.length) {
+    const rangeLabel = rangeMode === 'hrs'
+      ? `${document.getElementById('arr-min').value}–${document.getElementById('arr-max').value} hrs`
+      : `${Math.round(minNm)}–${Math.round(maxNm)} nm`;
     setStatus(
-      `No arrival airports within ${minNm}–${maxNm} nm of ${dep.id}. ` +
+      `No arrival airports within ${rangeLabel} of ${dep.id}. ` +
       `Try widening the range or relaxing arrival filters.`, 'err'
     );
     return;
