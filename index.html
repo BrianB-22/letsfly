@@ -2685,10 +2685,9 @@ async function loadUserPrefs() {
     if (radio) radio.checked = true;
   }
 
-  // Restore range mode (nm vs hrs)
+  // Restore range mode (nm vs hrs) — only from Supabase, never localStorage
   if (data.range_mode && data.range_mode !== rangeMode) {
     rangeMode = data.range_mode;
-    localStorage.setItem('rangeMode', rangeMode);
     initRangeMode();
   }
 }
@@ -3140,11 +3139,10 @@ function getChallengeFactors(a) {
 let challengeMode = false;
 
 // ── RANGE MODE (nm vs hrs) ──
-let rangeMode = localStorage.getItem('rangeMode') || 'nm';
+let rangeMode = 'nm';
 
 function setRangeMode(mode) {
   rangeMode = mode;
-  localStorage.setItem('rangeMode', mode);
   document.getElementById('range-nm-btn').classList.toggle('active', mode === 'nm');
   document.getElementById('range-hrs-btn').classList.toggle('active', mode === 'hrs');
   const label = document.getElementById('range-label');
