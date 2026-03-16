@@ -61,14 +61,26 @@
     .page-title span { color: var(--accent); }
 
     /* ── STATS BAR ── */
+    .stats-section { margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
     .stats-bar {
       display: flex; gap: 0; background: var(--panel); border: 1px solid var(--border);
-      border-radius: 4px; margin-bottom: 18px; overflow: hidden;
+      border-radius: 4px; overflow: hidden; flex-wrap: wrap;
     }
-    .stat-chip { flex: 1; padding: 12px 18px; border-right: 1px solid var(--border); }
+    .stats-bar.completed-bar {
+      border-color: rgba(82,183,136,0.25);
+      background: rgba(82,183,136,0.04);
+    }
+    .stats-bar-label {
+      font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--text3);
+      text-transform: uppercase; padding: 0 2px 2px;
+    }
+    .stats-bar-label.completed-label { color: var(--green); }
+    .stat-chip { flex: 1; min-width: 120px; padding: 12px 18px; border-right: 1px solid var(--border); }
     .stat-chip:last-child { border-right: none; }
+    .completed-bar .stat-chip { border-right-color: rgba(82,183,136,0.15); }
     .stat-chip-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; margin-bottom: 4px; }
     .stat-chip-value { font-family: var(--mono); font-size: 18px; color: var(--accent); }
+    .stat-chip-sub { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* ── SORT BAR ── */
     .sort-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
@@ -230,23 +242,62 @@
     <div class="page-title">My <span>Flights</span></div>
   </div>
 
-  <div id="stats-bar" class="stats-bar" style="display:none">
-    <div class="stat-chip">
-      <div class="stat-chip-label">Total Saved</div>
-      <div class="stat-chip-value" id="stat-total">—</div>
+  <div id="stats-section" class="stats-section" style="display:none">
+
+    <!-- Row 1: All flights overview -->
+    <div class="stats-bar">
+      <div class="stat-chip">
+        <div class="stat-chip-label">Total Saved</div>
+        <div class="stat-chip-value" id="stat-total">—</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">Completed</div>
+        <div class="stat-chip-value" id="stat-completed" style="color:var(--green)">—</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">Pending</div>
+        <div class="stat-chip-value" id="stat-pending" style="color:var(--text2)">—</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">Total Distance</div>
+        <div class="stat-chip-value" id="stat-dist">—</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">Avg Overall</div>
+        <div class="stat-chip-value" id="stat-rating" style="color:var(--amber)">—</div>
+      </div>
     </div>
-    <div class="stat-chip">
-      <div class="stat-chip-label">Completed</div>
-      <div class="stat-chip-value" id="stat-completed" style="color:var(--green)">—</div>
+
+    <!-- Row 2: Completed flights deep stats (hidden until there are completed flights) -->
+    <div id="completed-stats-bar" class="stats-bar completed-bar" style="display:none">
+      <div class="stat-chip">
+        <div class="stat-chip-label">Miles Flown</div>
+        <div class="stat-chip-value" id="stat-miles" style="color:var(--green)">—</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">Est. Hours</div>
+        <div class="stat-chip-value" id="stat-hours" style="color:var(--green)">—</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">Airports Visited</div>
+        <div class="stat-chip-value" id="stat-airports" style="color:var(--green)">—</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">Longest Trip</div>
+        <div class="stat-chip-value" id="stat-longest">—</div>
+        <div class="stat-chip-sub" id="stat-longest-route"></div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">Avg Leg Distance</div>
+        <div class="stat-chip-value" id="stat-avg-dist">—</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-chip-label">Regions Explored</div>
+        <div class="stat-chip-value" id="stat-regions" style="color:var(--green)">—</div>
+        <div class="stat-chip-sub" id="stat-regions-list"></div>
+      </div>
     </div>
-    <div class="stat-chip">
-      <div class="stat-chip-label">Total Distance</div>
-      <div class="stat-chip-value" id="stat-dist">—</div>
-    </div>
-    <div class="stat-chip">
-      <div class="stat-chip-label">Avg Overall</div>
-      <div class="stat-chip-value" id="stat-rating" style="color:var(--amber)">—</div>
-    </div>
+
   </div>
 
   <div id="sort-bar" class="sort-bar" style="display:none">
@@ -384,22 +435,67 @@ async function loadFlights() {
   renderList(flights);
 }
 
+// Rough ICAO prefix → region name (first letter)
+const ICAO_REGIONS = {
+  K: 'USA', P: 'USA/Pacific', C: 'Canada', M: 'C. America',
+  T: 'Caribbean', S: 'S. America',
+  E: 'N. Europe', L: 'S. Europe', U: 'Russia/CIS',
+  Z: 'China', R: 'E. Asia', V: 'S. Asia', O: 'Middle East',
+  H: 'E. Africa', F: 'S. Africa', D: 'W. Africa', G: 'W. Africa',
+  Y: 'Australia', N: 'Pacific', W: 'SE Asia', B: 'Iceland/Greenland',
+  A: 'Antarctica',
+};
+
 function renderStats() {
   if (!flights.length) return;
-  document.getElementById('stats-bar').style.display = 'flex';
+  document.getElementById('stats-section').style.display = 'block';
   document.getElementById('sort-bar').style.display = 'flex';
-  const done = flights.filter(f => f.completed).length;
-  const dist = flights.reduce((s, f) => s + (f.distance_nm || 0), 0);
+
+  const completed = flights.filter(f => f.completed);
+  const totalDist = flights.reduce((s, f) => s + (f.distance_nm || 0), 0);
   const rated = flights.filter(f => f.rating_overall);
   const avg = rated.length
     ? (rated.reduce((s, f) => s + f.rating_overall, 0) / rated.length).toFixed(1)
     : '—';
-  document.getElementById('stat-total').textContent = flights.length;
-  document.getElementById('stat-completed').textContent = done;
-  document.getElementById('stat-dist').textContent = Math.round(dist).toLocaleString() + ' nm';
-  document.getElementById('stat-rating').textContent = avg !== '—' ? '★ ' + avg : '—';
-  document.getElementById('flights-count').textContent =
+
+  // Row 1
+  document.getElementById('stat-total').textContent     = flights.length;
+  document.getElementById('stat-completed').textContent = completed.length;
+  document.getElementById('stat-pending').textContent   = flights.length - completed.length;
+  document.getElementById('stat-dist').textContent      = Math.round(totalDist).toLocaleString() + ' nm';
+  document.getElementById('stat-rating').textContent    = avg !== '—' ? '★ ' + avg : '—';
+  document.getElementById('flights-count').textContent  =
     flights.length + ' flight' + (flights.length !== 1 ? 's' : '');
+
+  // Row 2: only if there are completed flights
+  if (!completed.length) return;
+  document.getElementById('completed-stats-bar').style.display = 'flex';
+
+  const compDist  = completed.reduce((s, f) => s + (f.distance_nm || 0), 0);
+  const estHours  = completed.reduce((s, f) => s + (f.distance_nm || 0) / (f.cruise_speed || 280), 0);
+  const avgLeg    = compDist / completed.length;
+  const longest   = completed.reduce((best, f) => (f.distance_nm || 0) > (best.distance_nm || 0) ? f : best, completed[0]);
+
+  // Unique airports visited
+  const airports  = new Set();
+  completed.forEach(f => { airports.add(f.dep_id); airports.add(f.arr_id); });
+
+  // Unique regions from ICAO first letter
+  const regionSet = new Set();
+  completed.forEach(f => {
+    regionSet.add(ICAO_REGIONS[f.dep_id[0].toUpperCase()] ?? f.dep_id[0].toUpperCase());
+    regionSet.add(ICAO_REGIONS[f.arr_id[0].toUpperCase()] ?? f.arr_id[0].toUpperCase());
+  });
+  const regionList = [...regionSet].slice(0, 4).join(', ') + (regionSet.size > 4 ? '…' : '');
+
+  document.getElementById('stat-miles').textContent         = Math.round(compDist).toLocaleString() + ' nm';
+  document.getElementById('stat-hours').textContent         = estHours.toFixed(1) + ' hr';
+  document.getElementById('stat-airports').textContent      = airports.size;
+  document.getElementById('stat-avg-dist').textContent      = Math.round(avgLeg).toLocaleString() + ' nm';
+  document.getElementById('stat-longest').textContent       = longest ? Math.round(longest.distance_nm).toLocaleString() + ' nm' : '—';
+  document.getElementById('stat-longest-route').textContent = longest ? `${longest.dep_id} → ${longest.arr_id}` : '';
+  document.getElementById('stat-regions').textContent       = regionSet.size;
+  document.getElementById('stat-regions-list').textContent  = regionList;
 }
 
 function sortBy(mode, btn) {
@@ -680,7 +776,7 @@ function toggleMap(id) {
 
 // ── AUTH REQUIRED ──
 function showAuthRequired() {
-  document.getElementById('stats-bar').style.display = 'none';
+  document.getElementById('stats-section').style.display = 'none';
   document.getElementById('sort-bar').style.display = 'none';
   document.getElementById('flights-list').innerHTML = `
     <div class="center-state">
