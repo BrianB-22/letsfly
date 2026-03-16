@@ -1577,6 +1577,27 @@
   .metar-text.loading { color: var(--text3); font-style: italic; }
   .metar-text.unavailable { color: var(--text3); }
   .taf-text { white-space: pre-wrap; line-height: 1.6; }
+  .taf-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    user-select: none;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 0;
+  }
+  .taf-toggle:hover { color: var(--text2); }
+  .taf-toggle .taf-chevron { font-size: 8px; transition: transform 0.2s; }
+  .taf-toggle.open .taf-chevron { transform: rotate(90deg); }
+  .taf-body { display: none; margin-top: 4px; }
+  .taf-body.open { display: block; }
   .metar-content {
     display: flex;
     align-items: flex-start;
@@ -3099,8 +3120,12 @@ function renderResults(dep, arr) {
           </div>
         </div>
         <div class="metar-row">
-          <span class="metar-label">TAF</span>
-          <span class="metar-text loading taf-text" id="taf-dep">fetching...</span>
+          <button class="taf-toggle" onclick="toggleTaf(this)">
+            <span class="taf-chevron">▶</span> TAF Forecast
+          </button>
+          <div class="taf-body">
+            <span class="metar-text loading taf-text" id="taf-dep">fetching...</span>
+          </div>
         </div>
         ${makeRunwayList(dep, 'dep')}
       </div>
@@ -3131,8 +3156,12 @@ function renderResults(dep, arr) {
           </div>
         </div>
         <div class="metar-row">
-          <span class="metar-label">TAF</span>
-          <span class="metar-text loading taf-text" id="taf-arr">fetching...</span>
+          <button class="taf-toggle" onclick="toggleTaf(this)">
+            <span class="taf-chevron">▶</span> TAF Forecast
+          </button>
+          <div class="taf-body">
+            <span class="metar-text loading taf-text" id="taf-arr">fetching...</span>
+          </div>
         </div>
         ${makeRunwayList(arr, 'arr')}
       </div>
@@ -3843,6 +3872,11 @@ async function fetchMetar(side, icao) {
     el.textContent = 'METAR unavailable';
     el.className = 'metar-text unavailable';
   }
+}
+
+function toggleTaf(btn) {
+  btn.classList.toggle('open');
+  btn.nextElementSibling.classList.toggle('open');
 }
 
 async function fetchTaf(side, icao) {
