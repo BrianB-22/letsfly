@@ -2499,7 +2499,7 @@ async function loadUserPrefs() {
   if (!currentUser) return;
   const { data } = await _sb
     .from('profiles')
-    .select('cruise_speed, range_min, range_max, theme, dep_continent, dep_country, dep_region, dep_types, dep_rwys, arr_continent, arr_country, arr_region, arr_types, arr_rwys')
+    .select('cruise_speed, range_min, range_max, theme, dep_continent, dep_country, dep_region, dep_types, dep_rwys, arr_continent, arr_country, arr_region, arr_types, arr_rwys, airway_pref')
     .eq('user_id', currentUser.id)
     .single();
   if (!data) return;
@@ -2560,6 +2560,12 @@ async function loadUserPrefs() {
     const arrRwys = JSON.parse(data.arr_rwys);
     document.querySelectorAll('.arr-rwy').forEach(cb => cb.checked = arrRwys.includes(cb.value));
   }
+
+  // Restore airway preference
+  if (data.airway_pref) {
+    const radio = document.querySelector(`input[name="airway-type"][value="${data.airway_pref}"]`);
+    if (radio) radio.checked = true;
+  }
 }
 
 async function saveUserPrefs() {
@@ -2589,6 +2595,7 @@ async function saveUserPrefs() {
     arr_region:    document.getElementById('arr-region').value    || null,
     arr_types:     JSON.stringify(arrTypes),
     arr_rwys:      JSON.stringify(arrRwys),
+    airway_pref:   getAirwayPref(),
     updated_at:    new Date().toISOString()
   });
 }
