@@ -3132,7 +3132,7 @@ function _doFind() {
   // In challenge mode bypass arrival type/surface filters — challenge airports are
   // almost always small, so user's normal filters would exclude them. Use all airports.
   let arrPool = challengeMode ? AIRPORTS : filterAirports('arr');
-  if (challengeMode) arrPool = arrPool.filter(a => getChallengeFactors(a).length > 0);
+  if (challengeMode) arrPool = arrPool.filter(a => a.type !== 'Heliport' && getChallengeFactors(a).length > 0);
   document.getElementById('arr-match').textContent = arrPool.length.toLocaleString() + ' match';
 
   if (!arrPool.length) {
