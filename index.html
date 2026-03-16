@@ -2452,8 +2452,9 @@ async function saveFlight() {
     pilot_notes: notes, is_public: false
   });
 
-  if (error) showToast('Save failed: ' + error.message, 'err');
-  else showToast('Flight saved! Find it in My Flights ✓', 'ok');
+  if (error) { showToast('Save failed: ' + error.message, 'err'); return; }
+  showToast('Flight saved! Find it in My Flights ✓', 'ok');
+  try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'save_flight' })).catch(() => {}); } catch(e) {}
 }
 
 // ── SHARE FLIGHT ──
@@ -2485,7 +2486,10 @@ async function shareFlight() {
   if (error) { showToast('Share failed: ' + error.message, 'err'); return; }
 
   const url = `${location.origin}${location.pathname}?flight=${data.share_token}`;
-  navigator.clipboard.writeText(url).then(() => showToast('Shareable link copied to clipboard!', 'ok'));
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Shareable link copied to clipboard!', 'ok');
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'share_flight' })).catch(() => {}); } catch(e) {}
+  });
 }
 
 // ── FAVORITES ──
@@ -3074,6 +3078,7 @@ function _doFind() {
   renderResults(dep, arr);
   setStatus(`Found ${candidates.length.toLocaleString()} matching arrival airports. Click LET'S FLY! again for a different flight!`, 'ok');
   document.getElementById('btn-next-hop').style.display = 'inline-flex';
+  try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'generate_flight' })).catch(() => {}); } catch(e) {}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3646,6 +3651,7 @@ function copyFlight() {
   navigator.clipboard.writeText(txt).then(() => {
     setStatus('Copied!', 'ok');
     showToast('Flight plan briefing copied to clipboard', 'ok');
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'flight_brief_copy' })).catch(() => {}); } catch(e) {}
   });
 }
 
@@ -3663,6 +3669,7 @@ function saveFlightBrief() {
   a.click();
   URL.revokeObjectURL(a.href);
   showToast(`Saved ${filename}`, 'ok');
+  try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'flight_brief_save' })).catch(() => {}); } catch(e) {}
 }
 
 // ── Runway list helpers ────────────────────────────────────────────────────
@@ -3829,6 +3836,7 @@ async function pullRoute(fromICAO, toICAO, btn) {
     ta.value = existing
       ? existing + '\n\n--- Route ---\n' + lines.join('\n')
       : '--- Route ---\n' + lines.join('\n');
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'pull_route' })).catch(() => {}); } catch(e) {}
 
   } catch (e) {
     if (e.message === 'no_route') {
@@ -3982,6 +3990,7 @@ function exportFlightPlan(sim) {
   });
   a.click();
   URL.revokeObjectURL(a.href);
+  try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: `export_${sim}` })).catch(() => {}); } catch(e) {}
 
   const m = document.getElementById('export-menu');
   if (m) m.classList.remove('open');
@@ -4401,6 +4410,7 @@ function showHelpModal() {
     if (fb) fb.style.display = currentUser ? 'block' : 'none';
     return;
   }
+  try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'help' })).catch(() => {}); } catch(e) {}
   fetch('help.html?v=' + Date.now())
     .then(r => r.text())
     .then(html => {
