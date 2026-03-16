@@ -3847,13 +3847,13 @@ async function fetchTaf(side, icao) {
   if (!el) return;
   try {
     const resp = await fetch(
-      `https://aviationweather.gov/api/data/taf?ids=${icao}&format=raw`
+      `https://blxugbnoitkxhdjgfkff.supabase.co/functions/v1/metar?icao=${icao}&type=taf`,
+      { headers: { 'apikey': 'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY' } }
     );
     if (!resp.ok) throw new Error('fetch failed');
-    const text = (await resp.text()).trim();
-    const valid = text.length > 5 && !text.startsWith('<') && !text.toLowerCase().startsWith('no ');
-    if (valid) {
-      el.textContent = text;
+    const { taf } = await resp.json();
+    if (taf) {
+      el.textContent = taf;
       el.className = 'metar-text taf-text';
     } else {
       el.textContent = 'No TAF available for this airport';
