@@ -3682,12 +3682,21 @@ function getAirwayPref() {
 }
 
 async function pullRoute(fromICAO, toICAO, btn) {
+  if (!currentUser) {
+    showToast('Sign in to use Pull Route', 'info');
+    showAuthModal('signin');
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Pulling...';
 
   try {
+    const { data: { session } } = await _sb.auth.getSession();
     const url = `https://blxugbnoitkxhdjgfkff.supabase.co/functions/v1/pull-route?from=${fromICAO}&to=${toICAO}`;
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${session?.access_token}` },
+    });
 
     if (!res.ok) throw new Error('non-200');
 
