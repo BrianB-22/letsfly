@@ -210,11 +210,20 @@
     <li>Search preferences and cruise speed (to restore your setup on login)</li>
     <li>Favorite airports you pin</li>
   </ul>
-  <p style="color:var(--text2);font-size:13px;line-height:1.8;margin:0;">
+  <p style="color:var(--text2);font-size:13px;line-height:1.8;margin:0 0 10px 0;">
     An anonymous page visit counter runs on each page load — no personal data is collected, just a running total. No tracking scripts or advertising analytics are used.
     Account data is stored securely via <a href="https://supabase.com" target="_blank" style="color:var(--accent);">Supabase</a>.
     You can request deletion of your account and all associated data at any time by leaving a note in the feedback box below.
   </p>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:4px;">Why some features require an account</div>
+    <div style="color:var(--text3);font-size:12px;line-height:1.8;">
+      Features like <strong style="color:var(--text);">Pull Route</strong>, <strong style="color:var(--text);">Save Flight</strong>, and <strong style="color:var(--text);">Favorite Airports</strong> require a free account.
+      Pull Route calls a third-party flight planning API on your behalf — requiring sign-in protects that from automated abuse and keeps the service available for everyone.
+      Saved flights and favorites use database storage tied to your account.
+      A free account requires only an email address and takes less than a minute to create.
+    </div>
+  </div>
 </div>
 
 <!-- FEEDBACK (logged-in only) -->
