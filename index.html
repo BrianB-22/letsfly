@@ -1056,7 +1056,9 @@
   }
 
   .plan-leg:last-child { border-bottom: none; }
+  .plan-leg { cursor: pointer; }
   .plan-leg:hover { background: var(--bg2); }
+  .plan-leg.active { background: rgba(0,188,212,0.07); border-left: 2px solid var(--accent); }
 
   .plan-leg-num {
     font-family: var(--mono);
@@ -3330,7 +3332,7 @@ function renderPlan() {
     }
 
     html += `
-      <div class="plan-leg">
+      <div class="plan-leg" data-leg="${i}" onclick="loadLeg(${i})">
         <div class="plan-leg-num">${i + 1}</div>
 
         <div class="plan-leg-dep">
@@ -3385,6 +3387,23 @@ function renderPlan() {
   });
 
   document.getElementById('plan-legs').innerHTML = html;
+}
+
+function loadLeg(i) {
+  const leg = flightPlan[i];
+  if (!leg) return;
+
+  // Reset pulled route data — user must Pull Route for this leg
+  pulledNodes = { low: null, high: null };
+
+  // Highlight active leg
+  document.querySelectorAll('.plan-leg').forEach(el => el.classList.remove('active'));
+  const el = document.querySelector(`.plan-leg[data-leg="${i}"]`);
+  if (el) el.classList.add('active');
+
+  // Re-render the results card for this leg and scroll to it
+  renderResults(leg.dep, leg.arr);
+  document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function removeLeg(i) {
