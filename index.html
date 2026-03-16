@@ -4409,8 +4409,10 @@ function showHelpModal() {
   modal.classList.add('open');
   if (body.dataset.loaded) {
     // Show/hide feedback based on current auth state
-    const fb = document.getElementById('help-feedback-section');
-    if (fb) fb.style.display = currentUser ? 'block' : 'none';
+    const fb  = document.getElementById('help-feedback-section');
+    const fbo = document.getElementById('help-feedback-loggedout');
+    if (fb)  fb.style.display  = currentUser ? 'block' : 'none';
+    if (fbo) fbo.style.display = currentUser ? 'none'  : 'block';
     return;
   }
   try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'help' })).catch(() => {}); } catch(e) {}
@@ -4419,8 +4421,10 @@ function showHelpModal() {
     .then(html => {
       body.innerHTML = html;
       body.dataset.loaded = '1';
-      const fb = document.getElementById('help-feedback-section');
-      if (fb) fb.style.display = currentUser ? 'block' : 'none';
+      const fb  = document.getElementById('help-feedback-section');
+      const fbo = document.getElementById('help-feedback-loggedout');
+      if (fb)  fb.style.display  = currentUser ? 'block' : 'none';
+      if (fbo) fbo.style.display = currentUser ? 'none'  : 'block';
     })
     .catch(() => { body.innerHTML = '<p style="color:var(--text2);padding:20px;">Could not load help content.</p>'; });
 }
