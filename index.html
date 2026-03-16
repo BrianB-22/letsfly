@@ -3827,25 +3827,38 @@ ${waypoints}
 
 // ── Export dispatcher ───────────────────────────────────────────────────────
 function exportFlightPlan(sim) {
-  const pref  = getAirwayPref();
-  const nodes = pulledNodes[pref] ?? pulledNodes[pref === 'high' ? 'low' : 'high'];
-  if (!nodes || !currentDep || !currentArr) {
-    showToast('Click Pull Route Button & Review before exporting to sim', 'err');
+  if (!currentDep || !currentArr) {
+    showToast('Generate a flight first before exporting', 'err');
     const m = document.getElementById('export-menu');
     if (m) m.classList.remove('open');
     return;
   }
 
-  const isHigh = pref === 'high';
+  const pref     = getAirwayPref();
+  const nodes    = pulledNodes[pref] ?? pulledNodes[pref === 'high' ? 'low' : 'high'];
+  const hasRoute = !!nodes;
+
+  if (!hasRoute) {
+    showToast('Flight Export — No Routing Included', 'info');
+  }
+
+  // If no route was pulled, export dep→arr direct with just the two airports
+  const exportNodes = hasRoute ? nodes : [
+    { type: 'APT', ident: currentDep.id, lat: currentDep.lat, lon: currentDep.lon, alt: currentDep.elev ?? 0 },
+    { type: 'APT', ident: currentArr.id, lat: currentArr.lat, lon: currentArr.lon, alt: currentArr.elev ?? 0 },
+  ];
+
+  const isHigh      = pref === 'high';
+  const routeSuffix = hasRoute ? '-ROUTE' : '';
   let content, filename, mime;
 
   if (sim === 'xp11' || sim === 'xp12') {
-    content  = buildXPFMS(nodes, currentDep.id, currentArr.id, isHigh);
-    filename = `${currentDep.id}-${currentArr.id}.fms`;
+    content  = buildXPFMS(exportNodes, currentDep.id, currentArr.id, isHigh);
+    filename = `${currentDep.id}-${currentArr.id}${routeSuffix}.fms`;
     mime     = 'text/plain';
   } else {
-    content  = buildMSFSPLN(nodes, currentDep, currentArr, isHigh);
-    filename = `${currentDep.id}-${currentArr.id}.pln`;
+    content  = buildMSFSPLN(exportNodes, currentDep, currentArr, isHigh);
+    filename = `${currentDep.id}-${currentArr.id}${routeSuffix}.pln`;
     mime     = 'application/xml';
   }
 
