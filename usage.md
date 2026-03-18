@@ -19,6 +19,8 @@ All events are anonymous — no personal data is collected.
 | `share_flight` | Share link copied |
 | `flight_brief_copy` | Flight Brief → Copy to Clipboard |
 | `flight_brief_save` | Flight Brief → Save as Text File |
+| `sign_in` | User successfully signs in |
+| `sign_up` | User successfully creates an account |
 
 ## Query
 

@@ -2472,6 +2472,7 @@ async function authSubmit() {
         </button>
       </div>`;
   } else if (_authMode === 'signup') {
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'sign_up' })).catch(() => {}); } catch(e) {}
     // Show confirmation screen inside the modal
     document.querySelector('.modal').innerHTML = `
       <div style="text-align:center;padding:10px 0">
@@ -2491,6 +2492,7 @@ async function authSubmit() {
   } else {
     closeAuthModal();
     showToast('Signed in!', 'ok');
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'sign_in' })).catch(() => {}); } catch(e) {}
   }
 }
 
