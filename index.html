@@ -2308,6 +2308,10 @@ _sb.auth.onAuthStateChange((event, session) => {
 _sb.auth.getSession().then(({ data: { session } }) => {
   currentUser = session?.user ?? null;
   renderAuthHeader();
+  if (currentUser) {
+    loadFavorites();
+    loadUserPrefs();
+  }
 });
 
 // Check for auth errors in URL hash (e.g. expired reset link)
