@@ -175,7 +175,7 @@
   <div style="display:flex;flex-direction:column;gap:8px;">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Save Flight</div>
-      <div style="color:var(--text3);font-size:12px;">Saves the current flight to your account. Requires a free account. Each time you click Let's Fly while signed in, your search preferences are also saved — location filters, airport types, runway surface, range, cruise speed, and display theme — and restored automatically next time you log in.</div>
+      <div style="color:var(--text3);font-size:12px;">Saves the current flight to your account. Requires a free account. If you used Pull Route before saving, the full IFR route is saved with the flight so you can export it with waypoints directly from My Flights later. Each time you click Let's Fly while signed in, your search preferences are also saved — location filters, airport types, runway surface, range, cruise speed, and display theme — and restored automatically next time you log in.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Copy to Clipboard</div>
@@ -216,8 +216,20 @@
       <div style="color:var(--text3);font-size:12px;">The top of My Flights shows running stats across all your saved flights — total distance, completed flights, regions explored, longest trip, average leg distance, and more.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Public Sharing</div>
-      <div style="color:var(--text3);font-size:12px;">Toggle any saved flight to Public and copy a share link. Other pilots can open it, see your notes and ratings if you leave them, and save the flight to their own account.</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Flight Brief ▾</div>
+      <div style="color:var(--text3);font-size:12px;">Each saved flight card has a Flight Brief dropdown with two options: <strong style="color:var(--text);">Copy to Clipboard</strong> copies a text brief with dep/arr info, distance, bearing, cruise speed, estimated time, and any pilot notes. <strong style="color:var(--text);">Save as Text File</strong> downloads the same brief as a .txt file.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Share Flight</div>
+      <div style="color:var(--text3);font-size:12px;">Copies a shareable link for the flight. If the flight is set to Private, it is automatically made Public first. Other pilots can open the link and save the flight to their own account.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Export ▾</div>
+      <div style="color:var(--text3);font-size:12px;">Export any saved flight directly to your simulator — X-Plane 12, X-Plane 11, MSFS 2020, or MSFS 2024. If you used Pull Route before saving the flight, the full IFR route with waypoints is included and the filename ends in <strong style="color:var(--text);">-ROUTE</strong>. Otherwise a direct dep→arr flight is exported.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Public / Private</div>
+      <div style="color:var(--text3);font-size:12px;">Toggle any saved flight between Public and Private. Public flights can be opened by anyone with the share link.</div>
     </div>
   </div>
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin-top:8px;">

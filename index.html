@@ -2562,6 +2562,10 @@ async function saveFlight() {
   const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
   const notes = document.querySelector('#text-results textarea')?.value || '';
 
+  const savedNodes = (pulledNodes.low || pulledNodes.high)
+    ? { low: pulledNodes.low, high: pulledNodes.high }
+    : null;
+
   const { error } = await _sb.from('saved_flights').insert({
     user_id: currentUser.id,
     dep_id: currentDep.id, dep_name: currentDep.name,
@@ -2570,7 +2574,8 @@ async function saveFlight() {
     arr_lat: currentArr.lat, arr_lon: currentArr.lon,
     distance_nm: dist, bearing_deg: bear, speed_kts: speed,
     pilot_notes: notes, is_public: false,
-    is_challenge: getChallengeFactors(currentArr).length > 0
+    is_challenge: getChallengeFactors(currentArr).length > 0,
+    route_nodes: savedNodes
   });
 
   if (error) { showToast('Save failed: ' + error.message, 'err'); return; }
@@ -2594,6 +2599,10 @@ async function shareFlight() {
   const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
   const notes = document.querySelector('#text-results textarea')?.value || '';
 
+  const savedNodes = (pulledNodes.low || pulledNodes.high)
+    ? { low: pulledNodes.low, high: pulledNodes.high }
+    : null;
+
   const { data, error } = await _sb.from('saved_flights').insert({
     user_id: currentUser.id,
     dep_id: currentDep.id, dep_name: currentDep.name,
@@ -2602,7 +2611,8 @@ async function shareFlight() {
     arr_lat: currentArr.lat, arr_lon: currentArr.lon,
     distance_nm: dist, bearing_deg: bear, speed_kts: speed,
     pilot_notes: notes, is_public: true,
-    is_challenge: getChallengeFactors(currentArr).length > 0
+    is_challenge: getChallengeFactors(currentArr).length > 0,
+    route_nodes: savedNodes
   }).select('share_token').single();
 
   if (error) { showToast('Share failed: ' + error.message, 'err'); return; }

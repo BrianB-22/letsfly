@@ -225,6 +225,32 @@
 
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
     .pulse-dot { display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite;margin-right:4px; }
+
+    /* ── CARD ACTION DROPDOWNS ── */
+    .export-wrap { position: relative; display: inline-block; }
+    .export-menu {
+      display: none; position: absolute;
+      bottom: calc(100% + 4px); left: 0;
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 3px; min-width: 160px; z-index: 200;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    .export-menu.open { display: block; }
+    .export-menu button {
+      display: block; width: 100%; text-align: left;
+      padding: 8px 14px; background: transparent; border: none;
+      border-bottom: 1px solid var(--border); color: var(--text2);
+      font-family: var(--mono); font-size: 11px; cursor: pointer; transition: background 0.1s;
+    }
+    .export-menu button:last-child { border-bottom: none; }
+    .export-menu button:hover { background: var(--bg3); color: var(--accent); }
+
+    .btn-brief  { background: transparent; border-color: var(--border2); color: var(--text2); }
+    .btn-brief:hover  { border-color: var(--text2); color: var(--text); }
+    .btn-share  { background: rgba(0,180,216,0.08); border-color: rgba(0,180,216,0.35); color: var(--accent); }
+    .btn-share:hover  { background: rgba(0,180,216,0.18); }
+    .btn-export { background: rgba(244,162,97,0.08); border-color: rgba(244,162,97,0.35); color: var(--amber); }
+    .btn-export:hover { background: rgba(244,162,97,0.18); }
   </style>
 </head>
 <body>
@@ -660,10 +686,26 @@ function buildCard(f) {
       <div class="card-actions">
         <button class="btn btn-save" onclick="saveDetails('${f.id}')">Save Changes</button>
         <button class="btn btn-map"  onclick="toggleMap('${f.id}')">View Route</button>
+        <div class="export-wrap">
+          <button class="btn btn-brief" onclick="toggleCardBriefMenu('${f.id}', event)">Flight Brief ▾</button>
+          <div class="export-menu" id="brief-menu-${f.id}">
+            <button onclick="copyFlightBriefForCard('${f.id}')">Copy to Clipboard</button>
+            <button onclick="saveFlightBriefForCard('${f.id}')">Save as Text File</button>
+          </div>
+        </div>
+        <button class="btn btn-share" onclick="shareFlightFromCard('${f.id}')">Share Flight</button>
+        <div class="export-wrap">
+          <button class="btn btn-export" onclick="toggleCardExportMenu('${f.id}', event)">Export ▾</button>
+          <div class="export-menu" id="export-menu-${f.id}">
+            <button onclick="exportSavedFlight('${f.id}', 'xp12')">X-Plane 12</button>
+            <button onclick="exportSavedFlight('${f.id}', 'xp11')">X-Plane 11</button>
+            <button onclick="exportSavedFlight('${f.id}', 'msfs2020')">MSFS 2020</button>
+            <button onclick="exportSavedFlight('${f.id}', 'msfs2024')">MSFS 2024</button>
+          </div>
+        </div>
         <button class="btn btn-pub${f.is_public ? ' public' : ''}" id="pub-${f.id}" onclick="togglePublic('${f.id}')">
           ${f.is_public ? '🔓 Public' : '🔒 Private'}
         </button>
-        ${f.is_public && f.share_token ? `<button class="btn btn-copy-link" id="copylink-${f.id}" onclick="copyShareLink('${f.share_token}')">Copy Link</button>` : `<span id="copylink-${f.id}"></span>`}
         <button class="btn btn-delete" onclick="deleteFlight('${f.id}')">Delete</button>
       </div>
     </div>
@@ -757,14 +799,6 @@ async function togglePublic(id) {
   if (btn) {
     btn.className = 'btn btn-pub' + (newVal ? ' public' : '');
     btn.textContent = newVal ? '🔓 Public' : '🔒 Private';
-  }
-  const linkSlot = document.getElementById('copylink-' + id);
-  if (linkSlot) {
-    if (newVal && f.share_token) {
-      linkSlot.outerHTML = `<button class="btn btn-copy-link" id="copylink-${id}" onclick="copyShareLink('${f.share_token}')">Copy Link</button>`;
-    } else {
-      linkSlot.outerHTML = `<span id="copylink-${id}"></span>`;
-    }
   }
   showToast(newVal ? 'Flight is now public.' : 'Flight set to private.', 'ok');
 }
@@ -944,6 +978,196 @@ function showToast(msg, type) {
   el.className = 'toast show' + (type ? ' ' + type : '');
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+// ── CLOSE DROPDOWNS ON OUTSIDE CLICK ──
+document.addEventListener('click', () => {
+  document.querySelectorAll('.export-menu.open').forEach(m => m.classList.remove('open'));
+});
+
+// ── CARD DROPDOWN TOGGLES ──
+function toggleCardBriefMenu(id, e) {
+  e.stopPropagation();
+  document.querySelectorAll('.export-menu.open').forEach(m => {
+    if (m.id !== 'brief-menu-' + id) m.classList.remove('open');
+  });
+  document.getElementById('brief-menu-' + id)?.classList.toggle('open');
+}
+
+function toggleCardExportMenu(id, e) {
+  e.stopPropagation();
+  document.querySelectorAll('.export-menu.open').forEach(m => {
+    if (m.id !== 'export-menu-' + id) m.classList.remove('open');
+  });
+  document.getElementById('export-menu-' + id)?.classList.toggle('open');
+}
+
+// ── FLIGHT BRIEF ──
+function _bearingName(deg) {
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
+function buildSavedFlightBrief(f) {
+  const divider = '─'.repeat(52);
+  const pad     = '             ';
+  const dist    = f.distance_nm ? f.distance_nm.toFixed(0) + ' nm' : '—';
+  const speed   = f.speed_kts || f.cruise_speed || 250;
+  const bear    = f.bearing_deg != null ? f.bearing_deg.toFixed(1) + '° (' + _bearingName(f.bearing_deg) + ')' : '—';
+  const estH    = f.distance_nm ? Math.floor(f.distance_nm / speed) : null;
+  const estM    = f.distance_nm ? Math.round((f.distance_nm / speed % 1) * 60) : null;
+  const estTime = estH != null ? `${estH}h ${String(estM).padStart(2,'0')}m` : '—';
+
+  let txt = `SimLetsFly — Flight Brief\n${divider}\n\n`;
+  txt += `  DEPARTURE  ${f.dep_id} · ${f.dep_name || '—'}\n\n`;
+  txt += `  ARRIVAL    ${f.arr_id} · ${f.arr_name || '—'}\n\n`;
+  txt += `${divider}\n`;
+  txt += `  DISTANCE   ${dist}\n`;
+  txt += `  BEARING    ${bear}\n`;
+  txt += `  CRUISE     ${speed} kts\n`;
+  txt += `  EST. TIME  ${estTime}\n`;
+  if (f.pilot_notes) txt += `\n  NOTES      ${f.pilot_notes.replace(/\n/g, '\n' + pad)}\n`;
+  txt += `\n${divider}\n`;
+  txt += `  For entertainment purposes only · SimLetsFly.com\n`;
+  return txt;
+}
+
+function copyFlightBriefForCard(id) {
+  document.getElementById('brief-menu-' + id)?.classList.remove('open');
+  const f = flights.find(f => f.id === id);
+  if (!f) return;
+  navigator.clipboard.writeText(buildSavedFlightBrief(f)).then(() => {
+    showToast('Flight brief copied to clipboard', 'ok');
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'flight_brief_copy' })).catch(() => {}); } catch(e) {}
+  });
+}
+
+function saveFlightBriefForCard(id) {
+  document.getElementById('brief-menu-' + id)?.classList.remove('open');
+  const f = flights.find(f => f.id === id);
+  if (!f) return;
+  const filename = `${f.dep_id}-${f.arr_id}-FLIGHT-BRIEF.txt`;
+  const blob = new Blob([buildSavedFlightBrief(f)], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(`Saved ${filename}`, 'ok');
+  try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'flight_brief_save' })).catch(() => {}); } catch(e) {}
+}
+
+// ── SHARE FLIGHT ──
+async function shareFlightFromCard(id) {
+  const f = flights.find(f => f.id === id);
+  if (!f) return;
+  if (!f.is_public) {
+    const { error } = await _sb.from('saved_flights')
+      .update({ is_public: true }).eq('id', id).eq('user_id', currentUser.id);
+    if (error) { showToast('Could not share flight.', 'err'); return; }
+    f.is_public = true;
+    const btn = document.getElementById('pub-' + id);
+    if (btn) { btn.className = 'btn btn-pub public'; btn.textContent = '🔓 Public'; }
+  }
+  if (!f.share_token) { showToast('No share token available.', 'err'); return; }
+  const url = `https://simletsfly.com/?flight=${f.share_token}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Share link copied!', 'ok');
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'share_flight' })).catch(() => {}); } catch(e) {}
+  });
+}
+
+// ── EXPORT ──
+function exportSavedFlight(id, sim) {
+  document.getElementById('export-menu-' + id)?.classList.remove('open');
+  const f = flights.find(f => f.id === id);
+  if (!f || !f.dep_lat || !f.arr_lat) { showToast('Flight data incomplete for export.', 'err'); return; }
+
+  // Use stored route nodes if available (high preferred, fall back to low, then direct)
+  const rn = f.route_nodes;
+  const routeNodes = rn ? (rn.high ?? rn.low) : null;
+  const isHigh = rn ? !!rn.high : false;
+  const nodes = routeNodes ?? [
+    { ident: f.dep_id, lat: f.dep_lat, lon: f.dep_lon },
+    { ident: f.arr_id, lat: f.arr_lat, lon: f.arr_lon },
+  ];
+  const routeSuffix = routeNodes ? '-ROUTE' : '';
+
+  let content, filename;
+  if (sim === 'xp11' || sim === 'xp12') {
+    content  = _buildXPFMS(nodes, f.dep_id, f.arr_id, isHigh);
+    filename = `${f.dep_id}-${f.arr_id}${routeSuffix}.fms`;
+  } else {
+    content  = _buildMSFSPLN(nodes, f, isHigh);
+    filename = `${f.dep_id}-${f.arr_id}${routeSuffix}.pln`;
+  }
+
+  try {
+    const blobUrl = URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
+    const a = Object.assign(document.createElement('a'), { href: blobUrl, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: `export_${sim}` })).catch(() => {}); } catch(e) {}
+  } catch(err) {
+    showToast('Export failed: ' + err.message, 'err');
+  }
+}
+
+function _buildXPFMS(nodes, depICAO, arrICAO, isHigh) {
+  const typeMap = { APT: 1, NDB: 2, VOR: 3, FIX: 11 };
+  const cruiseAlt = isHigh ? 35000 : 8000;
+  const lines = ['I', '1100 Version', 'CYCLE 2101', `ADEP ${depICAO}`, `ADES ${arrICAO}`, `NUMENR ${nodes.length}`];
+  for (const n of nodes) {
+    const t   = typeMap[n.type] ?? (n.ident === depICAO || n.ident === arrICAO ? 1 : 28);
+    const alt = n.type === 'APT' || !n.type ? '0.000000' : cruiseAlt.toFixed(6);
+    if (n.type === 'APT' || !n.type) {
+      const role = n.ident === depICAO ? 'ADEP' : 'ADES';
+      lines.push(`${t} ${n.ident} ${role} 0.000000 ${n.lat.toFixed(6)} ${n.lon.toFixed(6)}`);
+    } else {
+      lines.push(`${t} ${n.ident} ${alt} ${n.lat.toFixed(6)} ${n.lon.toFixed(6)}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function _toDMS(deg, isLat) {
+  const dir = isLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
+  const abs = Math.abs(deg), d = Math.floor(abs), mf = (abs - d) * 60, m = Math.floor(mf);
+  return `${dir}${d}° ${m}' ${((mf - m) * 60).toFixed(2)}"`;
+}
+
+function _buildMSFSPLN(nodes, f, isHigh) {
+  const cruiseAlt  = isHigh ? 35000 : 8000;
+  const routeType  = isHigh ? 'HighAlt' : 'LowAlt';
+  const wpTypeMap  = { APT: 'Airport', VOR: 'VOR', NDB: 'NDB' };
+  const waypoints  = nodes.map(n => {
+    const wpType = wpTypeMap[n.type] ?? 'Intersection';
+    const alt    = n.type === 'APT' || !n.type ? 0 : cruiseAlt;
+    const altStr = (alt >= 0 ? '+' : '') + alt.toFixed(2).padStart(9, '0');
+    return `    <ATCWaypoint id="${n.ident}">
+      <ATCWaypointType>${wpType}</ATCWaypointType>
+      <WorldPosition>${_toDMS(n.lat, true)},${_toDMS(n.lon, false)},${altStr}</WorldPosition>
+      <ICAO><ICAOIdent>${n.ident}</ICAOIdent></ICAO>
+    </ATCWaypoint>`;
+  }).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<SimBase.Document Type="AceXML" version="1,0">
+  <Descr>AceXML Document</Descr>
+  <FlightPlan.FlightPlan>
+    <Title>${f.dep_id} to ${f.arr_id}</Title>
+    <FPType>IFR</FPType>
+    <RouteType>${routeType}</RouteType>
+    <CruisingAlt>${cruiseAlt}</CruisingAlt>
+    <DepartureID>${f.dep_id}</DepartureID>
+    <DestinationID>${f.arr_id}</DestinationID>
+    <DepartureName>${f.dep_name ?? f.dep_id}</DepartureName>
+    <DestinationName>${f.arr_name ?? f.arr_id}</DestinationName>
+    <AppVersion><AppVersionMajor>11</AppVersionMajor><AppVersionBuild>282174</AppVersionBuild></AppVersion>
+${waypoints}
+  </FlightPlan.FlightPlan>
+</SimBase.Document>`;
 }
 </script>
 </body>
