@@ -2767,7 +2767,10 @@ async function loadUserPrefs() {
   if (data.aircraft_preset) {
     const sel = document.getElementById('aircraft-preset');
     const match = [...sel.options].find(o => o.text === data.aircraft_preset);
-    if (match) sel.value = match.value, sel.selectedIndex = match.index;
+    if (match) {
+      sel.selectedIndex = match.index;
+      document.getElementById('cruise-speed').value = match.value;
+    }
   }
   if (data.range_min || data.range_max) {
     const spd = parseFloat(data.cruise_speed) || 280;
@@ -3371,6 +3374,7 @@ function applyAircraftPreset() {
   if (!sel.value) return;
   document.getElementById('cruise-speed').value = sel.value;
   updateRangeHint();
+  if (currentUser) saveUserPrefs();
 }
 
 function onCruiseSpeedInput() {
