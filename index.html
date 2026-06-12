@@ -2706,8 +2706,7 @@ let lastFlightArrival = null;
 
 async function loadLastFlightAirport() {
   const el = document.getElementById('dep-last-status');
-  el.style.color = 'var(--text3)';
-  el.textContent = 'Fetching last flight…';
+  el.innerHTML = '<span style="color:var(--text3)">Fetching last flight…</span>';
   const { data, error } = await _sb
     .from('saved_flights')
     .select('arr_id, arr_name')
@@ -2717,20 +2716,29 @@ async function loadLastFlightAirport() {
     .single();
   if (error || !data) {
     lastFlightArrival = null;
-    el.style.color = 'var(--text3)';
-    el.textContent = 'No saved flights yet — save a flight first.';
+    el.innerHTML = '<span style="color:var(--text3)">No saved flights yet — save a flight first.</span>';
     return;
   }
   const airport = AIRPORTS.find(a => a.id === data.arr_id);
   if (!airport) {
     lastFlightArrival = null;
-    el.style.color = 'var(--red)';
-    el.textContent = `${data.arr_id} not found in local database.`;
+    el.innerHTML = `<span style="color:var(--red)">${data.arr_id} not found in local database.</span>`;
     return;
   }
   lastFlightArrival = airport;
-  el.style.color = 'var(--green)';
-  el.textContent = `✓ ${airport.id} — ${airport.name}`;
+  const runway = airport.runway ? airport.runway.toLocaleString() + ' ft' : '—';
+  const location = [airport.city, airport.country].filter(Boolean).join(', ') || airport.country || '—';
+  el.innerHTML = `
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+      <span style="color:var(--green);font-size:12px">✓</span>
+      <span style="color:var(--text);font-size:15px;letter-spacing:2px">${airport.id}</span>
+      <span style="color:var(--text2);font-size:12px">${airport.name}</span>
+    </div>
+    <div style="color:var(--text3);font-size:10px;letter-spacing:1px;text-transform:uppercase;display:flex;gap:14px;flex-wrap:wrap">
+      <span>${airport.type}</span>
+      <span>${location}</span>
+      <span>Rwy: ${runway}</span>
+    </div>`;
 }
 
 async function loadUserPrefs() {
@@ -4949,7 +4957,7 @@ loadAirports();
 depModeChanged();
 
 // Re-run on bfcache restore (browser back button) so panel visibility matches the saved radio state
-window.addEventListener('pageshow', (e) => { if (e.persisted) depModeChanged(); });
+window.addEventListener('pageshow', () => depModeChanged());
 
 // Mutual exclusivity for fuel checkboxes
 document.getElementById('dep-avgas').addEventListener('change', function() { if(this.checked) document.getElementById('dep-jeta').checked = false; });
