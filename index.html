@@ -4910,6 +4910,9 @@ function closeHelpModal() {
 loadAirports();
 depModeChanged();
 
+// Re-run on bfcache restore (browser back button) so panel visibility matches the saved radio state
+window.addEventListener('pageshow', (e) => { if (e.persisted) depModeChanged(); });
+
 // Mutual exclusivity for fuel checkboxes
 document.getElementById('dep-avgas').addEventListener('change', function() { if(this.checked) document.getElementById('dep-jeta').checked = false; });
 document.getElementById('dep-jeta').addEventListener('change', function() { if(this.checked) document.getElementById('dep-avgas').checked = false; });
