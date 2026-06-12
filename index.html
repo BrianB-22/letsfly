@@ -3691,7 +3691,7 @@ function renderResults(dep, arr, isChallenge = false) {
     <div class="pilot-notes" style="grid-column:1/-1">
       <div class="pilot-notes-header">
         <label>Pilot Notes</label>
-        <button class="btn-pull-route" onclick="pullRoute('${dep.id}','${arr.id}',this)">Pull Route</button>
+        <button class="btn-pull-route" onclick="pullRoute('${dep.id}','${arr.id}',this)">Get IFR Route</button>
       </div>
       <textarea placeholder="Add your flight notes here..."></textarea>
     </div>
@@ -4262,13 +4262,13 @@ function getAirwayPref() {
 
 async function pullRoute(fromICAO, toICAO, btn) {
   if (!currentUser) {
-    showToast('Sign in to use Pull Route', 'info');
+    showToast('Sign in to use Get IFR Route', 'info');
     showAuthModal('signin');
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = 'Pulling...';
+  btn.textContent = 'Fetching...';
 
   try {
     const url = `https://blxugbnoitkxhdjgfkff.supabase.co/functions/v1/pull-route?from=${fromICAO}&to=${toICAO}`;
@@ -4327,7 +4327,7 @@ async function pullRoute(fromICAO, toICAO, btn) {
   }
 
   btn.disabled = false;
-  btn.textContent = 'Pull Route';
+  btn.textContent = 'Get IFR Route';
 }
 
 function toggleExportMenu(e) {
