@@ -2766,10 +2766,8 @@ async function loadUserPrefs() {
   if (data.cruise_speed) document.getElementById('cruise-speed').value = data.cruise_speed;
   {
     const sel = document.getElementById('aircraft-preset');
-    console.log('[SLF] loadUserPrefs aircraft_preset:', data.aircraft_preset, 'cruise_speed:', data.cruise_speed);
     if (data.aircraft_preset) {
       const match = [...sel.options].find(o => o.dataset.key === data.aircraft_preset);
-      console.log('[SLF] preset match:', match ? match.text : 'NOT FOUND');
       if (match) {
         sel.selectedIndex = match.index;
         document.getElementById('cruise-speed').value = match.value;
@@ -2777,7 +2775,6 @@ async function loadUserPrefs() {
     } else if (data.cruise_speed) {
       const speedStr = String(data.cruise_speed);
       const matches = [...sel.options].filter(o => o.value === speedStr);
-      console.log('[SLF] speed fallback matches:', matches.length, 'for speed', speedStr);
       if (matches.length === 1) sel.selectedIndex = matches[0].index;
     }
   }
@@ -2859,7 +2856,7 @@ async function saveUserPrefs() {
   await _sb.from('profiles').upsert({
     user_id:       currentUser.id,
     cruise_speed:  speed,
-    aircraft_preset: (() => { const s = document.getElementById('aircraft-preset'); const key = s.selectedIndex > 0 ? (s.options[s.selectedIndex].dataset.key || null) : null; console.log('[SLF] saveUserPrefs aircraft_preset:', key, 'selectedIndex:', s.selectedIndex); return key; })(),
+    aircraft_preset: (() => { const s = document.getElementById('aircraft-preset'); return s.selectedIndex > 0 ? (s.options[s.selectedIndex].dataset.key || null) : null; })(),
     range_min:     rangeMin,
     range_max:     rangeMax,
     theme:         document.body.classList.contains('light-mode') ? 'light' : 'dark',
