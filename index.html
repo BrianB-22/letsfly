@@ -2127,6 +2127,16 @@
               <input type="number" id="arr-rwy-min" placeholder="None" min="0" max="20000" style="width:90px">
               <label>Max</label>
               <input type="number" id="arr-rwy-max" placeholder="None" min="0" max="20000" style="width:90px">
+              <span class="range-sep" style="margin-left:10px">Dir</span>
+              <div class="select-wrap" style="width:96px">
+                <select id="arr-direction">
+                  <option value="">Random</option>
+                  <option value="N">North</option>
+                  <option value="S">South</option>
+                  <option value="E">East</option>
+                  <option value="W">West</option>
+                </select>
+              </div>
             </div>
             <div style="display:none">
               <input type="checkbox" id="arr-avgas">
@@ -3483,21 +3493,30 @@ function _doFind() {
   }
 
   const [minNm, maxNm] = getRangeNm();
+  const arrDir = document.getElementById('arr-direction').value;
+  const dirCenter = { N: 0, E: 90, S: 180, W: 270 };
 
-  // Filter by distance from departure, exclude same airport
+  // Filter by distance, direction, and exclude same airport
   const candidates = arrPool.filter(a => {
     if (a.id === dep.id) return false;
     const d = distNm(dep.lat, dep.lon, a.lat, a.lon);
-    return d >= minNm && d <= maxNm;
+    if (d < minNm || d > maxNm) return false;
+    if (arrDir) {
+      const b = bearing(dep.lat, dep.lon, a.lat, a.lon);
+      const diff = Math.abs(((b - dirCenter[arrDir] + 540) % 360) - 180);
+      if (diff > 67.5) return false;
+    }
+    return true;
   });
 
   if (!candidates.length) {
     const rangeLabel = rangeMode === 'hrs'
       ? `${document.getElementById('arr-min').value}–${document.getElementById('arr-max').value} hrs`
       : `${Math.round(minNm)}–${Math.round(maxNm)} nm`;
+    const dirLabel = arrDir ? ` to the ${{'N':'North','S':'South','E':'East','W':'West'}[arrDir]}` : '';
     setStatus(
-      `No arrival airports within ${rangeLabel} of ${dep.id}. ` +
-      `Try widening the range or relaxing arrival filters.`, 'err'
+      `No arrival airports within ${rangeLabel} of ${dep.id}${dirLabel}. ` +
+      `Try widening the range, changing direction, or relaxing arrival filters.`, 'err'
     );
     return;
   }
