@@ -244,9 +244,8 @@
     }
     .export-menu button:last-child { border-bottom: none; }
     .export-menu button:hover { background: var(--bg3); color: var(--accent); }
+    .export-menu-divider { height: 1px; background: var(--border2); margin: 2px 0; pointer-events: none; }
 
-    .btn-brief  { background: transparent; border-color: var(--border2); color: var(--text2); }
-    .btn-brief:hover  { border-color: var(--text2); color: var(--text); }
     .btn-share  { background: rgba(0,180,216,0.08); border-color: rgba(0,180,216,0.35); color: var(--accent); }
     .btn-share:hover  { background: rgba(0,180,216,0.18); }
     .btn-export { background: rgba(244,162,97,0.08); border-color: rgba(244,162,97,0.35); color: var(--amber); }
@@ -721,17 +720,13 @@ function buildCard(f) {
       <div class="card-actions">
         <button class="btn btn-save" onclick="saveDetails('${f.id}')">Save Changes</button>
         <button class="btn btn-map"  onclick="toggleMap('${f.id}')">View Route</button>
-        <div class="export-wrap">
-          <button class="btn btn-brief" onclick="toggleCardBriefMenu('${f.id}', event)">Flight Brief ▾</button>
-          <div class="export-menu" id="brief-menu-${f.id}">
-            <button onclick="copyFlightBriefForCard('${f.id}')">Copy to Clipboard</button>
-            <button onclick="saveFlightBriefForCard('${f.id}')">Save as Text File</button>
-          </div>
-        </div>
         <button class="btn btn-share" onclick="shareFlightFromCard('${f.id}')">Share Flight</button>
         <div class="export-wrap">
           <button class="btn btn-export" onclick="toggleCardExportMenu('${f.id}', event)">Export ▾</button>
           <div class="export-menu" id="export-menu-${f.id}">
+            <button onclick="copyFlightBriefForCard('${f.id}')">Flight Brief — Copy</button>
+            <button onclick="saveFlightBriefForCard('${f.id}')">Flight Brief — Save as Text</button>
+            <div class="export-menu-divider"></div>
             <button onclick="exportSavedFlight('${f.id}', 'xp12')">X-Plane 12</button>
             <button onclick="exportSavedFlight('${f.id}', 'xp11')">X-Plane 11</button>
             <button onclick="exportSavedFlight('${f.id}', 'msfs2020')">MSFS 2020</button>
@@ -1021,14 +1016,6 @@ document.addEventListener('click', () => {
 });
 
 // ── CARD DROPDOWN TOGGLES ──
-function toggleCardBriefMenu(id, e) {
-  e.stopPropagation();
-  document.querySelectorAll('.export-menu.open').forEach(m => {
-    if (m.id !== 'brief-menu-' + id) m.classList.remove('open');
-  });
-  document.getElementById('brief-menu-' + id)?.classList.toggle('open');
-}
-
 function toggleCardExportMenu(id, e) {
   e.stopPropagation();
   document.querySelectorAll('.export-menu.open').forEach(m => {
@@ -1068,7 +1055,7 @@ function buildSavedFlightBrief(f) {
 }
 
 function copyFlightBriefForCard(id) {
-  document.getElementById('brief-menu-' + id)?.classList.remove('open');
+  document.getElementById('export-menu-' + id)?.classList.remove('open');
   const f = flights.find(f => f.id === id);
   if (!f) return;
   navigator.clipboard.writeText(buildSavedFlightBrief(f)).then(() => {
@@ -1078,7 +1065,7 @@ function copyFlightBriefForCard(id) {
 }
 
 function saveFlightBriefForCard(id) {
-  document.getElementById('brief-menu-' + id)?.classList.remove('open');
+  document.getElementById('export-menu-' + id)?.classList.remove('open');
   const f = flights.find(f => f.id === id);
   if (!f) return;
   const filename = `${f.dep_id}-${f.arr_id}-FLIGHT-BRIEF.txt`;
