@@ -1891,6 +1891,10 @@
             <input type="radio" name="dep-mode" value="favorites" id="dep-favorites" onchange="depModeChanged()">
             <label for="dep-favorites">Favorite Airports</label>
           </label>
+          <label class="radio-opt" id="dep-last-opt">
+            <input type="radio" name="dep-mode" value="last-airport" id="dep-last" onchange="depModeChanged()">
+            <label for="dep-last">Last Airport in My Flights</label>
+          </label>
           <label class="radio-opt">
             <input type="radio" name="dep-mode" value="random" id="dep-random" checked onchange="depModeChanged()">
             <label for="dep-random">Random — Match Criteria Below</label>
@@ -1911,6 +1915,18 @@
                   onkeydown="if(event.key==='Enter')addFavorite('dep')">
                 <button class="fav-add-btn" onclick="addFavorite('dep')">+ Add</button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Last Airport in My Flights -->
+        <div class="section" id="dep-last-section" style="display:none">
+          <div class="section-inner">
+            <div id="dep-last-login-msg" class="fav-login-msg" style="display:none">
+              <a onclick="showAuthModal('signin')">Sign in</a> or <a onclick="showAuthModal('signup')">create an account</a> to use Last Airport.
+            </div>
+            <div id="dep-last-content" style="display:none">
+              <div id="dep-last-status" style="font-family:var(--mono);font-size:11px;color:var(--text3);padding:2px 0;"></div>
             </div>
           </div>
         </div>
@@ -2343,18 +2359,18 @@ _sb.auth.onAuthStateChange((event, session) => {
   }
   if (event === 'SIGNED_IN') {
     depFavorites = [];
+    lastFlightArrival = null;
     loadFavorites();
     loadUserPrefs();
-    // Refresh favorites section if currently visible
     const mode = document.querySelector('input[name="dep-mode"]:checked')?.value;
-    if (mode === 'favorites') depModeChanged();
+    if (mode === 'favorites' || mode === 'last-airport') depModeChanged();
   }
   if (event === 'SIGNED_OUT') {
     depFavorites = [];
+    lastFlightArrival = null;
     renderFavoritesList();
-    // If on favorites mode, show login message
     const mode = document.querySelector('input[name="dep-mode"]:checked')?.value;
-    if (mode === 'favorites') depModeChanged();
+    if (mode === 'favorites' || mode === 'last-airport') depModeChanged();
   }
 });
 
@@ -2676,6 +2692,36 @@ async function shareFlight() {
 
 // ── FAVORITES ──
 let depFavorites = [];
+let lastFlightArrival = null;
+
+async function loadLastFlightAirport() {
+  const el = document.getElementById('dep-last-status');
+  el.style.color = 'var(--text3)';
+  el.textContent = 'Fetching last flight…';
+  const { data, error } = await _sb
+    .from('saved_flights')
+    .select('arr_id, arr_name')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  if (error || !data) {
+    lastFlightArrival = null;
+    el.style.color = 'var(--text3)';
+    el.textContent = 'No saved flights yet — save a flight first.';
+    return;
+  }
+  const airport = AIRPORTS.find(a => a.id === data.arr_id);
+  if (!airport) {
+    lastFlightArrival = null;
+    el.style.color = 'var(--red)';
+    el.textContent = `${data.arr_id} not found in local database.`;
+    return;
+  }
+  lastFlightArrival = airport;
+  el.style.color = 'var(--green)';
+  el.textContent = `✓ ${airport.id} — ${airport.name}`;
+}
 
 async function loadUserPrefs() {
   if (!currentUser) return;
@@ -2990,9 +3036,10 @@ function updateArrRegion() {
 // ═══════════════════════════════════════════════════════
 function depModeChanged() {
   const mode = document.querySelector('input[name="dep-mode"]:checked').value;
-  document.getElementById('dep-specific-section').style.display  = mode === 'specific'  ? 'block' : 'none';
-  document.getElementById('dep-favorites-section').style.display = mode === 'favorites' ? 'block' : 'none';
-  document.getElementById('dep-random-section').style.display    = mode === 'random'    ? 'block' : 'none';
+  document.getElementById('dep-specific-section').style.display  = mode === 'specific'      ? 'block' : 'none';
+  document.getElementById('dep-favorites-section').style.display = mode === 'favorites'     ? 'block' : 'none';
+  document.getElementById('dep-last-section').style.display      = mode === 'last-airport'  ? 'block' : 'none';
+  document.getElementById('dep-random-section').style.display    = mode === 'random'        ? 'block' : 'none';
   if (mode === 'favorites') {
     if (!currentUser) {
       document.getElementById('dep-fav-login-msg').style.display = 'block';
@@ -3001,6 +3048,16 @@ function depModeChanged() {
       document.getElementById('dep-fav-login-msg').style.display = 'none';
       document.getElementById('dep-fav-content').style.display   = 'block';
       if (!depFavorites.length) loadFavorites();
+    }
+  }
+  if (mode === 'last-airport') {
+    if (!currentUser) {
+      document.getElementById('dep-last-login-msg').style.display = 'block';
+      document.getElementById('dep-last-content').style.display   = 'none';
+    } else {
+      document.getElementById('dep-last-login-msg').style.display = 'none';
+      document.getElementById('dep-last-content').style.display   = 'block';
+      loadLastFlightAirport();
     }
   }
 }
@@ -3145,6 +3202,11 @@ function validate() {
       const found = AIRPORTS.find(a => a.id === ident.toUpperCase());
       if (!found) errors.push(`Departure airport "${ident.toUpperCase()}" not found in the database.`);
     }
+  } else if (depMode === 'last-airport') {
+    if (!currentUser) errors.push('Sign in to use Last Airport in My Flights.');
+    else if (!lastFlightArrival) errors.push('No saved flights found — save a flight first.');
+  } else if (depMode === 'favorites') {
+    // handled below in _doFind
   } else {
     // Random departure — need at least one type and one runway surface
     const depTypes = getCheckedValues('dep-type');
@@ -3384,6 +3446,10 @@ function _doFind() {
   if (depMode === 'specific') {
     const ident = document.getElementById('dep-ident').value.toUpperCase().trim();
     dep = AIRPORTS.find(a => a.id === ident);
+    document.getElementById('dep-match').textContent = '1 pinned';
+  } else if (depMode === 'last-airport') {
+    if (!lastFlightArrival) { setStatus('No saved flights found — save a flight first.', 'err'); return; }
+    dep = lastFlightArrival;
     document.getElementById('dep-match').textContent = '1 pinned';
   } else if (depMode === 'favorites') {
     const sel = document.querySelector('input[name="dep-fav-select"]:checked');
