@@ -10,6 +10,11 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://simletsfly.com/">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0e1318">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SimLetsFly">
+<link rel="apple-touch-icon" href="icon-192.svg">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
@@ -5031,6 +5036,12 @@ document.getElementById('arr-jeta').addEventListener('change', function() { if(t
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
 
 </body>
 </html>
