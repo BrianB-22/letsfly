@@ -250,6 +250,8 @@
     .btn-share:hover  { background: rgba(0,180,216,0.18); }
     .btn-export { background: rgba(244,162,97,0.08); border-color: rgba(244,162,97,0.35); color: var(--amber); }
     .btn-export:hover { background: rgba(244,162,97,0.18); }
+    .btn-load   { background: rgba(82,183,136,0.08); border-color: rgba(82,183,136,0.35); color: var(--green); }
+    .btn-load:hover   { background: rgba(82,183,136,0.18); }
 
     /* ── SITE BANNER ── */
     #site-banner {
@@ -733,6 +735,7 @@ function buildCard(f) {
             <button onclick="exportSavedFlight('${f.id}', 'msfs2024')">MSFS 2024</button>
           </div>
         </div>
+        <button class="btn btn-load" onclick="loadRouteToMain('${f.id}')">Load Route</button>
         <button class="btn btn-pub${f.is_public ? ' public' : ''}" id="pub-${f.id}" onclick="togglePublic('${f.id}')">
           ${f.is_public ? '🔓 Public' : '🔒 Private'}
         </button>
@@ -1097,6 +1100,20 @@ async function shareFlightFromCard(id) {
     showToast('Share link copied!', 'ok');
     try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'share_flight' })).catch(() => {}); } catch(e) {}
   });
+}
+
+// ── LOAD ROUTE ──
+function loadRouteToMain(id) {
+  const f = flights.find(f => f.id === id);
+  if (!f) return;
+  sessionStorage.setItem('slf-load-flight', JSON.stringify({
+    dep_id:      f.dep_id,
+    arr_id:      f.arr_id,
+    speed_kts:   f.speed_kts,
+    pilot_notes: f.pilot_notes ?? '',
+    route_nodes: f.route_nodes ?? null,
+  }));
+  window.location.href = 'index.html';
 }
 
 // ── EXPORT ──

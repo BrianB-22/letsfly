@@ -2971,6 +2971,7 @@ async function loadAirports() {
     initDropdowns();
     initRangeMode();
     loadSharedFlight();
+    loadFlightFromSession();
   } catch(e) {
     // Fallback: show graceful message
     document.getElementById('db-count').textContent = 'offline';
@@ -4812,6 +4813,43 @@ function openWeather() {
 // ═══════════════════════════════════════════════════════
 // LOAD SHARED FLIGHT FROM ?flight=TOKEN
 // ═══════════════════════════════════════════════════════
+function loadFlightFromSession() {
+  const raw = sessionStorage.getItem('slf-load-flight');
+  if (!raw) return;
+  sessionStorage.removeItem('slf-load-flight');
+
+  let saved;
+  try { saved = JSON.parse(raw); } catch { return; }
+
+  const dep = AIRPORTS.find(a => a.id === saved.dep_id);
+  const arr = AIRPORTS.find(a => a.id === saved.arr_id);
+  if (!dep || !arr) { setStatus(`Could not find airports ${saved.dep_id} / ${saved.arr_id} in database.`, 'err'); return; }
+
+  // Restore cruise speed
+  if (saved.speed_kts) document.getElementById('cruise-speed').value = saved.speed_kts;
+
+  // Restore route nodes so exports work
+  if (saved.route_nodes) {
+    pulledNodes.low  = saved.route_nodes.low  ?? null;
+    pulledNodes.high = saved.route_nodes.high ?? null;
+  }
+
+  currentDep = dep;
+  currentArr = arr;
+  renderResults(dep, arr);
+
+  // Restore pilot notes into the textarea after render
+  if (saved.pilot_notes) {
+    const ta = document.querySelector('#text-results textarea');
+    if (ta) ta.value = saved.pilot_notes;
+  }
+
+  setStatus(`Loaded: ${dep.id} → ${arr.id}`, 'ok');
+  setTimeout(() => {
+    document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
 async function loadSharedFlight() {
   const token = new URLSearchParams(window.location.search).get('flight');
   if (!token) return;
