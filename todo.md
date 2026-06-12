@@ -1,27 +1,34 @@
-# SimLetsFly — Feature Ideas
+# SimLetsFly — Feature Tracker
 
-## Useful for Flight Planning
+## Recently Shipped ✓
 
-- **TAF (forecast) alongside METAR** — shows what weather will be when you actually fly, not just now. Same aviationweather.gov API
-- **Aircraft profiles** — save multiple aircraft (C172 @ 120kt, A320 @ 450kt) instead of one cruise speed. Quick switch before generating a flight
-- **Suggested route** — use [Flight Plan Database API](https://flightplandatabase.com/dev/api) to show an auto-generated airway route between dep/arr ICAOs (e.g. `V172 → BRL`). Sim-use only, free tier available. Pairs well with existing SimBrief export
-- **Full flight plan via SimBrief API** — [Navigraph/SimBrief API](https://developers.navigraph.com/docs/simbrief/using-the-api) can auto-generate a complete OFP (route, fuel, waypoints, winds aloft) using dep/arr ICAO + aircraft type. User needs a free SimBrief account
-
-## Social / Engagement
-
-- **Community feed** — a page showing recent publicly shared flights from all users. Discover interesting routes other pilots have flown
-- **My Stats** — per-user page showing total flights, countries visited, estimated hours flown, top regions, rating trends over time. All data is already in Supabase
-
-## Polish
-
-- **Logbook CSV export** — let users download their My Flights data as a spreadsheet
-- **PWA / installable** — add a manifest.json so the site can be pinned to a phone home screen and feels like a native app
-- **Multi-language** — international reach, though that's a big undertaking
-
-## Wildcard
-
-- **Challenge airports** — a "hard mode" button that finds airports with short runways, high elevation, or mountainous terrain. Adds a game element
+- **Site banner** — `banner.json` driven, toggle active/message without touching HTML
+- **Last Airport in My Flights** — departure option that uses the arrival of the most recent saved flight; shows airport type, city, runway length
+- **Arrival direction filter** — N/S/E/W dropdown next to runway length; ±67.5° arc from departure
+- **Load Route** — button on My Flights cards that restores the full flight (dep, arr, speed, notes, route nodes) back into the main app
+- **Flight Brief merged into Export** — one dropdown on My Flights cards instead of two
+- **Get IFR Route** — renamed from "Pull Route"; added 9s timeout with sleep wake-up toast; route header in pilot notes now stamped with pull date
+- **About page** — bernacki.me author link at top, Discord removed, all new features documented
+- **Challenge airports** ✓ — already shipped before this session
+- **TAF alongside METAR** ✓ — edge function already supported it, wired to UI
 
 ---
 
-> Top picks for user engagement: **TAF**, **My Stats**, **Community Feed**
+## Remaining Ideas
+
+### High Value
+- **My Stats** — per-user page: total flights, countries visited, estimated hours flown, top regions, rating trends. All data already in Supabase — just needs aggregation queries + a page.
+- **Community feed** — page showing recent publicly shared flights from all users. `is_public` flag already in schema.
+- **Logbook CSV export** — let users download their My Flights data as a spreadsheet. Low effort, useful.
+
+### Flight Planning
+- **Aircraft profiles** — save multiple aircraft (C172 @ 120kt, A320 @ 450kt) instead of one cruise speed. Quick switch before generating a flight.
+- **Full flight plan via SimBrief API** — [Navigraph/SimBrief API](https://developers.navigraph.com/docs/simbrief/using-the-api) auto-generates a complete OFP using dep/arr ICAO + aircraft type. User needs a free SimBrief account.
+
+### Polish
+- **PWA / installable** — `manifest.json` + service worker stub so the site can be pinned to a phone home screen.
+- **Multi-language** — international reach, big undertaking.
+
+---
+
+> Top picks for next: **My Stats**, **Logbook CSV export**, **Community Feed**
