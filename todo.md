@@ -11,6 +11,7 @@
 - **About page** — bernacki.me author link at top, Discord removed, all new features documented
 - **Challenge airports** ✓ — already shipped before this session
 - **TAF alongside METAR** ✓ — edge function already supported it, wired to UI
+- **PWA / installable** ✓ — manifest.json, service worker, icons; installs on desktop and mobile
 
 ---
 
@@ -26,7 +27,6 @@
 - **Full flight plan via SimBrief API** — [Navigraph/SimBrief API](https://developers.navigraph.com/docs/simbrief/using-the-api) auto-generates a complete OFP using dep/arr ICAO + aircraft type. User needs a free SimBrief account.
 
 ### Polish
-- **PWA / installable** — `manifest.json` + service worker stub so the site can be pinned to a phone home screen.
 - **Multi-language** — international reach, big undertaking.
 
 ---
