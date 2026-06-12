@@ -2157,34 +2157,34 @@
       <select id="aircraft-preset" onchange="applyAircraftPreset()" title="Select a preset aircraft">
         <option value="">Aircraft Preset...</option>
         <optgroup label="── GA ──">
-          <option value="120">Piper Cherokee · 120 kts</option>
-          <option value="122">Cessna 172 · 122 kts</option>
-          <option value="145">Cessna 182 · 145 kts</option>
-          <option value="174">Beechcraft Bonanza · 174 kts</option>
-          <option value="175">Mooney M20 · 175 kts</option>
-          <option value="185">Cirrus SR22 · 185 kts</option>
+          <option value="120" data-key="piper-cherokee">Piper Cherokee · 120 kts</option>
+          <option value="122" data-key="cessna-172">Cessna 172 · 122 kts</option>
+          <option value="145" data-key="cessna-182">Cessna 182 · 145 kts</option>
+          <option value="174" data-key="beechcraft-bonanza">Beechcraft Bonanza · 174 kts</option>
+          <option value="175" data-key="mooney-m20">Mooney M20 · 175 kts</option>
+          <option value="185" data-key="cirrus-sr22">Cirrus SR22 · 185 kts</option>
         </optgroup>
         <optgroup label="── Turboprop ──">
-          <option value="175">Cessna 208 Caravan · 175 kts</option>
-          <option value="270">Pilatus PC-12 · 270 kts</option>
-          <option value="275">ATR 72 · 275 kts</option>
-          <option value="310">King Air 350 · 310 kts</option>
-          <option value="330">Daher TBM 930 · 330 kts</option>
+          <option value="175" data-key="cessna-208">Cessna 208 Caravan · 175 kts</option>
+          <option value="270" data-key="pilatus-pc12">Pilatus PC-12 · 270 kts</option>
+          <option value="275" data-key="atr-72">ATR 72 · 275 kts</option>
+          <option value="310" data-key="king-air-350">King Air 350 · 310 kts</option>
+          <option value="330" data-key="tbm-930">Daher TBM 930 · 330 kts</option>
         </optgroup>
         <optgroup label="── Regional ──">
-          <option value="447">CRJ-700 · 447 kts</option>
-          <option value="450">Embraer E175 · 450 kts</option>
+          <option value="447" data-key="crj-700">CRJ-700 · 447 kts</option>
+          <option value="450" data-key="e175">Embraer E175 · 450 kts</option>
         </optgroup>
         <optgroup label="── Airliner ──">
-          <option value="450">Airbus A320 · 450 kts</option>
-          <option value="450">Boeing 737 · 450 kts</option>
-          <option value="488">Boeing 787 · 488 kts</option>
-          <option value="488">Airbus A380 · 488 kts</option>
+          <option value="450" data-key="a320">Airbus A320 · 450 kts</option>
+          <option value="450" data-key="b737">Boeing 737 · 450 kts</option>
+          <option value="488" data-key="b787">Boeing 787 · 488 kts</option>
+          <option value="488" data-key="a380">Airbus A380 · 488 kts</option>
         </optgroup>
         <optgroup label="── Business Jet ──">
-          <option value="415">Citation CJ4 · 415 kts</option>
-          <option value="465">Learjet 75 · 465 kts</option>
-          <option value="516">Gulfstream G650 · 516 kts</option>
+          <option value="415" data-key="citation-cj4">Citation CJ4 · 415 kts</option>
+          <option value="465" data-key="learjet-75">Learjet 75 · 465 kts</option>
+          <option value="516" data-key="gulfstream-g650">Gulfstream G650 · 516 kts</option>
         </optgroup>
       </select>
       <input type="number" id="cruise-speed" value="280" min="50" max="700" autocomplete="off" style="width:65px;text-align:center" oninput="onCruiseSpeedInput()">
@@ -2767,13 +2767,13 @@ async function loadUserPrefs() {
   {
     const sel = document.getElementById('aircraft-preset');
     if (data.aircraft_preset) {
-      const match = [...sel.options].find(o => o.text === data.aircraft_preset);
+      const match = [...sel.options].find(o => o.dataset.key === data.aircraft_preset);
       if (match) {
         sel.selectedIndex = match.index;
         document.getElementById('cruise-speed').value = match.value;
       }
     } else if (data.cruise_speed) {
-      // Fallback: if exactly one preset matches the saved speed, restore it
+      // Fallback for old saves: if exactly one preset matches the saved speed, restore it
       const speedStr = String(data.cruise_speed);
       const matches = [...sel.options].filter(o => o.value === speedStr);
       if (matches.length === 1) sel.selectedIndex = matches[0].index;
@@ -2857,7 +2857,7 @@ async function saveUserPrefs() {
   await _sb.from('profiles').upsert({
     user_id:       currentUser.id,
     cruise_speed:  speed,
-    aircraft_preset: (() => { const s = document.getElementById('aircraft-preset'); return s.selectedIndex > 0 ? s.options[s.selectedIndex].text : null; })(),
+    aircraft_preset: (() => { const s = document.getElementById('aircraft-preset'); return s.selectedIndex > 0 ? (s.options[s.selectedIndex].dataset.key || null) : null; })(),
     range_min:     rangeMin,
     range_max:     rangeMax,
     theme:         document.body.classList.contains('light-mode') ? 'light' : 'dark',
