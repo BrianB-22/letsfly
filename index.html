@@ -2764,12 +2764,19 @@ async function loadUserPrefs() {
   }
 
   if (data.cruise_speed) document.getElementById('cruise-speed').value = data.cruise_speed;
-  if (data.aircraft_preset) {
+  {
     const sel = document.getElementById('aircraft-preset');
-    const match = [...sel.options].find(o => o.text === data.aircraft_preset);
-    if (match) {
-      sel.selectedIndex = match.index;
-      document.getElementById('cruise-speed').value = match.value;
+    if (data.aircraft_preset) {
+      const match = [...sel.options].find(o => o.text === data.aircraft_preset);
+      if (match) {
+        sel.selectedIndex = match.index;
+        document.getElementById('cruise-speed').value = match.value;
+      }
+    } else if (data.cruise_speed) {
+      // Fallback: if exactly one preset matches the saved speed, restore it
+      const speedStr = String(data.cruise_speed);
+      const matches = [...sel.options].filter(o => o.value === speedStr);
+      if (matches.length === 1) sel.selectedIndex = matches[0].index;
     }
   }
   if (data.range_min || data.range_max) {
