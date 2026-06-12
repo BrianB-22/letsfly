@@ -1796,6 +1796,30 @@
   .wind-runway-label { font-family: var(--mono); font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
   .wind-runway-value { font-family: var(--mono); font-weight: 700; color: var(--accent); font-size: 13px; }
   .wind-runway-detail { color: var(--text3); font-size: 11px; }
+
+  /* ── SITE BANNER ── */
+  #site-banner {
+    position: relative;
+    z-index: 9;
+    background: rgba(244,162,97,0.08);
+    border-bottom: 1px solid rgba(244,162,97,0.3);
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #site-banner-icon {
+    font-size: 13px;
+    flex-shrink: 0;
+    color: var(--amber);
+  }
+  #site-banner-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--amber);
+    line-height: 1.5;
+  }
 </style>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-TMZ18XB2ZM"></script>
@@ -1838,6 +1862,11 @@
     </div>
   </div>
 </header>
+
+<div id="site-banner" style="display:none">
+  <span id="site-banner-icon">⚠</span>
+  <span id="site-banner-text"></span>
+</div>
 
 <div class="app">
 
@@ -2242,6 +2271,19 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <script>
+// ═══════════════════════════════════════════════════════
+// SITE BANNER
+// ═══════════════════════════════════════════════════════
+fetch('banner.json?_=' + Date.now())
+  .then(r => r.json())
+  .then(d => {
+    if (d.active && d.message) {
+      document.getElementById('site-banner-text').textContent = d.message;
+      document.getElementById('site-banner').style.display = 'flex';
+    }
+  })
+  .catch(() => {});
+
 // ═══════════════════════════════════════════════════════
 // THEME
 // ═══════════════════════════════════════════════════════
