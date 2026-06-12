@@ -1,5 +1,14 @@
 <button class="modal-close" onclick="closeHelpModal()">×</button>
-<div class="modal-title" style="margin-bottom:20px;">✈ About SimLetsFly</div>
+<div class="modal-title" style="margin-bottom:16px;">✈ About SimLetsFly</div>
+
+<!-- AUTHOR -->
+<div style="margin-bottom:20px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+  <span style="color:var(--text2);font-size:13px;">Built by Brian Bernacki</span>
+  <a href="https://bernacki.me" target="_blank" rel="noopener noreferrer"
+    style="font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);text-decoration:none;border:1px solid rgba(0,180,216,0.35);padding:4px 12px;border-radius:3px;">
+    bernacki.me ↗
+  </a>
+</div>
 
 <p style="color:var(--text2);font-size:14px;line-height:1.75;margin:0 0 20px 0;">
   SimLetsFly started as a personal tool to break out of flying the same old routes — a habit that's easy to fall into going back to the FSX days. With the incredible scenery in today's simulators, there's a whole world worth exploring. This app makes it easy to discover flights you'd never think to plan yourself. Most airports should be available in commercial flight simulators.
@@ -12,7 +21,7 @@
     Set your search parameters and hit <strong style="color:var(--text);">Let's Fly!</strong>. SimLetsFly picks a random departure and arrival that match your criteria. Not happy? Hit it again or lock your departure and randomize only the arrival.
   </p>
   <p style="color:var(--text2);font-size:13px;line-height:1.7;margin:0;">
-    SimLetsFly can also generate an IFR route between your airports using real-world airway data, and export it directly to your simulator. See the <strong style="color:var(--text);">Pull Route & Export</strong> section below.
+    SimLetsFly can also generate an IFR route between your airports using real-world airway data, and export it directly to your simulator. See the <strong style="color:var(--text);">Get IFR Route &amp; Export</strong> section below.
   </p>
 </div>
 
@@ -53,6 +62,10 @@
       <div style="color:var(--text3);font-size:12px;">Pin airports you fly from regularly. Requires a free account. The app randomly picks one of your pinned airports as departure.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Last Airport in My Flights</div>
+      <div style="color:var(--text3);font-size:12px;">Automatically uses the arrival airport from your most recently saved flight as the departure. Great for continuing a tour or retracing a route. Requires a free account and at least one saved flight.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Random — Match Criteria</div>
       <div style="color:var(--text3);font-size:12px;">Let SimLetsFly pick a random departure based on your location, airport type, and runway filters. If you're signed in, your last-used filters are restored automatically on login.</div>
     </div>
@@ -69,7 +82,7 @@
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Range</div>
-      <div style="color:var(--text3);font-size:12px;">Min and Max distance between departure and arrival. Use the <strong style="color:var(--text)">NM | HRS</strong> toggle to switch between nautical miles and flight time. Hours are in decimal form — for example, 1.5 hrs means 1 hour 30 minutes. When using hours, the distance is calculated using your cruise speed.</div>
+      <div style="color:var(--text3);font-size:12px;">Min and Max distance between departure and arrival. Use the <strong style="color:var(--text)">NM | HRS</strong> toggle to switch between nautical miles and flight time. Hours are decimal — 1.5 hrs = 1 hour 30 minutes. When using hours, distance is calculated from your cruise speed.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Airport Size</div>
@@ -80,12 +93,12 @@
       <div style="color:var(--text3);font-size:12px;">Hard (paved), Soft (grass/gravel), Water, Helicopter pad</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Runway Length</div>
-      <div style="color:var(--text3);font-size:12px;">Min and Max runway length in feet</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Runway Length &amp; Heading</div>
+      <div style="color:var(--text3);font-size:12px;">Min and Max runway length in feet. The <strong style="color:var(--text);">Direction</strong> dropdown (Random / N / S / E / W) filters arrival airports to those roughly in that compass direction from your departure — useful for planning tours or staying in a region.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Cruise Speed & Airways</div>
-      <div style="color:var(--text3);font-size:12px;">Use the <strong style="color:var(--text);">Aircraft Preset</strong> dropdown to select a common aircraft and automatically fill in its estimated cruise speed. You can also type your own speed directly into the kts field. The cruise speed is used for estimated flight time calculations and for converting hours to nautical miles when using HRS range mode. Choose <strong style="color:var(--text);">High</strong> or <strong style="color:var(--text);">Low</strong> airways — High for jets (FL180+), Low for props and GA aircraft.</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Cruise Speed &amp; Airways</div>
+      <div style="color:var(--text3);font-size:12px;">Use the <strong style="color:var(--text);">Aircraft Preset</strong> dropdown to select a common aircraft and fill in its cruise speed automatically. You can also type your own. Speed is used for flight time estimates and HRS range mode. Choose <strong style="color:var(--text);">High</strong> or <strong style="color:var(--text);">Low</strong> airways — High for jets (FL180+), Low for props and GA aircraft.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;grid-column:1/-1;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Nav Aids (Arrival)</div>
@@ -104,10 +117,10 @@
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Runway List</div>
-      <div style="color:var(--text3);font-size:12px;">Each airport card shows all individual runways with length, surface type, and nav aids (VASI/PAPI, ALS) labeled per runway end. Once METAR loads, the recommended runway is shown based on current wind direction with headwind and crosswind components.</div>
+      <div style="color:var(--text3);font-size:12px;">Each airport card shows all individual runways with length, surface type, and nav aids labeled per runway end. Once METAR loads, the recommended runway is shown based on current wind direction with headwind and crosswind components.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">METAR & TAF Weather</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">METAR &amp; TAF Weather</div>
       <div style="color:var(--text3);font-size:12px;">Live METAR is fetched for both airports when a flight is generated. Click <strong style="color:var(--text);">Decode</strong> for a plain-English breakdown. A TAF forecast is also shown below the METAR where available — useful for planning ahead on longer flights.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
@@ -120,21 +133,21 @@
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Multi-Leg Flights</div>
-      <div style="color:var(--text3);font-size:12px;">Use <strong style="color:var(--text);">Next Hop</strong> to chain flights together. Each leg appears in the flight plan list. Click any leg to load it into the search results — then use Pull Route and Export on that specific leg.</div>
+      <div style="color:var(--text3);font-size:12px;">Use <strong style="color:var(--text);">Next Hop</strong> to chain flights together. Each leg appears in the flight plan list. Click any leg to load it into the search results — then use Get IFR Route and Export on that specific leg.</div>
     </div>
   </div>
 </div>
 
-<!-- PULL ROUTE & EXPORT -->
+<!-- GET IFR ROUTE & EXPORT -->
 <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
-  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Pull Route &amp; Export</div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Get IFR Route &amp; Export</div>
   <p style="color:var(--text2);font-size:13px;line-height:1.7;margin:0 0 12px 0;">
     SimLetsFly can generate a real-world IFR route between your airports using airway data from <a href="https://flightplandatabase.com" target="_blank" style="color:var(--accent);">Flight Plan Database</a>, then export it directly to your simulator.
   </p>
   <div style="display:flex;flex-direction:column;gap:8px;">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Pull Route Button</div>
-      <div style="color:var(--text3);font-size:12px;">Located in the Pilot Notes header. Fetches both a High airways route (for jets, FL180+) and a Low airways route (for props/GA). Both are displayed in the notes — the one matching your current High/Low airways setting is shown first. Route is formatted as waypoints and airways separated by dashes, e.g. <span style="color:var(--text);font-family:var(--mono);font-size:11px;">APE24 - J152 - BLISS</span>.</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Get IFR Route Button</div>
+      <div style="color:var(--text3);font-size:12px;">Located in the Pilot Notes header. Fetches both a High airways route (for jets, FL180+) and a Low airways route (for props/GA). The route matching your current High/Low airways setting is shown first. Route is formatted as waypoints and airways separated by dashes, e.g. <span style="color:var(--text);font-family:var(--mono);font-size:11px;">APE24 - J152 - BLISS</span>. The date the route was pulled is stamped in the notes header. Note: the route service may take a few seconds to respond on first use after a period of inactivity — if it times out, wait a moment and try again.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Export ▾ Dropdown</div>
@@ -146,7 +159,7 @@
         </div>
         <div style="display:flex;gap:8px;align-items:flex-start;">
           <span style="font-family:var(--mono);font-size:10px;color:var(--accent);min-width:90px;padding-top:1px;">X-Plane 12</span>
-          <span style="color:var(--text3);font-size:12px;">Downloads a .fms flight plan file for X-Plane 12. If Pull Route was used, full waypoints are included and the filename ends in <strong style="color:var(--text);">-ROUTE</strong>. Without it, exports a direct dep→arr flight and you'll see a <em>No Routing Included</em> notice.</span>
+          <span style="color:var(--text3);font-size:12px;">Downloads a .fms flight plan file for X-Plane 12. If Get IFR Route was used, full waypoints are included and the filename ends in <strong style="color:var(--text);">-ROUTE</strong>. Without it, exports a direct dep→arr flight.</span>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-start;">
           <span style="font-family:var(--mono);font-size:10px;color:var(--accent);min-width:90px;padding-top:1px;">X-Plane 11</span>
@@ -154,7 +167,7 @@
         </div>
         <div style="display:flex;gap:8px;align-items:flex-start;">
           <span style="font-family:var(--mono);font-size:10px;color:var(--accent);min-width:90px;padding-top:1px;">MSFS 2020</span>
-          <span style="color:var(--text3);font-size:12px;">Downloads a .pln XML file for MSFS 2020. Includes full routing if Pull Route was used, otherwise exports direct dep→arr.</span>
+          <span style="color:var(--text3);font-size:12px;">Downloads a .pln XML file for MSFS 2020. Includes full routing if Get IFR Route was used, otherwise exports direct dep→arr.</span>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-start;">
           <span style="font-family:var(--mono);font-size:10px;color:var(--accent);min-width:90px;padding-top:1px;">MSFS 2024</span>
@@ -164,7 +177,7 @@
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Multi-Leg Export</div>
-      <div style="color:var(--text3);font-size:12px;">Export works on one leg at a time. If you have multiple hops, click the leg in the flight plan list to load it into the results window, then Pull Route and Export for that leg. Repeat for each leg.</div>
+      <div style="color:var(--text3);font-size:12px;">Export works on one leg at a time. If you have multiple hops, click the leg in the flight plan list to load it into the results window, then Get IFR Route and Export for that leg.</div>
     </div>
   </div>
 </div>
@@ -175,11 +188,11 @@
   <div style="display:flex;flex-direction:column;gap:8px;">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Save Flight</div>
-      <div style="color:var(--text3);font-size:12px;">Saves the current flight to your account. Requires a free account. If you used Pull Route before saving, the full IFR route is saved with the flight so you can export it with waypoints directly from My Flights later. Each time you click Let's Fly while signed in, your search preferences are also saved — location filters, airport types, runway surface, range, cruise speed, and display theme — and restored automatically next time you log in.</div>
+      <div style="color:var(--text3);font-size:12px;">Saves the current flight to your account. Requires a free account. If you used Get IFR Route before saving, the full route is saved with the flight so you can export it with waypoints directly from My Flights later. Each time you click Let's Fly while signed in, your search preferences are also saved — location filters, airport types, runway surface, range, cruise speed, and display theme — and restored automatically next time you log in.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Copy to Clipboard</div>
-      <div style="color:var(--text3);font-size:12px;">Copies a full flight brief to your clipboard including airport details, runway info, fuel, nav aids, METAR, distance, bearing, and estimated time. Great for pasting into a notes app before flying.</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Flight Brief</div>
+      <div style="color:var(--text3);font-size:12px;">Copies or saves a full flight brief including airport details, runway info, fuel, nav aids, METAR, distance, bearing, and estimated time. Great for pasting into a notes app before flying.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Share Flight</div>
@@ -201,7 +214,7 @@
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Pilot Notes</div>
-      <div style="color:var(--text3);font-size:12px;">Add free-form notes about the flight — weather encountered, challenges, memorable moments. Pull Route results are also saved here when you use them.</div>
+      <div style="color:var(--text3);font-size:12px;">Add free-form notes about the flight — weather encountered, challenges, memorable moments. Get IFR Route results are also saved here when you use them.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Mark Completed</div>
@@ -216,16 +229,16 @@
       <div style="color:var(--text3);font-size:12px;">The top of My Flights shows running stats across all your saved flights — total distance, completed flights, regions explored, longest trip, average leg distance, and more.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Flight Brief ▾</div>
-      <div style="color:var(--text3);font-size:12px;">Each saved flight card has a Flight Brief dropdown with two options: <strong style="color:var(--text);">Copy to Clipboard</strong> copies a text brief with dep/arr info, distance, bearing, cruise speed, estimated time, and any pilot notes. <strong style="color:var(--text);">Save as Text File</strong> downloads the same brief as a .txt file.</div>
-    </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Share Flight</div>
-      <div style="color:var(--text3);font-size:12px;">Copies a shareable link for the flight. If the flight is set to Private, it is automatically made Public first. Other pilots can open the link and save the flight to their own account.</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Load Route</div>
+      <div style="color:var(--text3);font-size:12px;">Opens any saved flight back in the main app with the departure, arrival, cruise speed, pilot notes, and IFR route all restored. Useful for re-flying a favourite or continuing from where you left off.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Export ▾</div>
-      <div style="color:var(--text3);font-size:12px;">Export any saved flight directly to your simulator — X-Plane 12, X-Plane 11, MSFS 2020, or MSFS 2024. If you used Pull Route before saving the flight, the full IFR route with waypoints is included and the filename ends in <strong style="color:var(--text);">-ROUTE</strong>. Otherwise a direct dep→arr flight is exported.</div>
+      <div style="color:var(--text3);font-size:12px;">Export any saved flight to your simulator — X-Plane 12, X-Plane 11, MSFS 2020, or MSFS 2024. Also includes Flight Brief options to copy or download a text summary. If a route was saved with the flight, the full IFR waypoints are included in the export.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Share Flight</div>
+      <div style="color:var(--text3);font-size:12px;">Copies a shareable link for the flight. If the flight is Private, it is automatically made Public first. Other pilots can open the link and save the flight to their own account.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Public / Private</div>
@@ -238,7 +251,7 @@
       At the bottom of My Flights, an interactive world map shows every airport from your <strong style="color:var(--text);">completed</strong> flights.
       Route lines connect each dep→arr pair — blue for normal flights, red for challenge flights.
       Airports are color-coded: <strong style="color:#f4a261;">amber</strong> = departure only, <strong style="color:#00b4d8;">blue</strong> = arrival only, <strong style="color:#c8b400;">gold</strong> = both.
-      Each marker shows how many times you've visited. The map updates automatically when you save changes to a flight.
+      Each marker shows how many times you've visited.
     </div>
   </div>
 </div>
@@ -263,25 +276,12 @@
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
     <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:4px;">Why some features require an account</div>
     <div style="color:var(--text3);font-size:12px;line-height:1.8;">
-      Features like <strong style="color:var(--text);">Pull Route</strong>, <strong style="color:var(--text);">Save Flight</strong>, and <strong style="color:var(--text);">Favorite Airports</strong> require a free account.
-      Pull Route calls a third-party flight planning API on your behalf — requiring sign-in protects that from automated abuse and keeps the service available for everyone.
+      Features like <strong style="color:var(--text);">Get IFR Route</strong>, <strong style="color:var(--text);">Save Flight</strong>, and <strong style="color:var(--text);">Favorite Airports</strong> require a free account.
+      Get IFR Route calls a third-party flight planning API on your behalf — requiring sign-in protects that from automated abuse and keeps the service available for everyone.
       Saved flights and favorites use database storage tied to your account.
       A free account requires only an email address and takes less than a minute to create.
     </div>
   </div>
-</div>
-
-<!-- DISCORD -->
-<div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
-  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Discord Community</div>
-  <p style="color:var(--text2);font-size:13px;line-height:1.75;margin:0 0 12px 0;">
-    Join the SimLetsFly Discord to connect with other virtual pilots. It's the best place to report bugs, suggest new features, and share your favorite flights and routes.
-  </p>
-  <a href="https://discord.gg/afumNwCfX9" target="_blank" rel="noopener noreferrer"
-    style="display:inline-flex;align-items:center;gap:8px;background:rgba(88,101,242,0.12);border:1px solid rgba(88,101,242,0.4);color:#7289da;border-radius:4px;padding:9px 16px;font-family:var(--mono);font-size:12px;letter-spacing:1px;text-decoration:none;text-transform:uppercase;">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.053a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-    Join Discord
-  </a>
 </div>
 
 <!-- FEEDBACK -->
@@ -313,11 +313,11 @@
   <div style="display:flex;flex-direction:column;gap:8px;">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Light / Dark Mode</div>
-      <div style="color:var(--text3);font-size:12px;">Use the ☀ / ☾ toggle in the top-right corner of the header to switch between light and dark themes. If the default dark theme feels too dim or too bright, try switching — some displays look better in light mode.</div>
+      <div style="color:var(--text3);font-size:12px;">Use the ☀ / ☾ toggle in the top-right corner of the header to switch between light and dark themes.</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Browser Zoom</div>
-      <div style="color:var(--text3);font-size:12px;">If text or cards feel too small or large, adjust your browser's zoom level. Use <strong style="color:var(--text);">Ctrl + / −</strong> on Windows/Linux or <strong style="color:var(--text);">⌘ + / −</strong> on Mac. Most browsers also have a zoom setting in their menu. The site layout adjusts well across most zoom levels.</div>
+      <div style="color:var(--text3);font-size:12px;">If text or cards feel too small or large, adjust your browser's zoom level. Use <strong style="color:var(--text);">Ctrl + / −</strong> on Windows/Linux or <strong style="color:var(--text);">⌘ + / −</strong> on Mac.</div>
     </div>
   </div>
 </div>
