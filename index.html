@@ -2705,6 +2705,7 @@ let depFavorites = [];
 let lastFlightArrival = null;
 
 async function loadLastFlightAirport() {
+  if (!AIRPORTS.length) return; // airports not loaded yet — loadAirports() will re-call us
   const el = document.getElementById('dep-last-status');
   el.innerHTML = '<span style="color:var(--text3)">Fetching last flight…</span>';
   const { data, error } = await _sb
@@ -2980,6 +2981,10 @@ async function loadAirports() {
     initRangeMode();
     loadSharedFlight();
     loadFlightFromSession();
+    // If last-airport mode fired before airports were ready, re-run now
+    if (document.querySelector('input[name="dep-mode"]:checked')?.value === 'last-airport' && currentUser) {
+      loadLastFlightAirport();
+    }
   } catch(e) {
     // Fallback: show graceful message
     document.getElementById('db-count').textContent = 'offline';
