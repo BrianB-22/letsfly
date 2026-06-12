@@ -11,7 +11,9 @@
 - **About page** — bernacki.me author link at top, Discord removed, all new features documented
 - **Challenge airports** ✓ — already shipped before this session
 - **TAF alongside METAR** ✓ — edge function already supported it, wired to UI
-- **PWA / installable** ✓ — manifest.json, service worker, icons; installs on desktop and mobile
+- **PWA / installable** ✓ — manifest.json, service worker (sw.js), icons; installs on desktop and mobile
+- **Aircraft preset save/restore** — saves selected preset per user in Supabase `profiles.aircraft_preset`; auto-saves on dropdown change; restores on login/reload via `data-key` attribute matching; speed-only fallback for legacy saves
+- **Font size increase** — bumped all CSS sizes up (body 14→16px, labels 9→11px+); applied to index.html and flights.html
 
 ---
 
@@ -31,4 +33,4 @@
 
 ---
 
-> Top picks for next: **My Stats**, **Logbook CSV export**, **Community Feed**
+> Top picks for next: **Logbook CSV export**, **My Stats**, **Community Feed**
