@@ -825,11 +825,57 @@
   .results-panel {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 0 4px 4px 4px;
+    border-radius: 4px;
     display: none;
   }
 
   .results-panel.active { display: block; }
+
+  #results-area.tab-left  > .results-panel { border-radius: 0 4px 4px 4px; }
+  #results-area.tab-mid   > .results-panel { border-radius: 4px 4px 4px 4px; }
+  #results-area.tab-right > .results-panel { border-radius: 4px 0 4px 4px; }
+
+  /* ── VERTICAL PROFILE ── */
+  .profile-wrap { padding: 20px; }
+  .profile-wrap svg { display: block; width: 100%; height: auto; }
+  .profile-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-top: 16px;
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .profile-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 12px 20px;
+    border-right: 1px solid var(--border);
+  }
+  .profile-stat:last-child { border-right: none; }
+  .profile-stat-label {
+    font-family: var(--cond);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .profile-stat-value {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .profile-stat-sub {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--text3);
+  }
 
   /* ── TEXT RESULTS ── */
   .text-results {
@@ -2206,10 +2252,11 @@
   <div id="status-msg"></div>
 
   <!-- ── RESULTS ── -->
-  <div class="results-area" id="results-area">
+  <div class="results-area tab-left" id="results-area">
     <div class="results-tabs">
-      <button class="tab-btn active" onclick="switchTab('text')">Flight Details</button>
-      <button class="tab-btn" onclick="switchTab('map')">Map View</button>
+      <button class="tab-btn active" data-tab="text" onclick="switchTab('text')">Flight Details</button>
+      <button class="tab-btn" data-tab="map" onclick="switchTab('map')">Map View</button>
+      <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')">Vertical Profile</button>
     </div>
 
     <div class="results-panel active" id="tab-text">
@@ -2249,6 +2296,16 @@
         <div class="map-overlay" id="map-overlay" style="display:none">
           <div class="map-route-label" id="map-route-label"></div>
         </div>
+      </div>
+      <div class="result-actions">
+        <button class="action-btn action-btn-ghost" onclick="switchTab('text')">← Back to Details</button>
+      </div>
+    </div>
+
+    <div class="results-panel" id="tab-profile">
+      <div class="profile-wrap">
+        <div id="profile-svg-container"></div>
+        <div class="profile-stats" id="profile-stats"></div>
       </div>
       <div class="result-actions">
         <button class="action-btn action-btn-ghost" onclick="switchTab('text')">← Back to Details</button>
@@ -3731,6 +3788,191 @@ function renderResults(dep, arr, isChallenge = false) {
   if (document.getElementById('tab-map').classList.contains('active')) {
     renderMap(dep, arr);
   }
+  renderProfile(dep, arr);
+}
+
+// ═══════════════════════════════════════════════════════
+// VERTICAL PROFILE
+// ═══════════════════════════════════════════════════════
+const PRESET_CRUISE_ALT = {
+  'piper-cherokee': 8000,  'cessna-172': 8000,    'cessna-182': 9500,
+  'beechcraft-bonanza': 11000, 'mooney-m20': 11000, 'cirrus-sr22': 12000,
+  'cessna-208': 14000,     'pilatus-pc12': 25000,  'atr-72': 24000,
+  'king-air-350': 27000,   'tbm-930': 28000,
+  'crj-700': 37000,        'e175': 37000,
+  'a320': 37000,           'b737': 37000,           'b787': 41000,  'a380': 39000,
+  'citation-cj4': 43000,   'learjet-75': 45000,     'gulfstream-g650': 51000,
+};
+
+let profileCruiseAlt = null;
+
+function getCruiseAlt() {
+  if (profileCruiseAlt !== null) return profileCruiseAlt;
+  const sel = document.getElementById('aircraft-preset');
+  const key = sel.options[sel.selectedIndex]?.dataset?.key;
+  return PRESET_CRUISE_ALT[key] ?? 10000;
+}
+
+function getProfileStats(dep, arr, cruiseAlt) {
+  const totalDist = distNm(dep.lat, dep.lon, arr.lat, arr.lon);
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const arrElev = arr.elev || 0;
+  const depElev = dep.elev || 0;
+  const todNm   = Math.round(Math.max((cruiseAlt - arrElev) / 318, 0));
+  const tocNm   = Math.round(Math.max((cruiseAlt - depElev) / 300, 0));
+  const hasCruise = (tocNm + todNm) < totalDist;
+  const cruiseSegNm = hasCruise ? Math.round(totalDist - tocNm - todNm) : 0;
+  const descRate = Math.round(speed * 5.3);
+  return { todNm, tocNm, hasCruise, cruiseSegNm, descRate };
+}
+
+function onProfileAltInput(val) {
+  const v = parseInt(val, 10);
+  if (v < 500) return;
+  profileCruiseAlt = v;
+  renderProfileSvg(currentDep, currentArr);
+  if (!currentDep || !currentArr) return;
+  const { todNm, tocNm, hasCruise, cruiseSegNm } = getProfileStats(currentDep, currentArr, v);
+  const todEl = document.getElementById('profile-stat-tod');
+  const tocEl = document.getElementById('profile-stat-toc');
+  const segEl = document.getElementById('profile-stat-seg');
+  if (todEl) todEl.innerHTML = (hasCruise ? todNm + ' nm' : '—') + (hasCruise ? '<span class="profile-stat-sub"> from dest</span>' : '');
+  if (tocEl) tocEl.innerHTML = tocNm + ' nm<span class="profile-stat-sub"> from dep</span>';
+  if (segEl) segEl.textContent = hasCruise ? cruiseSegNm + ' nm' : '—';
+}
+
+function renderProfileSvg(dep, arr) {
+  const container = document.getElementById('profile-svg-container');
+  if (!container || !dep || !arr) return;
+
+  const totalDist = distNm(dep.lat, dep.lon, arr.lat, arr.lon);
+  const cruiseAlt = getCruiseAlt();
+  const depElev   = dep.elev || 0;
+  const arrElev   = arr.elev || 0;
+
+  const DESCENT_FT_PER_NM = 318;
+  const CLIMB_FT_PER_NM   = 300;
+  const todNm = Math.max((cruiseAlt - arrElev) / DESCENT_FT_PER_NM, 0);
+  const tocNm = Math.max((cruiseAlt - depElev) / CLIMB_FT_PER_NM,   0);
+  const hasCruise = tocNm + todNm < totalDist;
+
+  let tocDist, todDist, peakAlt;
+  if (hasCruise) {
+    tocDist = tocNm;
+    todDist = totalDist - todNm;
+    peakAlt = cruiseAlt;
+  } else {
+    const ratio = tocNm / Math.max(tocNm + todNm, 0.001);
+    tocDist = totalDist * ratio;
+    todDist = tocDist;
+    peakAlt = Math.min(Math.round(depElev + tocDist * CLIMB_FT_PER_NM), cruiseAlt);
+  }
+
+  const VW = 800, VH = 200;
+  const PL = 62, PR = 16, PT = 22, PB = 44;
+  const W = VW - PL - PR, H = VH - PT - PB;
+
+  const altPad = Math.max(peakAlt * 0.15, 500);
+  const altMax = peakAlt + altPad;
+  const altMin = Math.min(depElev, arrElev, 0) - Math.max(peakAlt * 0.02, 100);
+
+  const toX = nm  => PL + (nm  / totalDist) * W;
+  const toY = alt => PT + H - ((alt - altMin) / (altMax - altMin)) * H;
+
+  const pts = hasCruise
+    ? [[0, depElev], [tocDist, peakAlt], [todDist, peakAlt], [totalDist, arrElev]]
+    : [[0, depElev], [tocDist, peakAlt], [totalDist, arrElev]];
+
+  const coordStr  = pts.map(([d, a]) => `${toX(d).toFixed(1)},${toY(a).toFixed(1)}`).join(' L ');
+  const linePath  = `M ${coordStr}`;
+  const areaPath  = `${linePath} L ${toX(totalDist).toFixed(1)},${(PT+H).toFixed(1)} L ${toX(0).toFixed(1)},${(PT+H).toFixed(1)} Z`;
+
+  const altFmt = a => a >= 18000 ? `FL${Math.round(a / 100)}` : a >= 1000 ? `${(a / 1000).toFixed(1)}k` : `${Math.round(a)}`;
+
+  const yStep = (altMax - altMin) / 4;
+  const yTicks = [...new Set(
+    Array.from({ length: 5 }, (_, i) => Math.round((altMin + i * yStep) / 500) * 500).filter(a => a >= 0)
+  )];
+
+  const rawStep = totalDist > 400 ? 100 : totalDist > 150 ? 50 : totalDist > 60 ? 20 : 10;
+  const xTicks  = [...new Set(
+    Array.from({ length: Math.ceil(totalDist / rawStep) + 1 }, (_, i) => Math.min(i * rawStep, Math.round(totalDist)))
+  )];
+
+  const tocX = toX(tocDist).toFixed(1);
+  const todX = hasCruise ? toX(todDist).toFixed(1) : null;
+
+  const svgHtml = `<svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="prof-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+  ${yTicks.map(a => `<line x1="${PL}" y1="${toY(a).toFixed(1)}" x2="${VW-PR}" y2="${toY(a).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>`).join('\n  ')}
+  <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+H}" stroke="var(--border2)" stroke-width="1"/>
+  <line x1="${PL}" y1="${PT+H}" x2="${VW-PR}" y2="${PT+H}" stroke="var(--border2)" stroke-width="1"/>
+  <path d="${areaPath}" fill="url(#prof-fill)"/>
+  <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  ${hasCruise
+    ? `<line x1="${tocX}" y1="${PT}" x2="${tocX}" y2="${PT+H}" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>
+  <text x="${tocX}" y="${PT-6}" text-anchor="middle" font-size="10" fill="var(--green)" font-weight="600">TOC</text>
+  <line x1="${todX}" y1="${PT}" x2="${todX}" y2="${PT+H}" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 3" opacity="0.75"/>
+  <text x="${todX}" y="${PT-6}" text-anchor="middle" font-size="10" fill="var(--amber)" font-weight="600">TOD</text>`
+    : `<line x1="${tocX}" y1="${PT}" x2="${tocX}" y2="${PT+H}" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>
+  <text x="${tocX}" y="${PT-6}" text-anchor="middle" font-size="10" fill="var(--amber)" font-weight="600">PEAK</text>`}
+  <circle cx="${toX(0).toFixed(1)}" cy="${toY(depElev).toFixed(1)}" r="5" fill="var(--green)" stroke="var(--bg1)" stroke-width="2"/>
+  <text x="${toX(0).toFixed(1)}" y="${Math.max(toY(depElev) - 9, PT + 12).toFixed(1)}" text-anchor="start" font-size="10" fill="var(--green)" font-weight="600">${dep.id}</text>
+  <circle cx="${toX(totalDist).toFixed(1)}" cy="${toY(arrElev).toFixed(1)}" r="5" fill="var(--red)" stroke="var(--bg1)" stroke-width="2"/>
+  <text x="${toX(totalDist).toFixed(1)}" y="${Math.max(toY(arrElev) - 9, PT + 12).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--red)" font-weight="600">${arr.id}</text>
+  ${yTicks.map(a => `<text x="${PL-5}" y="${toY(a).toFixed(1)}" text-anchor="end" dominant-baseline="middle" font-size="10" fill="var(--text3)">${altFmt(a)}</text>`).join('\n  ')}
+  ${xTicks.map(d => `<text x="${toX(d).toFixed(1)}" y="${PT+H+14}" text-anchor="middle" font-size="10" fill="var(--text3)">${d}</text>`).join('\n  ')}
+  <text x="${(PL + W/2).toFixed(0)}" y="${VH-2}" text-anchor="middle" font-size="10" fill="var(--text3)">nm from departure</text>
+</svg>`;
+
+  container.innerHTML = svgHtml;
+}
+
+function renderProfile(dep, arr) {
+  profileCruiseAlt = null;
+  renderProfileSvg(dep, arr);
+
+  const statsEl = document.getElementById('profile-stats');
+  if (!statsEl || !dep || !arr) return;
+
+  const cruiseAlt = getCruiseAlt();
+  const { todNm, tocNm, hasCruise, cruiseSegNm, descRate } = getProfileStats(dep, arr, cruiseAlt);
+  const altLabel = cruiseAlt >= 18000
+    ? `FL${Math.round(cruiseAlt / 100)}`
+    : `${cruiseAlt.toLocaleString()} ft`;
+
+  statsEl.innerHTML = `
+    <div class="profile-stat">
+      <div class="profile-stat-label">Cruise Alt</div>
+      <div class="profile-stat-value">
+        <input id="profile-alt-input" type="number" value="${cruiseAlt}" min="500" max="60000" step="500"
+          style="width:70px;font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center"
+          oninput="onProfileAltInput(this.value)" title="Cruise altitude in feet">
+        <span class="profile-stat-sub">ft</span>
+      </div>
+    </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">TOD</div>
+      <div class="profile-stat-value" id="profile-stat-tod">${hasCruise ? todNm + ' nm' : '—'}<span class="profile-stat-sub">${hasCruise ? ' from dest' : ''}</span></div>
+    </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">TOC</div>
+      <div class="profile-stat-value" id="profile-stat-toc">${tocNm} nm<span class="profile-stat-sub"> from dep</span></div>
+    </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">Descent Rate</div>
+      <div class="profile-stat-value">~${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
+    </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">Cruise Segment</div>
+      <div class="profile-stat-value" id="profile-stat-seg">${hasCruise ? cruiseSegNm + ' nm' : '—'}</div>
+    </div>
+  `;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3800,10 +4042,16 @@ function renderMap(dep, arr) {
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.results-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector(`.tab-btn:${tab==='text'?'first':'last'}-child`).classList.add('active');
+  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
+  const area = document.getElementById('results-area');
+  area.classList.remove('tab-left', 'tab-mid', 'tab-right');
+  area.classList.add(tab === 'text' ? 'tab-left' : tab === 'map' ? 'tab-mid' : 'tab-right');
   if (tab === 'map' && currentDep && currentArr) {
     setTimeout(() => renderMap(currentDep, currentArr), 50);
+  }
+  if (tab === 'profile' && currentDep && currentArr) {
+    renderProfileSvg(currentDep, currentArr);
   }
 }
 
