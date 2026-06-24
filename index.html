@@ -4013,7 +4013,7 @@ function renderProfile(dep, arr) {
         <span class="profile-stat-sub">ft</span>
       </div>
     </div>
-    <div class="profile-stat profile-stat--sep">
+    <div class="profile-stat">
       <div class="profile-stat-label">Cruise Speed</div>
       <div class="profile-stat-value">
         <input id="profile-speed-input" type="number" value="${currentSpeed}" min="50" max="700" step="1"
@@ -4022,6 +4022,10 @@ function renderProfile(dep, arr) {
           oninput="onProfileSpeedInput(this.value)" title="Cruise speed in knots">
         <span class="profile-stat-sub">kts</span>
       </div>
+    </div>
+    <div class="profile-stat profile-stat--sep">
+      <div class="profile-stat-label">Descent Rate</div>
+      <div class="profile-stat-value" id="profile-stat-desc-rate">${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">Departure</div>
@@ -4042,10 +4046,6 @@ function renderProfile(dep, arr) {
     <div class="profile-stat profile-stat--sep">
       <div class="profile-stat-label">Arrival</div>
       <div class="profile-stat-value">${arr.id}<span class="profile-stat-sub"> ${(arr.elev || 0).toLocaleString()} ft</span></div>
-    </div>
-    <div class="profile-stat profile-stat--sep">
-      <div class="profile-stat-label">Descent Rate</div>
-      <div class="profile-stat-value" id="profile-stat-desc-rate">${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">Climb</div>
