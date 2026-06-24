@@ -882,6 +882,40 @@
     align-items: center;
     gap: 10px;
   }
+  .profile-winds-card {
+    margin-top: 12px;
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .profile-winds-hdr {
+    font-family: var(--cond);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .profile-winds-body {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .profile-winds-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 12px 20px;
+    border-right: 1px solid var(--border);
+  }
+  .profile-winds-stat:last-child { border-right: none; }
+  .profile-winds-note {
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text3);
+  }
   /* ── TEXT RESULTS ── */
   .text-results {
     padding: 20px;
@@ -2313,6 +2347,7 @@
       <div class="profile-wrap">
         <div id="profile-svg-container"></div>
         <div class="profile-stats" id="profile-stats"></div>
+        <div id="profile-winds"></div>
       </div>
       <div class="result-actions">
         <button class="action-btn action-btn-ghost" onclick="switchTab('text')">← Back to Details</button>
@@ -3823,6 +3858,97 @@ const PRESET_CRUISE_ALT = {
 
 let profileCruiseAlt = null;
 let profileSpeed = null;
+let _windsCache = null;
+
+const PRESSURE_LEVELS = [
+  { hPa: 200, ft: 38000 }, { hPa: 250, ft: 34000 }, { hPa: 300, ft: 30000 },
+  { hPa: 400, ft: 25000 }, { hPa: 500, ft: 18000 }, { hPa: 700, ft: 10000 },
+  { hPa: 850, ft: 5000  }, { hPa: 925, ft: 2500  }, { hPa: 1000, ft: 330  },
+];
+
+function nearestPressureLevel(altFt) {
+  return PRESSURE_LEVELS.reduce((b, l) => Math.abs(l.ft - altFt) < Math.abs(b.ft - altFt) ? l : b);
+}
+
+function profileBearing(dep, arr) {
+  const φ1 = dep.lat * Math.PI / 180, φ2 = arr.lat * Math.PI / 180;
+  const Δλ = (arr.lon - dep.lon) * Math.PI / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function renderWindsDisplay(dep, arr) {
+  const el = document.getElementById('profile-winds');
+  if (!el || !_windsCache) return;
+  const { windSpeed, windDir, temp, component, lvlLabel } = _windsCache;
+  const speed = getProfileSpeed();
+  const totalDist = distNm(dep.lat, dep.lon, arr.lat, arr.lon);
+  const gs = Math.max(speed + component, 1);
+  const adjMin = Math.round(totalDist / gs * 60);
+  const compAbs = Math.abs(component);
+  const compLabel = component > 2 ? `▲ ${compAbs} kt tailwind`
+                  : component < -2 ? `▼ ${compAbs} kt headwind`
+                  : 'calm / crosswind';
+  const compColor = component > 2 ? 'var(--green)' : component < -2 ? 'var(--red)' : 'var(--text3)';
+  el.innerHTML = `
+    <div class="profile-winds-card">
+      <div class="profile-winds-hdr">Winds Aloft <span style="text-transform:none;letter-spacing:0;font-size:10px">· ${lvlLabel} · route midpoint</span></div>
+      <div class="profile-winds-body">
+        <div class="profile-winds-stat">
+          <div class="profile-stat-label">Wind</div>
+          <div class="profile-stat-value">
+            <span style="display:inline-block;transform:rotate(${windDir}deg);line-height:1">↑</span>
+            ${windDir}°<span class="profile-stat-sub"> FROM</span>
+          </div>
+        </div>
+        <div class="profile-winds-stat">
+          <div class="profile-stat-label">Speed</div>
+          <div class="profile-stat-value">${windSpeed}<span class="profile-stat-sub"> kts</span></div>
+        </div>
+        <div class="profile-winds-stat">
+          <div class="profile-stat-label">Temp</div>
+          <div class="profile-stat-value">${temp > 0 ? '+' : ''}${temp}<span class="profile-stat-sub"> °C</span></div>
+        </div>
+        <div class="profile-winds-stat profile-stat--sep">
+          <div class="profile-stat-label">Component</div>
+          <div class="profile-stat-value" style="color:${compColor}">${compLabel}</div>
+        </div>
+        <div class="profile-winds-stat">
+          <div class="profile-stat-label">Adj. Flight Time</div>
+          <div class="profile-stat-value" id="profile-winds-adj-time">${formatPhaseTime(adjMin)}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function fetchWindsAloft(dep, arr, cruiseAlt) {
+  const el = document.getElementById('profile-winds');
+  if (!el) return;
+  el.innerHTML = '<div class="profile-winds-card"><div class="profile-winds-note">Fetching winds aloft…</div></div>';
+  try {
+    const midLat = ((dep.lat + arr.lat) / 2).toFixed(4);
+    const midLon = ((dep.lon + arr.lon) / 2).toFixed(4);
+    const lvl = nearestPressureLevel(cruiseAlt);
+    const h = lvl.hPa;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${midLat}&longitude=${midLon}&hourly=windspeed_${h}hPa,winddirection_${h}hPa,temperature_${h}hPa&forecast_days=1&wind_speed_unit=kn&timezone=UTC`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const idx = new Date().getUTCHours();
+    const windSpeed = Math.round(data.hourly[`windspeed_${h}hPa`][idx]);
+    const windDir   = Math.round(data.hourly[`winddirection_${h}hPa`][idx]);
+    const temp      = Math.round(data.hourly[`temperature_${h}hPa`][idx]);
+    const bearing   = profileBearing(dep, arr);
+    const windDirTo = (windDir + 180) % 360;
+    const component = Math.round(windSpeed * Math.cos((windDirTo - bearing) * Math.PI / 180));
+    const lvlLabel  = cruiseAlt >= 18000 ? `FL${Math.round(cruiseAlt / 100)}` : `${cruiseAlt.toLocaleString()} ft`;
+    _windsCache = { windSpeed, windDir, temp, component, lvlLabel };
+    renderWindsDisplay(dep, arr);
+  } catch (e) {
+    el.innerHTML = '<div class="profile-winds-card"><div class="profile-winds-note">Winds aloft unavailable</div></div>';
+  }
+}
 
 function getProfileSpeed() {
   if (profileSpeed !== null) return profileSpeed;
@@ -3883,6 +4009,7 @@ function onProfileAltInput(val) {
   if (tocEl) tocEl.innerHTML = tocNm + ' nm<span class="profile-stat-sub"> from dep</span>';
   if (segEl) segEl.textContent = hasCruise ? cruiseSegNm + ' nm' : '—';
   updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise);
+  fetchWindsAloft(currentDep, currentArr, v);
 }
 
 function onProfileSpeedInput(val) {
@@ -3894,6 +4021,7 @@ function onProfileSpeedInput(val) {
   if (!currentDep || !currentArr) return;
   const { climbMin, cruiseMin, descentMin, hasCruise } = getProfileStats(currentDep, currentArr, getCruiseAlt());
   updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise);
+  if (_windsCache) renderWindsDisplay(currentDep, currentArr);
 }
 
 function renderProfileSvg(dep, arr) {
@@ -3995,6 +4123,7 @@ function renderProfileSvg(dep, arr) {
 function renderProfile(dep, arr) {
   profileCruiseAlt = null;
   profileSpeed = null;
+  _windsCache = null;
   renderProfileSvg(dep, arr);
 
   const statsEl = document.getElementById('profile-stats');
@@ -4066,6 +4195,7 @@ function renderProfile(dep, arr) {
       <div class="profile-stat-value" id="profile-stat-desc-time">~${formatPhaseTime(descentMin)}</div>
     </div>
   `;
+  fetchWindsAloft(dep, arr, cruiseAlt);
 }
 
 // ═══════════════════════════════════════════════════════

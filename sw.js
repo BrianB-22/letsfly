@@ -1,4 +1,4 @@
-const CACHE = 'simletsfly-v25';
+const CACHE = 'simletsfly-v26';
 const STATIC = [
   '/',
   '/index.html',
@@ -40,6 +40,7 @@ self.addEventListener('fetch', e => {
     'googletagmanager.com',
     'paypal.com',
     'flightplandatabase.com',
+    'open-meteo.com',
     'jsdelivr.net',
     'unpkg.com',
   ];
