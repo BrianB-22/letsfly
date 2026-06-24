@@ -3444,11 +3444,13 @@ function applyAircraftPreset() {
 function onCruiseSpeedInput() {
   document.getElementById('aircraft-preset').value = '';
   updateRangeHint();
-  // Update descent rate stat live if profile tab is loaded
-  const rateEl = document.getElementById('profile-stat-desc-rate');
-  if (rateEl) {
+  // Sync profile speed input if user hasn't overridden it in the tab
+  if (profileSpeed === null) {
+    const profileSpeedEl = document.getElementById('profile-speed-input');
     const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
-    rateEl.innerHTML = `${Math.round(speed * 5.3).toLocaleString()}<span class="profile-stat-sub"> fpm</span>`;
+    if (profileSpeedEl) profileSpeedEl.value = speed;
+    const rateEl = document.getElementById('profile-stat-desc-rate');
+    if (rateEl) rateEl.innerHTML = `${Math.round(speed * 5.3).toLocaleString()}<span class="profile-stat-sub"> fpm</span>`;
   }
 }
 
@@ -3810,6 +3812,12 @@ const PRESET_CRUISE_ALT = {
 };
 
 let profileCruiseAlt = null;
+let profileSpeed = null;
+
+function getProfileSpeed() {
+  if (profileSpeed !== null) return profileSpeed;
+  return parseFloat(document.getElementById('cruise-speed').value) || 280;
+}
 
 function getCruiseAlt() {
   if (profileCruiseAlt !== null) return profileCruiseAlt;
@@ -3823,7 +3831,7 @@ function getCruiseAlt() {
 
 function getProfileStats(dep, arr, cruiseAlt) {
   const totalDist = distNm(dep.lat, dep.lon, arr.lat, arr.lon);
-  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const speed = getProfileSpeed();
   const arrElev = arr.elev || 0;
   const depElev = dep.elev || 0;
   const todNm   = Math.round(Math.max((cruiseAlt - arrElev) / 318, 0));
@@ -3847,6 +3855,14 @@ function onProfileAltInput(val) {
   if (todEl) todEl.innerHTML = (hasCruise ? todNm + ' nm' : '—') + (hasCruise ? '<span class="profile-stat-sub"> from dest</span>' : '');
   if (tocEl) tocEl.innerHTML = tocNm + ' nm<span class="profile-stat-sub"> from dep</span>';
   if (segEl) segEl.textContent = hasCruise ? cruiseSegNm + ' nm' : '—';
+}
+
+function onProfileSpeedInput(val) {
+  const v = parseFloat(val);
+  if (v < 1) return;
+  profileSpeed = v;
+  const rateEl = document.getElementById('profile-stat-desc-rate');
+  if (rateEl) rateEl.innerHTML = `${Math.round(v * 5.3).toLocaleString()}<span class="profile-stat-sub"> fpm</span>`;
 }
 
 function renderProfileSvg(dep, arr) {
@@ -3947,6 +3963,7 @@ function renderProfileSvg(dep, arr) {
 
 function renderProfile(dep, arr) {
   profileCruiseAlt = null;
+  profileSpeed = null;
   renderProfileSvg(dep, arr);
 
   const statsEl = document.getElementById('profile-stats');
@@ -3958,6 +3975,7 @@ function renderProfile(dep, arr) {
     ? `FL${Math.round(cruiseAlt / 100)}`
     : `${cruiseAlt.toLocaleString()} ft`;
 
+  const currentSpeed = getProfileSpeed();
   statsEl.innerHTML = `
     <div class="profile-stat">
       <div class="profile-stat-label">Cruise Alt</div>
@@ -3967,6 +3985,16 @@ function renderProfile(dep, arr) {
           style="width:70px;font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center"
           oninput="onProfileAltInput(this.value)" title="Cruise altitude in feet">
         <span class="profile-stat-sub">ft</span>
+      </div>
+    </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">Cruise Speed</div>
+      <div class="profile-stat-value">
+        <input id="profile-speed-input" type="number" value="${currentSpeed}" min="50" max="700" step="1"
+          autocomplete="off" data-form-type="other" data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')"
+          style="width:55px;font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center"
+          oninput="onProfileSpeedInput(this.value)" title="Cruise speed in knots">
+        <span class="profile-stat-sub">kts</span>
       </div>
     </div>
     <div class="profile-stat">
