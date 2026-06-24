@@ -876,6 +876,51 @@
     font-size: 11px;
     color: var(--text3);
   }
+  .profile-stat--input {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .profile-checkpoints {
+    margin-top: 12px;
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .profile-checkpoints-hdr {
+    font-family: var(--cond);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .profile-checkpoints-items {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .checkpoint-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 16px;
+    border-right: 1px solid var(--border);
+    min-width: 80px;
+  }
+  .checkpoint-item:last-child { border-right: none; }
+  .checkpoint-nm {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--amber);
+  }
+  .checkpoint-alt {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+  }
 
   /* ── TEXT RESULTS ── */
   .text-results {
@@ -2306,6 +2351,7 @@
       <div class="profile-wrap">
         <div id="profile-svg-container"></div>
         <div class="profile-stats" id="profile-stats"></div>
+        <div id="profile-checkpoints"></div>
       </div>
       <div class="result-actions">
         <button class="action-btn action-btn-ghost" onclick="switchTab('text')">← Back to Details</button>
@@ -3444,13 +3490,16 @@ function applyAircraftPreset() {
 function onCruiseSpeedInput() {
   document.getElementById('aircraft-preset').value = '';
   updateRangeHint();
-  // Sync profile speed input if user hasn't overridden it in the tab
   if (profileSpeed === null) {
     const profileSpeedEl = document.getElementById('profile-speed-input');
     const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
     if (profileSpeedEl) profileSpeedEl.value = speed;
     const rateEl = document.getElementById('profile-stat-desc-rate');
     if (rateEl) rateEl.innerHTML = `${Math.round(speed * 5.3).toLocaleString()}<span class="profile-stat-sub"> fpm</span>`;
+    if (currentDep && currentArr) {
+      const { climbMin, cruiseMin, descentMin, hasCruise } = getProfileStats(currentDep, currentArr, getCruiseAlt());
+      updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise);
+    }
   }
 }
 
@@ -3839,7 +3888,43 @@ function getProfileStats(dep, arr, cruiseAlt) {
   const hasCruise = (tocNm + todNm) < totalDist;
   const cruiseSegNm = hasCruise ? Math.round(totalDist - tocNm - todNm) : 0;
   const descRate = Math.round(speed * 5.3);
-  return { todNm, tocNm, hasCruise, cruiseSegNm, descRate };
+  const climbMin   = Math.round(tocNm / speed * 60);
+  const cruiseMin  = hasCruise ? Math.round(cruiseSegNm / speed * 60) : 0;
+  const descentMin = Math.round(todNm / speed * 60);
+  return { todNm, tocNm, hasCruise, cruiseSegNm, descRate, climbMin, cruiseMin, descentMin };
+}
+
+function formatPhaseTime(min) {
+  return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
+}
+
+function updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise) {
+  const ce = document.getElementById('profile-stat-climb-time');
+  const re = document.getElementById('profile-stat-cruise-time');
+  const de = document.getElementById('profile-stat-desc-time');
+  if (ce) ce.textContent = `~${formatPhaseTime(climbMin)}`;
+  if (re) re.textContent = hasCruise ? formatPhaseTime(cruiseMin) : '—';
+  if (de) de.textContent = `~${formatPhaseTime(descentMin)}`;
+}
+
+function renderCheckpoints(dep, arr, cruiseAlt) {
+  const el = document.getElementById('profile-checkpoints');
+  if (!el || !dep || !arr) return;
+  const { todNm, hasCruise } = getProfileStats(dep, arr, cruiseAlt);
+  if (!hasCruise || todNm < 5) { el.innerHTML = ''; return; }
+  const arrElev = arr.elev || 0;
+  const step = todNm > 50 ? 10 : 5;
+  const startNm = Math.floor(todNm / step) * step;
+  const fmt = alt => alt >= 18000 ? `FL${Math.round(alt / 100)}` : `${alt.toLocaleString()} ft`;
+  const items = [];
+  for (let nm = startNm; nm >= step; nm -= step) {
+    items.push(`<div class="checkpoint-item"><div class="checkpoint-nm">◂ ${nm}nm</div><div class="checkpoint-alt">${fmt(Math.round(arrElev + nm * 318))}</div></div>`);
+  }
+  el.innerHTML = `
+    <div class="profile-checkpoints">
+      <div class="profile-checkpoints-hdr">Descent Checkpoints <span style="text-transform:none;letter-spacing:0;font-size:10px">· 3° · ${fmt(cruiseAlt)} → ${(arrElev).toLocaleString()} ft</span></div>
+      <div class="profile-checkpoints-items">${items.join('')}</div>
+    </div>`;
 }
 
 function onProfileAltInput(val) {
@@ -3848,13 +3933,15 @@ function onProfileAltInput(val) {
   profileCruiseAlt = v;
   renderProfileSvg(currentDep, currentArr);
   if (!currentDep || !currentArr) return;
-  const { todNm, tocNm, hasCruise, cruiseSegNm } = getProfileStats(currentDep, currentArr, v);
+  const { todNm, tocNm, hasCruise, cruiseSegNm, climbMin, cruiseMin, descentMin } = getProfileStats(currentDep, currentArr, v);
   const todEl = document.getElementById('profile-stat-tod');
   const tocEl = document.getElementById('profile-stat-toc');
   const segEl = document.getElementById('profile-stat-seg');
   if (todEl) todEl.innerHTML = (hasCruise ? todNm + ' nm' : '—') + (hasCruise ? '<span class="profile-stat-sub"> from dest</span>' : '');
   if (tocEl) tocEl.innerHTML = tocNm + ' nm<span class="profile-stat-sub"> from dep</span>';
   if (segEl) segEl.textContent = hasCruise ? cruiseSegNm + ' nm' : '—';
+  updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise);
+  renderCheckpoints(currentDep, currentArr, v);
 }
 
 function onProfileSpeedInput(val) {
@@ -3863,6 +3950,9 @@ function onProfileSpeedInput(val) {
   profileSpeed = v;
   const rateEl = document.getElementById('profile-stat-desc-rate');
   if (rateEl) rateEl.innerHTML = `${Math.round(v * 5.3).toLocaleString()}<span class="profile-stat-sub"> fpm</span>`;
+  if (!currentDep || !currentArr) return;
+  const { climbMin, cruiseMin, descentMin, hasCruise } = getProfileStats(currentDep, currentArr, getCruiseAlt());
+  updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise);
 }
 
 function renderProfileSvg(dep, arr) {
@@ -3970,32 +4060,29 @@ function renderProfile(dep, arr) {
   if (!statsEl || !dep || !arr) return;
 
   const cruiseAlt = getCruiseAlt();
-  const { todNm, tocNm, hasCruise, cruiseSegNm, descRate } = getProfileStats(dep, arr, cruiseAlt);
-  const altLabel = cruiseAlt >= 18000
-    ? `FL${Math.round(cruiseAlt / 100)}`
-    : `${cruiseAlt.toLocaleString()} ft`;
-
+  const { todNm, tocNm, hasCruise, cruiseSegNm, descRate, climbMin, cruiseMin, descentMin } = getProfileStats(dep, arr, cruiseAlt);
   const currentSpeed = getProfileSpeed();
+  const inputStyle = `font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center`;
   statsEl.innerHTML = `
-    <div class="profile-stat">
-      <div class="profile-stat-label">Cruise Alt</div>
+    <div class="profile-stat profile-stat--input">
       <div class="profile-stat-value">
         <input id="profile-alt-input" type="text" inputmode="numeric" value="${cruiseAlt}"
           autocomplete="off" data-form-type="other" data-lpignore="true"
-          style="width:70px;font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center"
+          style="width:70px;${inputStyle}"
           oninput="onProfileAltInput(this.value)" title="Cruise altitude in feet">
         <span class="profile-stat-sub">ft</span>
       </div>
+      <div class="profile-stat-label">Cruise Alt</div>
     </div>
-    <div class="profile-stat">
-      <div class="profile-stat-label">Cruise Speed</div>
+    <div class="profile-stat profile-stat--input">
       <div class="profile-stat-value">
         <input id="profile-speed-input" type="text" inputmode="numeric" value="${currentSpeed}"
           autocomplete="off" data-form-type="other" data-lpignore="true"
-          style="width:55px;font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center"
+          style="width:55px;${inputStyle}"
           oninput="onProfileSpeedInput(this.value)" title="Cruise speed in knots">
         <span class="profile-stat-sub">kts</span>
       </div>
+      <div class="profile-stat-label">Cruise Speed</div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">Departure</div>
@@ -4021,7 +4108,20 @@ function renderProfile(dep, arr) {
       <div class="profile-stat-label">Cruise Segment</div>
       <div class="profile-stat-value" id="profile-stat-seg">${hasCruise ? cruiseSegNm + ' nm' : '—'}</div>
     </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">Climb</div>
+      <div class="profile-stat-value" id="profile-stat-climb-time">~${formatPhaseTime(climbMin)}</div>
+    </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">Cruise</div>
+      <div class="profile-stat-value" id="profile-stat-cruise-time">${hasCruise ? formatPhaseTime(cruiseMin) : '—'}</div>
+    </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">Descent</div>
+      <div class="profile-stat-value" id="profile-stat-desc-time">~${formatPhaseTime(descentMin)}</div>
+    </div>
   `;
+  renderCheckpoints(dep, arr, cruiseAlt);
 }
 
 // ═══════════════════════════════════════════════════════
