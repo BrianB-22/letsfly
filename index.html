@@ -4064,7 +4064,8 @@ function renderProfile(dep, arr) {
   const currentSpeed = getProfileSpeed();
   const inputStyle = `font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center`;
   statsEl.innerHTML = `
-    <div class="profile-stat profile-stat--input">
+    <div class="profile-stat">
+      <div class="profile-stat-label">Cruise Alt</div>
       <div class="profile-stat-value">
         <input id="profile-alt-input" type="text" inputmode="numeric" value="${cruiseAlt}"
           autocomplete="off" data-form-type="other" data-lpignore="true"
@@ -4072,9 +4073,9 @@ function renderProfile(dep, arr) {
           oninput="onProfileAltInput(this.value)" title="Cruise altitude in feet">
         <span class="profile-stat-sub">ft</span>
       </div>
-      <div class="profile-stat-label">Cruise Alt</div>
     </div>
-    <div class="profile-stat profile-stat--input">
+    <div class="profile-stat">
+      <div class="profile-stat-label">Cruise Speed</div>
       <div class="profile-stat-value">
         <input id="profile-speed-input" type="text" inputmode="numeric" value="${currentSpeed}"
           autocomplete="off" data-form-type="other" data-lpignore="true"
@@ -4082,7 +4083,6 @@ function renderProfile(dep, arr) {
           oninput="onProfileSpeedInput(this.value)" title="Cruise speed in knots">
         <span class="profile-stat-sub">kts</span>
       </div>
-      <div class="profile-stat-label">Cruise Speed</div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">Departure</div>
