@@ -138,6 +138,32 @@
   </div>
 </div>
 
+<!-- VERTICAL PROFILE -->
+<div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+  <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Vertical Profile</div>
+  <p style="color:var(--text2);font-size:13px;line-height:1.7;margin:0 0 12px 0;">
+    After a flight is generated, the <strong style="color:var(--text);">Vertical Profile</strong> tab (next to the Map tab) shows a side-on altitude graph of your flight — climb to cruise altitude, cruise segment, and descent to the arrival airport.
+  </p>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">TOC &amp; TOD Markers</div>
+      <div style="color:var(--text3);font-size:12px;">The graph marks the <strong style="color:var(--text);">Top of Climb (TOC)</strong> in green and <strong style="color:var(--text);">Top of Descent (TOD)</strong> in amber. TOC distance is shown in nm from departure; TOD is shown in nm from destination — the point to begin descending. For very short routes where cruise altitude can't be reached, a single PEAK marker is shown instead.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Stats Bar</div>
+      <div style="color:var(--text3);font-size:12px;">Below the graph, a stats row shows: Cruise Alt, Cruise Speed, Departure (with elevation), TOC distance, Cruise Segment length, TOD distance, Arrival (with elevation), Descent Rate, and estimated Climb / Cruise / Descent times. Cruise Alt and Cruise Speed are editable — adjusting them updates the graph and all stats live.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Defaults</div>
+      <div style="color:var(--text3);font-size:12px;">Cruise altitude defaults from your selected Aircraft Preset. If no preset is chosen, Low airways defaults to 8,000 ft and High airways defaults to FL280. Cruise speed defaults to whatever is set in the main controls. All calculations use a standard <strong style="color:var(--text);">3° descent profile</strong> — the same rule used for real-world IFR approaches.</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:3px;">Phase Time Estimates</div>
+      <div style="color:var(--text3);font-size:12px;">Climb, Cruise, and Descent time estimates are shown in the stats bar. These are approximations based on cruise speed and are useful for setting timers or planning when to begin your descent. The estimated descent time can help you gauge how long before arrival you should start down.</div>
+    </div>
+  </div>
+</div>
+
 <!-- GET IFR ROUTE & EXPORT -->
 <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
   <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Get IFR Route &amp; Export</div>
