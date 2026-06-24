@@ -4006,8 +4006,8 @@ function renderProfile(dep, arr) {
     <div class="profile-stat">
       <div class="profile-stat-label">Cruise Alt</div>
       <div class="profile-stat-value">
-        <input id="profile-alt-input" type="text" inputmode="numeric" value="${cruiseAlt}"
-          autocomplete="off" data-form-type="other" data-lpignore="true"
+        <input id="profile-alt-input" type="number" value="${cruiseAlt}" min="500" max="60000" step="500"
+          autocomplete="off" data-form-type="other" data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')"
           style="width:70px;${inputStyle}"
           oninput="onProfileAltInput(this.value)" title="Cruise altitude in feet">
         <span class="profile-stat-sub">ft</span>
@@ -4016,8 +4016,8 @@ function renderProfile(dep, arr) {
     <div class="profile-stat profile-stat--sep">
       <div class="profile-stat-label">Cruise Speed</div>
       <div class="profile-stat-value">
-        <input id="profile-speed-input" type="text" inputmode="numeric" value="${currentSpeed}"
-          autocomplete="off" data-form-type="other" data-lpignore="true"
+        <input id="profile-speed-input" type="number" value="${currentSpeed}" min="50" max="700" step="1"
+          autocomplete="off" data-form-type="other" data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')"
           style="width:55px;${inputStyle}"
           oninput="onProfileSpeedInput(this.value)" title="Cruise speed in knots">
         <span class="profile-stat-sub">kts</span>
