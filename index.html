@@ -859,14 +859,14 @@
   .profile-stat--sep { border-right: 3px solid var(--text3); }
   .profile-stat-label {
     font-family: var(--cond);
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--text3);
   }
   .profile-stat-value {
     font-family: var(--mono);
-    font-size: 15px;
+    font-size: 17px;
     color: var(--accent);
     display: flex;
     align-items: center;
@@ -874,7 +874,7 @@
   }
   .profile-stat-sub {
     font-family: var(--sans);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text3);
   }
   .profile-stat--input {
@@ -1517,7 +1517,10 @@
     width: 100%;
     max-width: 380px;
     position: relative;
+    font-size: 14px;
   }
+  #help-modal-body { font-size: 14px; }
+  #help-modal-body p, #help-modal-body div { font-size: inherit; }
   .modal-title {
     font-family: var(--cond);
     font-size: 18px;
@@ -3892,7 +3895,7 @@ function profileBearing(dep, arr) {
 function renderWindsDisplay(dep, arr) {
   const el = document.getElementById('profile-winds');
   if (!el || !_windsCache) return;
-  const { windSpeed, windDir, temp, component, lvlLabel } = _windsCache;
+  const { windSpeed, windDir, temp, component, lvlLabel, fetchedHpa } = _windsCache;
   const speed = getProfileSpeed();
   const totalDist = distNm(dep.lat, dep.lon, arr.lat, arr.lon);
   const gs = Math.max(speed + component, 1);
@@ -3906,11 +3909,15 @@ function renderWindsDisplay(dep, arr) {
                   : component < -2 ? `▼ ${compAbs} kt headwind`
                   : 'calm / crosswind';
   const compColor = component > 2 ? 'var(--green)' : component < -2 ? 'var(--red)' : 'var(--text3)';
+  const stale = nearestPressureLevel(getCruiseAlt()).hPa !== fetchedHpa;
+  const updateBtn = stale
+    ? `<button onclick="fetchWindsAloft(currentDep,currentArr,getCruiseAlt())" style="margin-left:auto;font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:5px 14px;background:var(--accent);border:none;color:#000;border-radius:3px;cursor:pointer;font-weight:600;">↺ Update</button>`
+    : '';
   el.innerHTML = `
     <div class="profile-winds-card">
       <div class="profile-winds-hdr">
         Winds Aloft <span style="text-transform:none;letter-spacing:0;font-size:10px">· ${lvlLabel} · route midpoint</span>
-        <button onclick="fetchWindsAloft(currentDep,currentArr,getCruiseAlt())" style="margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.3);color:var(--accent);border-radius:3px;cursor:pointer;">Update</button>
+        ${updateBtn}
       </div>
       <div class="profile-winds-body">
         <div class="profile-winds-stat">
@@ -3943,6 +3950,10 @@ function renderWindsDisplay(dep, arr) {
 async function fetchWindsAloft(dep, arr, cruiseAlt) {
   const el = document.getElementById('profile-winds');
   if (!el) return;
+  if (!currentUser) {
+    el.innerHTML = '<div class="profile-winds-card"><div class="profile-winds-note">Sign in to access Winds Aloft data.</div></div>';
+    return;
+  }
   el.innerHTML = '<div class="profile-winds-card"><div class="profile-winds-note">Fetching winds aloft…</div></div>';
   try {
     const midLat = ((dep.lat + arr.lat) / 2).toFixed(4);
@@ -3961,7 +3972,7 @@ async function fetchWindsAloft(dep, arr, cruiseAlt) {
     const windDirTo = (windDir + 180) % 360;
     const component = Math.round(windSpeed * Math.cos((windDirTo - bearing) * Math.PI / 180));
     const lvlLabel  = cruiseAlt >= 18000 ? `FL${Math.round(cruiseAlt / 100)}` : `${cruiseAlt.toLocaleString()} ft`;
-    _windsCache = { windSpeed, windDir, temp, component, lvlLabel };
+    _windsCache = { windSpeed, windDir, temp, component, lvlLabel, fetchedHpa: h };
     renderWindsDisplay(dep, arr);
   } catch (e) {
     el.innerHTML = '<div class="profile-winds-card"><div class="profile-winds-note">Winds aloft unavailable</div></div>';
