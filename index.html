@@ -2234,7 +2234,7 @@
           <option value="516" data-key="gulfstream-g650">Gulfstream G650 · 516 kts</option>
         </optgroup>
       </select>
-      <input type="number" id="cruise-speed" value="280" min="50" max="700" autocomplete="off" style="width:65px;text-align:center" oninput="onCruiseSpeedInput()">
+      <input type="number" id="cruise-speed" value="280" min="50" max="700" autocomplete="off" data-form-type="other" data-lpignore="true" style="width:65px;text-align:center" oninput="onCruiseSpeedInput()">
       <div class="unit">kts</div>
     </div>
     <div class="airway-select">
@@ -3442,9 +3442,14 @@ function applyAircraftPreset() {
 }
 
 function onCruiseSpeedInput() {
-  // If user manually edits speed, reset the preset dropdown
   document.getElementById('aircraft-preset').value = '';
   updateRangeHint();
+  // Update descent rate stat live if profile tab is loaded
+  const rateEl = document.getElementById('profile-stat-desc-rate');
+  if (rateEl) {
+    const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+    rateEl.innerHTML = `${Math.round(speed * 5.3).toLocaleString()}<span class="profile-stat-sub"> fpm</span>`;
+  }
 }
 
 function updateRangeHint() {
@@ -3958,7 +3963,7 @@ function renderProfile(dep, arr) {
       <div class="profile-stat-label">Cruise Alt</div>
       <div class="profile-stat-value">
         <input id="profile-alt-input" type="number" value="${cruiseAlt}" min="500" max="60000" step="500"
-          autocomplete="off"
+          autocomplete="off" data-form-type="other" data-lpignore="true"
           style="width:70px;font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center"
           oninput="onProfileAltInput(this.value)" title="Cruise altitude in feet">
         <span class="profile-stat-sub">ft</span>
@@ -3982,7 +3987,7 @@ function renderProfile(dep, arr) {
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">Descent Rate</div>
-      <div class="profile-stat-value">${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
+      <div class="profile-stat-value" id="profile-stat-desc-rate">${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">Cruise Segment</div>
