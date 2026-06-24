@@ -897,6 +897,17 @@
     color: var(--text3);
     padding: 8px 16px;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .profile-winds-value {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
   .profile-winds-body {
     display: flex;
@@ -3893,30 +3904,33 @@ function renderWindsDisplay(dep, arr) {
   const compColor = component > 2 ? 'var(--green)' : component < -2 ? 'var(--red)' : 'var(--text3)';
   el.innerHTML = `
     <div class="profile-winds-card">
-      <div class="profile-winds-hdr">Winds Aloft <span style="text-transform:none;letter-spacing:0;font-size:10px">· ${lvlLabel} · route midpoint</span></div>
+      <div class="profile-winds-hdr">
+        Winds Aloft <span style="text-transform:none;letter-spacing:0;font-size:10px">· ${lvlLabel} · route midpoint</span>
+        <button onclick="fetchWindsAloft(currentDep,currentArr,getCruiseAlt())" style="margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.3);color:var(--accent);border-radius:3px;cursor:pointer;">Update</button>
+      </div>
       <div class="profile-winds-body">
         <div class="profile-winds-stat">
           <div class="profile-stat-label">Wind</div>
-          <div class="profile-stat-value">
+          <div class="profile-winds-value">
             <span style="display:inline-block;transform:rotate(${windDir}deg);line-height:1">↑</span>
             ${windDir}°<span class="profile-stat-sub"> FROM</span>
           </div>
         </div>
         <div class="profile-winds-stat">
           <div class="profile-stat-label">Speed</div>
-          <div class="profile-stat-value">${windSpeed}<span class="profile-stat-sub"> kts</span></div>
+          <div class="profile-winds-value">${windSpeed}<span class="profile-stat-sub"> kts</span></div>
         </div>
         <div class="profile-winds-stat">
           <div class="profile-stat-label">Temp</div>
-          <div class="profile-stat-value">${temp > 0 ? '+' : ''}${temp}<span class="profile-stat-sub"> °C</span></div>
+          <div class="profile-winds-value">${temp > 0 ? '+' : ''}${temp}<span class="profile-stat-sub"> °C</span></div>
         </div>
         <div class="profile-winds-stat profile-stat--sep">
           <div class="profile-stat-label">Component</div>
-          <div class="profile-stat-value" style="color:${compColor}">${compLabel}</div>
+          <div class="profile-winds-value" style="color:${compColor}">${compLabel}</div>
         </div>
         <div class="profile-winds-stat">
           <div class="profile-stat-label">Adj. Flight Time</div>
-          <div class="profile-stat-value" id="profile-winds-adj-time">${formatPhaseTime(adjMin)}</div>
+          <div class="profile-winds-value" id="profile-winds-adj-time">${formatPhaseTime(adjMin)}</div>
         </div>
       </div>
     </div>`;
@@ -4009,7 +4023,7 @@ function onProfileAltInput(val) {
   if (tocEl) tocEl.innerHTML = tocNm + ' nm<span class="profile-stat-sub"> from dep</span>';
   if (segEl) segEl.textContent = hasCruise ? cruiseSegNm + ' nm' : '—';
   updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise);
-  fetchWindsAloft(currentDep, currentArr, v);
+  if (_windsCache) renderWindsDisplay(currentDep, currentArr);
 }
 
 function onProfileSpeedInput(val) {
