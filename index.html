@@ -3913,7 +3913,7 @@ function renderCheckpoints(dep, arr, cruiseAlt) {
   if (!el || !dep || !arr) return;
   const { todNm, hasCruise } = getProfileStats(dep, arr, cruiseAlt);
   if (!hasCruise || todNm < 5) { el.innerHTML = ''; return; }
-  const arrElev = arr.elev || 0;
+  const arrElev = +(arr.elev) || 0;
   const step = todNm > 50 ? 10 : 5;
   const startNm = Math.floor(todNm / step) * step;
   const fmt = alt => alt >= 18000 ? `FL${Math.round(alt / 100)}` : `${alt.toLocaleString()} ft`;
@@ -3923,7 +3923,7 @@ function renderCheckpoints(dep, arr, cruiseAlt) {
   }
   el.innerHTML = `
     <div class="profile-checkpoints">
-      <div class="profile-checkpoints-hdr">Descent Checkpoints <span style="text-transform:none;letter-spacing:0;font-size:10px">· 3° · ${fmt(cruiseAlt)} → ${(arrElev).toLocaleString()} ft</span></div>
+      <div class="profile-checkpoints-hdr">Descent Checkpoints</div>
       <div class="profile-checkpoints-items">${items.join('')}</div>
     </div>`;
 }
