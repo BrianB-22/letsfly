@@ -2239,7 +2239,7 @@
           <option value="516" data-key="gulfstream-g650">Gulfstream G650 · 516 kts</option>
         </optgroup>
       </select>
-      <input type="number" id="cruise-speed" value="280" min="50" max="700" autocomplete="off" data-form-type="other" data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')" style="width:65px;text-align:center" oninput="onCruiseSpeedInput()">
+      <form autocomplete="off" style="display:contents"><input type="number" id="cruise-speed" value="280" min="50" max="700" autocomplete="off" data-form-type="other" data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')" style="width:65px;text-align:center" oninput="onCruiseSpeedInput()"></form>
       <div class="unit">kts</div>
     </div>
     <div class="airway-select">
@@ -4003,6 +4003,7 @@ function renderProfile(dep, arr) {
   const currentSpeed = getProfileSpeed();
   const inputStyle = `font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center`;
   statsEl.innerHTML = `
+    <form autocomplete="off" style="display:contents">
     <div class="profile-stat">
       <div class="profile-stat-label">Cruise Alt</div>
       <div class="profile-stat-value">
@@ -4013,6 +4014,8 @@ function renderProfile(dep, arr) {
         <span class="profile-stat-sub">ft</span>
       </div>
     </div>
+    </form>
+    <form autocomplete="off" style="display:contents">
     <div class="profile-stat">
       <div class="profile-stat-label">Cruise Speed</div>
       <div class="profile-stat-value">
@@ -4023,6 +4026,7 @@ function renderProfile(dep, arr) {
         <span class="profile-stat-sub">kts</span>
       </div>
     </div>
+    </form>
     <div class="profile-stat profile-stat--sep">
       <div class="profile-stat-label">Descent Rate</div>
       <div class="profile-stat-value" id="profile-stat-desc-rate">${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
