@@ -4028,24 +4028,24 @@ function renderProfile(dep, arr) {
       <div class="profile-stat-value">${dep.id}<span class="profile-stat-sub"> ${(dep.elev || 0).toLocaleString()} ft</span></div>
     </div>
     <div class="profile-stat">
-      <div class="profile-stat-label">Arrival</div>
-      <div class="profile-stat-value">${arr.id}<span class="profile-stat-sub"> ${(arr.elev || 0).toLocaleString()} ft</span></div>
-    </div>
-    <div class="profile-stat">
       <div class="profile-stat-label">TOC</div>
       <div class="profile-stat-value" id="profile-stat-toc">${tocNm} nm<span class="profile-stat-sub"> from dep</span></div>
+    </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">Cruise Segment</div>
+      <div class="profile-stat-value" id="profile-stat-seg">${hasCruise ? cruiseSegNm + ' nm' : '—'}</div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">TOD</div>
       <div class="profile-stat-value" id="profile-stat-tod">${hasCruise ? todNm + ' nm' : '—'}<span class="profile-stat-sub">${hasCruise ? ' from dest' : ''}</span></div>
     </div>
-    <div class="profile-stat">
-      <div class="profile-stat-label">Descent Rate</div>
-      <div class="profile-stat-value" id="profile-stat-desc-rate">${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
+    <div class="profile-stat profile-stat--sep">
+      <div class="profile-stat-label">Arrival</div>
+      <div class="profile-stat-value">${arr.id}<span class="profile-stat-sub"> ${(arr.elev || 0).toLocaleString()} ft</span></div>
     </div>
     <div class="profile-stat profile-stat--sep">
-      <div class="profile-stat-label">Cruise Segment</div>
-      <div class="profile-stat-value" id="profile-stat-seg">${hasCruise ? cruiseSegNm + ' nm' : '—'}</div>
+      <div class="profile-stat-label">Descent Rate</div>
+      <div class="profile-stat-value" id="profile-stat-desc-rate">${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">Climb</div>
