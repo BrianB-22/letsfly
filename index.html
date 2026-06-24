@@ -1989,16 +1989,18 @@
           <div class="section-inner">
             <div class="field-row">
               <label>ICAO</label>
-              <input type="text" id="dep-ident" placeholder="e.g. KCLT" maxlength="6"
+              <input type="text" id="dep-ident" placeholder="e.g. KCLT" maxlength="6" autocomplete="off"
                 oninput="this.value=this.value.toUpperCase(); if(this.value.length>=3) validateDep()">
               <button class="btn-validate" onclick="validateDep()">Validate</button>
             </div>
             <div id="dep-validate-msg" style="font-family:var(--mono);font-size:10px;color:var(--text3);padding:2px 0;"></div>
+            <form autocomplete="off" style="display:contents">
             <div class="name-search-row">
               <label>Name</label>
               <input type="text" class="name-search-input" id="dep-name-search" placeholder="Search by airport name or city…"
-                oninput="airportNameSearch('dep', this.value)">
+                autocomplete="off" oninput="airportNameSearch('dep', this.value)">
             </div>
+            </form>
             <div class="name-search-results" id="dep-name-results"></div>
           </div>
         </div>
