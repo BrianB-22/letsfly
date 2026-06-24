@@ -2065,9 +2065,9 @@
               <div class="sec-label">Runway Length (ft)</div>
               <div class="range-row">
                 <label>Min</label>
-                <input type="number" id="dep-rwy-min" placeholder="None" min="0" max="20000" style="width:90px">
+                <input type="number" id="dep-rwy-min" placeholder="None" min="0" max="20000" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" style="width:90px">
                 <label>Max</label>
-                <input type="number" id="dep-rwy-max" placeholder="None" min="0" max="20000" style="width:90px">
+                <input type="number" id="dep-rwy-max" placeholder="None" min="0" max="20000" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" style="width:90px">
               </div>
               <div style="display:none">
                 <input type="checkbox" id="dep-avgas">
@@ -2095,9 +2095,9 @@
             <button id="range-nm-btn" class="active" onclick="setRangeMode('nm')">NM</button>
             <button id="range-hrs-btn" onclick="setRangeMode('hrs')">HRS</button>
           </div>
-          <input type="number" id="arr-min" value="100" min="0.1" step="50" style="width:80px;text-align:center" oninput="onRangeMinInput()">
+          <input type="number" id="arr-min" value="100" min="0.1" step="50" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" style="width:80px;text-align:center" oninput="onRangeMinInput()">
           <span class="range-sep">—</span>
-          <input type="number" id="arr-max" value="1000" min="0.1" step="50" style="width:80px;text-align:center" oninput="onRangeMaxInput()">
+          <input type="number" id="arr-max" value="1000" min="0.1" step="50" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" style="width:80px;text-align:center" oninput="onRangeMaxInput()">
           <span id="range-hint" style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;display:none"></span>
         </div>
 
@@ -2172,9 +2172,9 @@
             <div class="sec-label" style="margin-top:8px">Runway Length (ft) &amp; Destination Airport Relative Heading</div>
             <div class="range-row">
               <label>Min</label>
-              <input type="number" id="arr-rwy-min" placeholder="None" min="0" max="20000" style="width:90px">
+              <input type="number" id="arr-rwy-min" placeholder="None" min="0" max="20000" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" style="width:90px">
               <label>Max</label>
-              <input type="number" id="arr-rwy-max" placeholder="None" min="0" max="20000" style="width:90px">
+              <input type="number" id="arr-rwy-max" placeholder="None" min="0" max="20000" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" style="width:90px">
               <span class="range-sep" style="margin-left:10px">Dir</span>
               <div class="select-wrap" style="width:96px">
                 <select id="arr-direction">
@@ -3980,8 +3980,8 @@ function renderProfile(dep, arr) {
     <div class="profile-stat">
       <div class="profile-stat-label">Cruise Alt</div>
       <div class="profile-stat-value">
-        <input id="profile-alt-input" type="number" value="${cruiseAlt}" min="500" max="60000" step="500"
-          autocomplete="off" data-form-type="other" data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')"
+        <input id="profile-alt-input" type="text" inputmode="numeric" value="${cruiseAlt}"
+          autocomplete="off" data-form-type="other" data-lpignore="true"
           style="width:70px;font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center"
           oninput="onProfileAltInput(this.value)" title="Cruise altitude in feet">
         <span class="profile-stat-sub">ft</span>
@@ -3990,8 +3990,8 @@ function renderProfile(dep, arr) {
     <div class="profile-stat">
       <div class="profile-stat-label">Cruise Speed</div>
       <div class="profile-stat-value">
-        <input id="profile-speed-input" type="number" value="${currentSpeed}" min="50" max="700" step="1"
-          autocomplete="off" data-form-type="other" data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')"
+        <input id="profile-speed-input" type="text" inputmode="numeric" value="${currentSpeed}"
+          autocomplete="off" data-form-type="other" data-lpignore="true"
           style="width:55px;font-family:'Share Tech Mono',monospace;font-size:14px;background:var(--bg2);border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:2px 5px;text-align:center"
           oninput="onProfileSpeedInput(this.value)" title="Cruise speed in knots">
         <span class="profile-stat-sub">kts</span>
