@@ -2419,7 +2419,7 @@ fetch('banner.json?_=' + Date.now())
   .then(r => r.json())
   .then(d => {
     if (d.active && d.message) {
-      document.getElementById('site-banner-text').textContent = d.message;
+      document.getElementById('site-banner-text').innerHTML = d.message;
       document.getElementById('site-banner').style.display = 'flex';
     }
   })
