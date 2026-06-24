@@ -4034,8 +4034,8 @@ function onProfileAltInput(val) {
   const todEl = document.getElementById('profile-stat-tod');
   const tocEl = document.getElementById('profile-stat-toc');
   const segEl = document.getElementById('profile-stat-seg');
-  if (todEl) todEl.innerHTML = (hasCruise ? todNm + ' nm' : '—') + (hasCruise ? '<span class="profile-stat-sub"> from dest</span>' : '');
-  if (tocEl) tocEl.innerHTML = tocNm + ' nm<span class="profile-stat-sub"> from dep</span>';
+  if (todEl) todEl.textContent = hasCruise ? todNm + ' nm' : '—';
+  if (tocEl) tocEl.textContent = tocNm + ' nm';
   if (segEl) segEl.textContent = hasCruise ? cruiseSegNm + ' nm' : '—';
   updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise);
   if (_windsCache) renderWindsDisplay(currentDep, currentArr);
@@ -4197,7 +4197,7 @@ function renderProfile(dep, arr) {
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">TOC</div>
-      <div class="profile-stat-value" id="profile-stat-toc">${tocNm} nm<span class="profile-stat-sub"> from dep</span></div>
+      <div class="profile-stat-value" id="profile-stat-toc">${tocNm} nm</div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">Cruise Segment</div>
@@ -4205,7 +4205,7 @@ function renderProfile(dep, arr) {
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">TOD</div>
-      <div class="profile-stat-value" id="profile-stat-tod">${hasCruise ? todNm + ' nm' : '—'}<span class="profile-stat-sub">${hasCruise ? ' from dest' : ''}</span></div>
+      <div class="profile-stat-value" id="profile-stat-tod">${hasCruise ? todNm + ' nm' : '—'}</div>
     </div>
     <div class="profile-stat profile-stat--sep">
       <div class="profile-stat-label">Arrival</div>
