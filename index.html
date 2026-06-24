@@ -3951,7 +3951,7 @@ async function fetchWindsAloft(dep, arr, cruiseAlt) {
   const el = document.getElementById('profile-winds');
   if (!el) return;
   if (!currentUser) {
-    el.innerHTML = '<div class="profile-winds-card"><div class="profile-winds-note">Sign in to access Winds Aloft data.</div></div>';
+    el.innerHTML = '<div class="profile-winds-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid var(--accent);border-radius:5px;background:rgba(0,180,216,0.06);"><span style="font-size:22px;">🌬️</span><div><div style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:600;letter-spacing:.5px;">Winds Aloft</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">Sign in to access wind and adjusted flight time data.</div></div><button onclick="showAuthModal(\'signin\')" style="margin-left:auto;font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:6px 16px;background:var(--accent);border:none;color:#000;border-radius:3px;cursor:pointer;font-weight:700;white-space:nowrap;">Sign In</button></div>';
     return;
   }
   el.innerHTML = '<div class="profile-winds-card"><div class="profile-winds-note">Fetching winds aloft…</div></div>';
