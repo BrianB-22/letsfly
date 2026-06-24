@@ -469,6 +469,13 @@ let currentUser = null;
 let flights = [];
 let leafletMaps = {};
 
+// Escape user-controlled strings before interpolating into innerHTML
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 // ── AUTH ──
 _sb.auth.onAuthStateChange((event, session) => {
   currentUser = session?.user ?? null;
@@ -487,7 +494,7 @@ _sb.auth.getSession().then(({ data: { session } }) => {
 function renderAuthHeader() {
   const el = document.getElementById('auth-header');
   if (currentUser) {
-    el.innerHTML = `<div class="user-chip"><span>${currentUser.email}</span><button class="signout-btn" onclick="signOut()">Sign Out</button></div>`;
+    el.innerHTML = `<div class="user-chip"><span>${escapeHtml(currentUser.email)}</span><button class="signout-btn" onclick="signOut()">Sign Out</button></div>`;
   } else {
     el.innerHTML = `<button class="auth-btn auth-btn-ghost" onclick="showAuthModal('signin')">Sign In</button>`;
   }
@@ -671,7 +678,7 @@ function buildCard(f) {
           <span class="sep">→</span>
           <span class="arr">${f.arr_id}</span>
         </div>
-        <div class="card-names">${f.dep_name} → ${f.arr_name}</div>
+        <div class="card-names">${escapeHtml(f.dep_name)} → ${escapeHtml(f.arr_name)}</div>
       </div>
       <div class="card-right">
         <div class="card-badges">
@@ -708,7 +715,7 @@ function buildCard(f) {
           </div>
           <div class="field-group" style="margin-top:4px">
             <label class="field-label">Pilot Notes</label>
-            <textarea id="notes-${f.id}" placeholder="Add notes about this flight...">${f.pilot_notes || ''}</textarea>
+            <textarea id="notes-${f.id}" placeholder="Add notes about this flight...">${escapeHtml(f.pilot_notes)}</textarea>
           </div>
         </div>
 
