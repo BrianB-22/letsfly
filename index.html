@@ -3810,7 +3810,10 @@ function getCruiseAlt() {
   if (profileCruiseAlt !== null) return profileCruiseAlt;
   const sel = document.getElementById('aircraft-preset');
   const key = sel.options[sel.selectedIndex]?.dataset?.key;
-  return PRESET_CRUISE_ALT[key] ?? 10000;
+  if (PRESET_CRUISE_ALT[key]) return PRESET_CRUISE_ALT[key];
+  // Fall back to airway preference
+  const airwayPref = getAirwayPref();
+  return airwayPref === 'low' ? 8000 : 28000;
 }
 
 function getProfileStats(dep, arr, cruiseAlt) {
@@ -3868,8 +3871,8 @@ function renderProfileSvg(dep, arr) {
     peakAlt = Math.min(Math.round(depElev + tocDist * CLIMB_FT_PER_NM), cruiseAlt);
   }
 
-  const VW = 800, VH = 200;
-  const PL = 62, PR = 16, PT = 22, PB = 44;
+  const VW = 800, VH = 208;
+  const PL = 62, PR = 16, PT = 30, PB = 44;
   const W = VW - PL - PR, H = VH - PT - PB;
 
   const altPad = Math.max(peakAlt * 0.15, 500);
@@ -3895,9 +3898,10 @@ function renderProfileSvg(dep, arr) {
   )];
 
   const rawStep = totalDist > 400 ? 100 : totalDist > 150 ? 50 : totalDist > 60 ? 20 : 10;
-  const xTicks  = [...new Set(
-    Array.from({ length: Math.ceil(totalDist / rawStep) + 1 }, (_, i) => Math.min(i * rawStep, Math.round(totalDist)))
-  )];
+  const roundedTotal = Math.round(totalDist);
+  const xTicks = [0];
+  for (let d = rawStep; d < totalDist - rawStep * 0.4; d += rawStep) xTicks.push(Math.round(d));
+  if (roundedTotal > xTicks[xTicks.length - 1]) xTicks.push(roundedTotal);
 
   const tocX = toX(tocDist).toFixed(1);
   const todX = hasCruise ? toX(todDist).toFixed(1) : null;
@@ -3916,15 +3920,18 @@ function renderProfileSvg(dep, arr) {
   <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
   ${hasCruise
     ? `<line x1="${tocX}" y1="${PT}" x2="${tocX}" y2="${PT+H}" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>
-  <text x="${tocX}" y="${PT-6}" text-anchor="middle" font-size="10" fill="var(--green)" font-weight="600">TOC</text>
+  <text x="${tocX}" y="${PT-17}" text-anchor="middle" font-size="10" fill="var(--green)" font-weight="600">TOC</text>
+  <text x="${tocX}" y="${PT-5}" text-anchor="middle" font-size="9" fill="var(--green)" opacity="0.8">${Math.round(tocDist)}nm</text>
   <line x1="${todX}" y1="${PT}" x2="${todX}" y2="${PT+H}" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 3" opacity="0.75"/>
-  <text x="${todX}" y="${PT-6}" text-anchor="middle" font-size="10" fill="var(--amber)" font-weight="600">TOD</text>`
+  <text x="${todX}" y="${PT-17}" text-anchor="middle" font-size="10" fill="var(--amber)" font-weight="600">TOD</text>
+  <text x="${todX}" y="${PT-5}" text-anchor="middle" font-size="9" fill="var(--amber)" opacity="0.8">${Math.round(todDist)}nm</text>`
     : `<line x1="${tocX}" y1="${PT}" x2="${tocX}" y2="${PT+H}" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>
-  <text x="${tocX}" y="${PT-6}" text-anchor="middle" font-size="10" fill="var(--amber)" font-weight="600">PEAK</text>`}
+  <text x="${tocX}" y="${PT-17}" text-anchor="middle" font-size="10" fill="var(--amber)" font-weight="600">PEAK</text>
+  <text x="${tocX}" y="${PT-5}" text-anchor="middle" font-size="9" fill="var(--amber)" opacity="0.8">${Math.round(tocDist)}nm</text>`}
   <circle cx="${toX(0).toFixed(1)}" cy="${toY(depElev).toFixed(1)}" r="5" fill="var(--green)" stroke="var(--bg1)" stroke-width="2"/>
-  <text x="${toX(0).toFixed(1)}" y="${Math.max(toY(depElev) - 9, PT + 12).toFixed(1)}" text-anchor="start" font-size="10" fill="var(--green)" font-weight="600">${dep.id}</text>
+  <text x="${(toX(0) + 9).toFixed(1)}" y="${toY(depElev).toFixed(1)}" dominant-baseline="middle" text-anchor="start" font-size="10" fill="var(--green)" font-weight="600">${dep.id}</text>
   <circle cx="${toX(totalDist).toFixed(1)}" cy="${toY(arrElev).toFixed(1)}" r="5" fill="var(--red)" stroke="var(--bg1)" stroke-width="2"/>
-  <text x="${toX(totalDist).toFixed(1)}" y="${Math.max(toY(arrElev) - 9, PT + 12).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--red)" font-weight="600">${arr.id}</text>
+  <text x="${(toX(totalDist) - 9).toFixed(1)}" y="${toY(arrElev).toFixed(1)}" dominant-baseline="middle" text-anchor="end" font-size="10" fill="var(--red)" font-weight="600">${arr.id}</text>
   ${yTicks.map(a => `<text x="${PL-5}" y="${toY(a).toFixed(1)}" text-anchor="end" dominant-baseline="middle" font-size="10" fill="var(--text3)">${altFmt(a)}</text>`).join('\n  ')}
   ${xTicks.map(d => `<text x="${toX(d).toFixed(1)}" y="${PT+H+14}" text-anchor="middle" font-size="10" fill="var(--text3)">${d}</text>`).join('\n  ')}
   <text x="${(PL + W/2).toFixed(0)}" y="${VH-2}" text-anchor="middle" font-size="10" fill="var(--text3)">nm from departure</text>
@@ -3957,16 +3964,24 @@ function renderProfile(dep, arr) {
       </div>
     </div>
     <div class="profile-stat">
-      <div class="profile-stat-label">TOD</div>
-      <div class="profile-stat-value" id="profile-stat-tod">${hasCruise ? todNm + ' nm' : '—'}<span class="profile-stat-sub">${hasCruise ? ' from dest' : ''}</span></div>
+      <div class="profile-stat-label">Departure</div>
+      <div class="profile-stat-value">${dep.id}<span class="profile-stat-sub"> ${(dep.elev || 0).toLocaleString()} ft</span></div>
+    </div>
+    <div class="profile-stat">
+      <div class="profile-stat-label">Arrival</div>
+      <div class="profile-stat-value">${arr.id}<span class="profile-stat-sub"> ${(arr.elev || 0).toLocaleString()} ft</span></div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">TOC</div>
       <div class="profile-stat-value" id="profile-stat-toc">${tocNm} nm<span class="profile-stat-sub"> from dep</span></div>
     </div>
     <div class="profile-stat">
+      <div class="profile-stat-label">TOD</div>
+      <div class="profile-stat-value" id="profile-stat-tod">${hasCruise ? todNm + ' nm' : '—'}<span class="profile-stat-sub">${hasCruise ? ' from dest' : ''}</span></div>
+    </div>
+    <div class="profile-stat">
       <div class="profile-stat-label">Descent Rate</div>
-      <div class="profile-stat-value">~${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
+      <div class="profile-stat-value">${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
     </div>
     <div class="profile-stat">
       <div class="profile-stat-label">Cruise Segment</div>
