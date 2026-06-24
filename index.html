@@ -856,6 +856,7 @@
     border-right: 1px solid var(--border);
   }
   .profile-stat:last-child { border-right: none; }
+  .profile-stat--sep { border-right: 3px solid var(--text3); }
   .profile-stat-label {
     font-family: var(--cond);
     font-size: 11px;
@@ -4074,7 +4075,7 @@ function renderProfile(dep, arr) {
         <span class="profile-stat-sub">ft</span>
       </div>
     </div>
-    <div class="profile-stat">
+    <div class="profile-stat profile-stat--sep">
       <div class="profile-stat-label">Cruise Speed</div>
       <div class="profile-stat-value">
         <input id="profile-speed-input" type="text" inputmode="numeric" value="${currentSpeed}"
@@ -4104,7 +4105,7 @@ function renderProfile(dep, arr) {
       <div class="profile-stat-label">Descent Rate</div>
       <div class="profile-stat-value" id="profile-stat-desc-rate">${descRate.toLocaleString()}<span class="profile-stat-sub"> fpm</span></div>
     </div>
-    <div class="profile-stat">
+    <div class="profile-stat profile-stat--sep">
       <div class="profile-stat-label">Cruise Segment</div>
       <div class="profile-stat-value" id="profile-stat-seg">${hasCruise ? cruiseSegNm + ' nm' : '—'}</div>
     </div>
