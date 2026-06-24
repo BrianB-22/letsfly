@@ -3896,7 +3896,11 @@ function renderWindsDisplay(dep, arr) {
   const speed = getProfileSpeed();
   const totalDist = distNm(dep.lat, dep.lon, arr.lat, arr.lon);
   const gs = Math.max(speed + component, 1);
-  const adjMin = Math.round(totalDist / gs * 60);
+  const baseMin = Math.round(totalDist / speed * 60);
+  const adjMin  = Math.round(totalDist / gs * 60);
+  const diffMin = adjMin - baseMin;
+  const diffLabel = diffMin === 0 ? '' : diffMin > 0 ? `(+${diffMin} min)` : `(${diffMin} min)`;
+  const diffColor = diffMin > 0 ? 'var(--red)' : diffMin < 0 ? 'var(--green)' : 'var(--text3)';
   const compAbs = Math.abs(component);
   const compLabel = component > 2 ? `▲ ${compAbs} kt tailwind`
                   : component < -2 ? `▼ ${compAbs} kt headwind`
@@ -3930,7 +3934,7 @@ function renderWindsDisplay(dep, arr) {
         </div>
         <div class="profile-winds-stat">
           <div class="profile-stat-label">Adj. Flight Time</div>
-          <div class="profile-winds-value" id="profile-winds-adj-time">${formatPhaseTime(adjMin)}</div>
+          <div class="profile-winds-value" id="profile-winds-adj-time">${formatPhaseTime(adjMin)} <span class="profile-stat-sub" style="color:${diffColor}">${diffLabel}</span></div>
         </div>
       </div>
     </div>`;
