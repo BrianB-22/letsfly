@@ -882,47 +882,6 @@
     align-items: center;
     gap: 10px;
   }
-  .profile-checkpoints {
-    margin-top: 12px;
-    background: var(--bg1);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .profile-checkpoints-hdr {
-    font-family: var(--cond);
-    font-size: 11px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--text3);
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .profile-checkpoints-items {
-    display: flex;
-    flex-wrap: wrap;
-  }
-  .checkpoint-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    padding: 10px 16px;
-    border-right: 1px solid var(--border);
-    min-width: 80px;
-  }
-  .checkpoint-item:last-child { border-right: none; }
-  .checkpoint-nm {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--amber);
-  }
-  .checkpoint-alt {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text);
-  }
-
   /* ── TEXT RESULTS ── */
   .text-results {
     padding: 20px;
@@ -2352,7 +2311,6 @@
       <div class="profile-wrap">
         <div id="profile-svg-container"></div>
         <div class="profile-stats" id="profile-stats"></div>
-        <div id="profile-checkpoints"></div>
       </div>
       <div class="result-actions">
         <button class="action-btn action-btn-ghost" onclick="switchTab('text')">← Back to Details</button>
@@ -3908,25 +3866,6 @@ function updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise) {
   if (de) de.textContent = `~${formatPhaseTime(descentMin)}`;
 }
 
-function renderCheckpoints(dep, arr, cruiseAlt) {
-  const el = document.getElementById('profile-checkpoints');
-  if (!el || !dep || !arr) return;
-  const { todNm, hasCruise } = getProfileStats(dep, arr, cruiseAlt);
-  if (!hasCruise || todNm < 5) { el.innerHTML = ''; return; }
-  const arrElev = +(arr.elev) || 0;
-  const step = todNm > 50 ? 10 : 5;
-  const startNm = Math.floor(todNm / step) * step;
-  const fmt = alt => alt >= 18000 ? `FL${Math.round(alt / 100)}` : `${alt.toLocaleString()} ft`;
-  const items = [];
-  for (let nm = startNm; nm >= step; nm -= step) {
-    items.push(`<div class="checkpoint-item"><div class="checkpoint-nm">◂ ${nm}nm</div><div class="checkpoint-alt">${fmt(Math.round(arrElev + nm * 318))}</div></div>`);
-  }
-  el.innerHTML = `
-    <div class="profile-checkpoints">
-      <div class="profile-checkpoints-hdr">Descent Checkpoints</div>
-      <div class="profile-checkpoints-items">${items.join('')}</div>
-    </div>`;
-}
 
 function onProfileAltInput(val) {
   const v = parseInt(val, 10);
@@ -3942,7 +3881,6 @@ function onProfileAltInput(val) {
   if (tocEl) tocEl.innerHTML = tocNm + ' nm<span class="profile-stat-sub"> from dep</span>';
   if (segEl) segEl.textContent = hasCruise ? cruiseSegNm + ' nm' : '—';
   updatePhaseTimeEls(climbMin, cruiseMin, descentMin, hasCruise);
-  renderCheckpoints(currentDep, currentArr, v);
 }
 
 function onProfileSpeedInput(val) {
@@ -4122,7 +4060,6 @@ function renderProfile(dep, arr) {
       <div class="profile-stat-value" id="profile-stat-desc-time">~${formatPhaseTime(descentMin)}</div>
     </div>
   `;
-  renderCheckpoints(dep, arr, cruiseAlt);
 }
 
 // ═══════════════════════════════════════════════════════
