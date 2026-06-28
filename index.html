@@ -3098,7 +3098,8 @@ async function loadAirports() {
     const resp = await fetch('airports.json');
     if (!resp.ok) throw new Error('fetch failed');
     AIRPORTS = await resp.json();
-    document.getElementById('db-count').textContent = AIRPORTS.length.toLocaleString();
+    const dbCountEl = document.getElementById('db-count');
+    if (dbCountEl) dbCountEl.textContent = AIRPORTS.length.toLocaleString();
     initDropdowns();
     initRangeMode();
     loadSharedFlight();
