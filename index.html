@@ -98,6 +98,8 @@
   }
 
   /* ── HEADER ── */
+  body.modal-open header,
+  body.modal-open #site-banner { z-index: 0 !important; }
   header {
     position: relative;
     z-index: 10;
@@ -5866,6 +5868,11 @@ document.getElementById('arr-jeta').addEventListener('change', function() { if(t
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+
+  new MutationObserver(() => {
+    const anyOpen = !!document.querySelector('.modal-overlay.open');
+    document.body.classList.toggle('modal-open', anyOpen);
+  }).observe(document.body, { subtree: true, attributeFilter: ['class'] });
 </script>
 
 </body>
