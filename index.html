@@ -1948,7 +1948,7 @@
   <div class="header-right">
     <button id="theme-toggle" class="auth-btn auth-btn-ghost" onclick="toggleTheme()" title="Toggle light/dark mode" style="padding:0 8px;font-size:14px;">🌙</button>
     <button class="auth-btn auth-btn-ghost" onclick="showWhatsNewModal()" style="letter-spacing:1px;position:relative;white-space:nowrap;" id="whatsnew-btn">What's New<span id="whatsnew-dot" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;background:var(--accent);border-radius:50%;border:1.5px solid var(--bg1);"></span></button>
-    <button class="auth-btn auth-btn-ghost" onclick="showHelpModal()" style="letter-spacing:1px;">About</button>
+    <button id="about-btn" class="auth-btn auth-btn-ghost" onclick="showHelpModal()" style="letter-spacing:1px;">About</button>
     <div id="auth-header">
       <button class="auth-btn auth-btn-ghost" onclick="showAuthModal('signin')">Sign In</button>
       <button class="auth-btn auth-btn-solid" onclick="showAuthModal('signup')">Create Account</button>
@@ -5827,7 +5827,7 @@ const TOUR_STEPS = [
   { sel: 'a[href="flights.html"]',
     title: 'My Flights',
     body:  'Save flights to your personal logbook — rate them, add pilot notes, log completed flights, and export routes to your simulator. Requires a free account to get started.' },
-  { sel: 'button.auth-btn-ghost',
+  { sel: '#about-btn',
     title: 'About & Help',
     body:  'Find detailed instructions, feature explanations, and tips here. You can also retake this tour any time from the About page.' },
 ];
