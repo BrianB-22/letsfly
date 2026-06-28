@@ -774,8 +774,15 @@ function buildCard(f) {
         <div>
           <div class="sec-label">Flight Details</div>
           <div class="field-group">
-            <label class="field-label">Date Flown</label>
-            <input type="date" id="date-${f.id}" value="${f.flight_date || ''}" oninput="markDirty('${f.id}')">
+            <label class="field-label" style="display:flex;align-items:center;gap:6px;">
+              Date Flown
+              <span onclick="document.getElementById('date-${f.id}').showPicker()" title="Pick a date"
+                style="cursor:pointer;font-size:14px;opacity:0.6;line-height:1;user-select:none;"
+                onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">🗓</span>
+            </label>
+            <input type="date" id="date-${f.id}" value="${f.flight_date || ''}" oninput="markDirty('${f.id}')"
+              style="cursor:pointer;"
+              onclick="try{this.showPicker()}catch(e){}">
           </div>
           <div class="field-group">
             <div class="completed-toggle" onclick="toggleCompleted('${f.id}')">
