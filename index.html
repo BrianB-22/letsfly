@@ -5854,7 +5854,10 @@ function _buildTourDOM() {
       </div>
       <div id="tour-body" style="font-size:14px;color:var(--text2);line-height:1.65;margin-bottom:16px;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <span id="tour-prog" style="font-family:var(--mono);font-size:12px;color:var(--text3);"></span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="tour-prog" style="font-family:var(--mono);font-size:12px;color:var(--text3);"></span>
+          <button id="tour-skip" onclick="endTour()" style="font-family:var(--cond);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:3px;cursor:pointer;background:transparent;border:1px solid var(--border2);color:var(--text3);display:none;">Skip</button>
+        </div>
         <div style="display:flex;gap:8px;">
           <button id="tour-prev" onclick="_tourNav(-1)" style="font-family:var(--cond);font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;border-radius:3px;cursor:pointer;background:transparent;border:1px solid var(--border2);color:var(--text3);display:none;">← Back</button>
           <button id="tour-next" onclick="_tourNav(1)"  style="font-family:var(--cond);font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:5px 14px;border-radius:3px;cursor:pointer;background:rgba(0,180,216,0.12);border:1px solid rgba(0,180,216,0.4);color:var(--accent);">Next →</button>
@@ -5875,6 +5878,7 @@ function _showTourStep() {
   document.getElementById('tour-body').innerHTML    = step.body;
   document.getElementById('tour-prog').textContent  = `${_tourIdx + 1} of ${total}`;
   document.getElementById('tour-prev').style.display = _tourIdx > 0 ? '' : 'none';
+  document.getElementById('tour-skip').style.display = _tourIdx === 0 ? '' : 'none';
   document.getElementById('tour-next').textContent   = _tourIdx === total - 1 ? 'Done ✓' : 'Next →';
   document.getElementById('tour-overlay').style.pointerEvents = 'all';
 
