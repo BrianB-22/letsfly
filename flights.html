@@ -258,6 +258,28 @@
     .btn-load   { background: rgba(82,183,136,0.08); border-color: rgba(82,183,136,0.35); color: var(--green); }
     .btn-load:hover   { background: rgba(82,183,136,0.18); }
 
+    /* ── ADD MANUAL FLIGHT MODAL ── */
+    .mf-field-wrap { position: relative; margin-bottom: 16px; }
+    .mf-label { display: block; font-family: var(--mono); font-size: 14px; letter-spacing: 1.5px; color: var(--text3); text-transform: uppercase; margin-bottom: 5px; }
+    .mf-input { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; padding: 8px 10px; color: var(--text); font-family: var(--mono); font-size: 16px; outline: none; letter-spacing: 1px; }
+    .mf-input:focus { border-color: var(--accent); }
+    .mf-hint { font-size: 13px; color: var(--text3); margin-top: 5px; min-height: 16px; font-family: var(--mono); letter-spacing: 0.5px; }
+    .mf-hint.found { color: var(--green); }
+    .mf-results {
+      display: none; position: absolute; top: calc(100% + 2px); left: 0; right: 0;
+      background: var(--bg2); border: 1px solid var(--border2); border-radius: 3px;
+      z-index: 50; max-height: 180px; overflow-y: auto;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    .mf-results.open { display: block; }
+    .mf-result-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 10px; }
+    .mf-result-item:last-child { border-bottom: none; }
+    .mf-result-item:hover { background: var(--bg3); color: var(--accent); }
+    .mf-result-icao { font-family: var(--mono); font-size: 15px; color: var(--accent); min-width: 52px; }
+    .mf-result-name { font-size: 14px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .modal-overlay.mf-overlay .modal { max-width: 480px; }
+
     /* ── SITE BANNER ── */
     #site-banner {
       position: relative; z-index: 9;
@@ -367,6 +389,7 @@
     <button class="sort-btn" onclick="sortBy('distance', this)">Distance</button>
     <button class="sort-btn" onclick="sortBy('rating', this)">Rating</button>
     <span class="flights-count" id="flights-count"></span>
+    <button class="btn btn-save" id="add-flight-btn" style="display:none;padding:5px 14px;font-size:14px;margin-left:8px;" onclick="openAddFlightModal()">+ Add Manual Flight</button>
   </div>
 
   <div id="flights-list">
@@ -405,6 +428,52 @@
     <div class="modal-err" id="modal-err"></div>
     <button class="modal-btn modal-btn-primary" id="modal-submit" onclick="authSubmit()">Sign In</button>
     <div class="modal-switch">No account? <a onclick="setAuthMode('signup')">Create one</a></div>
+  </div>
+</div>
+
+<!-- ADD MANUAL FLIGHT MODAL -->
+<div class="modal-overlay mf-overlay" id="add-flight-modal" onclick="if(event.target===this)closeAddFlightModal()">
+  <div class="modal" style="max-width:480px;width:100%">
+    <button class="modal-close" onclick="closeAddFlightModal()">×</button>
+    <div class="modal-title">Add Manual Flight</div>
+
+    <div class="mf-row">
+      <div class="mf-field-wrap">
+        <label class="mf-label">Departure</label>
+        <input class="mf-input" type="text" id="mf-dep" placeholder="ICAO" maxlength="6"
+          oninput="mfSearch('dep')" onblur="setTimeout(()=>mfClose('dep'),150)" autocomplete="off">
+        <div class="mf-results" id="mf-dep-results"></div>
+        <div class="mf-hint" id="mf-dep-hint"></div>
+      </div>
+      <div class="mf-field-wrap">
+        <label class="mf-label">Arrival</label>
+        <input class="mf-input" type="text" id="mf-arr" placeholder="ICAO" maxlength="6"
+          oninput="mfSearch('arr')" onblur="setTimeout(()=>mfClose('arr'),150)" autocomplete="off">
+        <div class="mf-results" id="mf-arr-results"></div>
+        <div class="mf-hint" id="mf-arr-hint"></div>
+      </div>
+    </div>
+
+    <div class="mf-row">
+      <div class="mf-field-wrap" style="margin-bottom:0">
+        <label class="mf-label">Date Flown</label>
+        <input type="date" id="mf-date" style="width:100%;font-size:15px;">
+      </div>
+      <div class="mf-field-wrap" style="margin-bottom:0;display:flex;flex-direction:column;justify-content:flex-end;">
+        <div class="completed-toggle" onclick="mfToggleCompleted()" style="padding:10px 0 6px;">
+          <div class="toggle-track" id="mf-toggle"><div class="toggle-thumb"></div></div>
+          <span class="toggle-text" id="mf-toggle-text">Mark as Completed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mf-field-wrap" style="margin-top:16px">
+      <label class="mf-label">Pilot Notes (optional)</label>
+      <textarea id="mf-notes" style="width:100%;min-height:70px;font-family:var(--sans);font-size:15px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:8px 10px;color:var(--text);outline:none;resize:vertical;" placeholder="Notes about this flight..."></textarea>
+    </div>
+
+    <div class="modal-err" id="mf-err"></div>
+    <button class="modal-btn modal-btn-primary" id="mf-submit" onclick="submitAddFlight()">Add to Logbook</button>
   </div>
 </div>
 
@@ -531,6 +600,8 @@ async function loadFlights() {
     return;
   }
   flights = data || [];
+  document.getElementById('add-flight-btn').style.display = '';
+  if (flights.length) document.getElementById('sort-bar').style.display = 'flex';
   renderStats();
   renderList(flights);
 }
@@ -553,6 +624,7 @@ function renderStats() {
   if (!flights.length) return;
   document.getElementById('stats-section').style.display = 'block';
   document.getElementById('sort-bar').style.display = 'flex';
+  document.getElementById('add-flight-btn').style.display = '';
 
   const completed  = flights.filter(f => f.completed);
   const challenges = flights.filter(f => f.is_challenge);
@@ -643,6 +715,7 @@ function renderList(list) {
         <div class="center-icon">✈</div>
         <div class="center-title">No Saved Flights Yet</div>
         <div class="center-sub">Head back to <a href="index.html">SimLetsFly</a>, find a flight, and hit Save Flight.</div>
+        <button class="btn btn-save" style="margin:16px auto 0;display:block;" onclick="openAddFlightModal()">+ Add Manual Flight</button>
       </div>`;
     return;
   }
@@ -969,6 +1042,7 @@ function buildVisitedMap() {
 function showAuthRequired() {
   document.getElementById('stats-section').style.display = 'none';
   document.getElementById('sort-bar').style.display = 'none';
+  document.getElementById('add-flight-btn').style.display = 'none';
   document.getElementById('flights-list').innerHTML = `
     <div class="center-state">
       <div class="center-icon">🔒</div>
@@ -1126,6 +1200,170 @@ function loadRouteToMain(id) {
     route_nodes: f.route_nodes ?? null,
   }));
   window.location.href = 'index.html';
+}
+
+// ── ADD MANUAL FLIGHT ──
+let _mfAirports = null;
+let _mfDep = null;
+let _mfArr = null;
+let _mfCompleted = false;
+
+async function _loadMfAirports() {
+  if (_mfAirports) return _mfAirports;
+  const r = await fetch('airports.json');
+  _mfAirports = await r.json();
+  return _mfAirports;
+}
+
+function openAddFlightModal() {
+  _mfDep = null; _mfArr = null; _mfCompleted = false;
+  ['dep','arr'].forEach(s => {
+    document.getElementById('mf-' + s).value = '';
+    document.getElementById('mf-' + s + '-hint').textContent = '';
+    document.getElementById('mf-' + s + '-hint').className = 'mf-hint';
+    document.getElementById('mf-' + s + '-results').className = 'mf-results';
+  });
+  document.getElementById('mf-date').value = '';
+  document.getElementById('mf-notes').value = '';
+  document.getElementById('mf-err').textContent = '';
+  document.getElementById('mf-toggle').className = 'toggle-track';
+  document.getElementById('mf-toggle-text').textContent = 'Mark as Completed';
+  document.getElementById('add-flight-modal').classList.add('open');
+  setTimeout(() => document.getElementById('mf-dep').focus(), 80);
+  _loadMfAirports(); // preload in background
+}
+
+function closeAddFlightModal() {
+  document.getElementById('add-flight-modal').classList.remove('open');
+}
+
+function mfClose(side) {
+  document.getElementById('mf-' + side + '-results').classList.remove('open');
+}
+
+async function mfSearch(side) {
+  const input   = document.getElementById('mf-' + side);
+  const hintEl  = document.getElementById('mf-' + side + '-hint');
+  const resultsEl = document.getElementById('mf-' + side + '-results');
+  const val = input.value.trim().toUpperCase();
+  input.value = val;
+
+  if (side === 'dep') _mfDep = null; else _mfArr = null;
+  hintEl.className = 'mf-hint';
+
+  if (val.length < 2) { hintEl.textContent = ''; resultsEl.classList.remove('open'); return; }
+
+  const airports = await _loadMfAirports();
+
+  const exact = airports.find(a => a.id === val);
+  if (exact) {
+    if (side === 'dep') _mfDep = exact; else _mfArr = exact;
+    hintEl.textContent = exact.name + (exact.city ? ' · ' + exact.city : '');
+    hintEl.className = 'mf-hint found';
+    resultsEl.classList.remove('open');
+    return;
+  }
+
+  const matches = airports.filter(a => a.id.startsWith(val)).slice(0, 8);
+  if (!matches.length) { hintEl.textContent = 'No match found'; resultsEl.classList.remove('open'); return; }
+
+  hintEl.textContent = '';
+  resultsEl.innerHTML = matches.map(a =>
+    `<div class="mf-result-item" onmousedown="mfPick('${side}','${a.id}')">
+      <span class="mf-result-icao">${a.id}</span>
+      <span class="mf-result-name">${a.name}${a.city ? ' · ' + a.city : ''}</span>
+    </div>`
+  ).join('');
+  resultsEl.classList.add('open');
+}
+
+function mfPick(side, id) {
+  const airport = _mfAirports?.find(a => a.id === id);
+  if (!airport) return;
+  document.getElementById('mf-' + side).value = id;
+  document.getElementById('mf-' + side + '-hint').textContent = airport.name + (airport.city ? ' · ' + airport.city : '');
+  document.getElementById('mf-' + side + '-hint').className = 'mf-hint found';
+  document.getElementById('mf-' + side + '-results').classList.remove('open');
+  if (side === 'dep') { _mfDep = airport; document.getElementById('mf-arr').focus(); }
+  else _mfArr = airport;
+}
+
+function mfToggleCompleted() {
+  _mfCompleted = !_mfCompleted;
+  document.getElementById('mf-toggle').className = 'toggle-track' + (_mfCompleted ? ' on' : '');
+  document.getElementById('mf-toggle-text').textContent = _mfCompleted ? 'Flight Completed' : 'Mark as Completed';
+}
+
+function _haversineDist(lat1, lon1, lat2, lon2) {
+  const R = 3440.065;
+  const toR = d => d * Math.PI / 180;
+  const dLat = toR(lat2 - lat1), dLon = toR(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toR(lat1))*Math.cos(toR(lat2))*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function _bearing(lat1, lon1, lat2, lon2) {
+  const toR = d => d * Math.PI / 180;
+  const dLon = toR(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(toR(lat2));
+  const x = Math.cos(toR(lat1))*Math.sin(toR(lat2)) - Math.sin(toR(lat1))*Math.cos(toR(lat2))*Math.cos(dLon);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+async function submitAddFlight() {
+  const depIcao = document.getElementById('mf-dep').value.trim().toUpperCase();
+  const arrIcao = document.getElementById('mf-arr').value.trim().toUpperCase();
+  const errEl = document.getElementById('mf-err');
+  const btn = document.getElementById('mf-submit');
+
+  if (!depIcao) { errEl.textContent = 'Departure ICAO is required.'; return; }
+  if (!arrIcao) { errEl.textContent = 'Arrival ICAO is required.'; return; }
+  if (depIcao === arrIcao) { errEl.textContent = 'Departure and arrival must differ.'; return; }
+
+  const dep = _mfDep;
+  const arr = _mfArr;
+  const dist    = (dep && arr) ? _haversineDist(dep.lat, dep.lon, arr.lat, arr.lon) : null;
+  const bearing = (dep && arr) ? _bearing(dep.lat, dep.lon, arr.lat, arr.lon) : null;
+
+  const record = {
+    user_id:     currentUser.id,
+    dep_id:      depIcao,
+    arr_id:      arrIcao,
+    dep_name:    dep?.name ?? depIcao,
+    arr_name:    arr?.name ?? arrIcao,
+    dep_lat:     dep?.lat ?? null,
+    dep_lon:     dep?.lon ?? null,
+    arr_lat:     arr?.lat ?? null,
+    arr_lon:     arr?.lon ?? null,
+    distance_nm: dist,
+    bearing_deg: bearing,
+    flight_date: document.getElementById('mf-date').value || null,
+    pilot_notes: document.getElementById('mf-notes').value.trim() || null,
+    completed:   _mfCompleted,
+    is_challenge: false,
+    is_public:   false,
+    speed_kts:   250,
+  };
+
+  btn.disabled = true; btn.textContent = '...'; errEl.textContent = '';
+  const { data, error } = await _sb.from('saved_flights').insert(record).select().single();
+  btn.disabled = false; btn.textContent = 'Add to Logbook';
+
+  if (error) { errEl.textContent = 'Error: ' + error.message; return; }
+
+  flights.unshift(data);
+  closeAddFlightModal();
+  document.getElementById('sort-bar').style.display = 'flex';
+  document.getElementById('add-flight-btn').style.display = '';
+  renderStats();
+  renderList(flights);
+  showToast(`${depIcao} → ${arrIcao} added to logbook ✓`, 'ok');
+
+  // Expand the newly added card
+  setTimeout(() => {
+    const card = document.getElementById('card-' + data.id);
+    if (card) { card.classList.add('expanded'); card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }, 100);
 }
 
 // ── EXPORT ──
