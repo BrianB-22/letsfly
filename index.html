@@ -1948,6 +1948,7 @@
       DB: <span id="db-count">Loading...</span> airports
     </div>
     <button id="theme-toggle" class="auth-btn auth-btn-ghost" onclick="toggleTheme()" title="Toggle light/dark mode" style="padding:0 8px;font-size:14px;">🌙</button>
+    <button class="auth-btn auth-btn-ghost" onclick="showWhatsNewModal()" style="letter-spacing:1px;position:relative;" id="whatsnew-btn">What's New<span id="whatsnew-dot" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;background:var(--accent);border-radius:50%;border:1.5px solid var(--bg1);"></span></button>
     <button class="auth-btn auth-btn-ghost" onclick="showHelpModal()" style="letter-spacing:1px;">About</button>
     <form action="https://www.paypal.com/donate" method="post" target="_top" style="display:inline-flex;align-items:center;">
       <input type="hidden" name="business" value="LGAHVLVHW8ZEQ" />
@@ -5769,6 +5770,31 @@ function closeHelpModal() {
   document.getElementById('help-modal').classList.remove('open');
 }
 
+const WHATSNEW_VERSION = '2026-06-28';
+function initWhatsNewDot() {
+  if (localStorage.getItem('slf-seen-whatsnew') !== WHATSNEW_VERSION) {
+    const dot = document.getElementById('whatsnew-dot');
+    if (dot) dot.style.display = 'block';
+  }
+}
+function showWhatsNewModal() {
+  const modal = document.getElementById('whatsnew-modal');
+  const body  = document.getElementById('whatsnew-modal-body');
+  modal.classList.add('open');
+  localStorage.setItem('slf-seen-whatsnew', WHATSNEW_VERSION);
+  const dot = document.getElementById('whatsnew-dot');
+  if (dot) dot.style.display = 'none';
+  if (body.dataset.loaded) return;
+  fetch('whatsnew.html?v=' + Date.now())
+    .then(r => r.text())
+    .then(html => { body.innerHTML = html; body.dataset.loaded = '1'; })
+    .catch(() => { body.innerHTML = '<p style="color:var(--text2);padding:20px;">Could not load content.</p>'; });
+}
+function closeWhatsNewModal() {
+  document.getElementById('whatsnew-modal').classList.remove('open');
+}
+initWhatsNewDot();
+
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
@@ -5823,6 +5849,13 @@ document.getElementById('arr-jeta').addEventListener('change', function() { if(t
 </div>
 
 <!-- HELP MODAL -->
+<!-- WHAT'S NEW MODAL -->
+<div class="modal-overlay" id="whatsnew-modal" onclick="if(event.target===this)closeWhatsNewModal()">
+  <div class="modal" style="max-width:680px;max-height:85vh;overflow-y:auto;" id="whatsnew-modal-body">
+    <p style="color:var(--text2);padding:20px;text-align:center;">Loading...</p>
+  </div>
+</div>
+
 <div class="modal-overlay" id="help-modal" onclick="if(event.target===this)closeHelpModal()">
   <div class="modal" style="max-width:780px;max-height:85vh;overflow-y:auto;" id="help-modal-body">
     <p style="color:var(--text2);padding:20px;text-align:center;">Loading...</p>

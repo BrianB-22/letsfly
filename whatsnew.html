@@ -1,0 +1,64 @@
+<div style="padding:28px 28px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+  <div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;">SimLetsFly</div>
+    <div style="font-size:20px;font-weight:700;color:var(--text);">What's New</div>
+  </div>
+  <button onclick="closeWhatsNewModal()" style="background:none;border:none;color:var(--text3);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
+</div>
+
+<div style="padding:24px 28px;display:flex;flex-direction:column;gap:24px;">
+
+  <!-- Vertical Profile Tab -->
+  <div style="border-left:3px solid var(--accent);padding-left:16px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);">Vertical Profile Tab</div>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1.5px;padding:2px 7px;background:var(--accent);color:#000;border-radius:3px;">NEW</span>
+    </div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+      A third tab has been added to the results panel alongside Flight Details and Map View. It shows an SVG altitude profile chart for your route — climb to TOC, cruise segment, and descent to TOD — along with a stats bar covering cruise altitude, cruise speed, descent rate, and phase times (climb / cruise / descent).
+    </div>
+    <div style="margin-top:10px;font-size:13px;color:var(--text2);line-height:1.7;">
+      The tab also includes a <strong style="color:var(--text);">Winds Aloft</strong> card (sign-in required) that fetches live wind speed, direction, and temperature at your cruise altitude from Open-Meteo. It calculates headwind or tailwind component and shows an adjusted flight time with the delta versus no-wind time.
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:var(--text3);">Cruise altitude and speed can be overridden in the profile tab without affecting your main cruise speed setting.</div>
+  </div>
+
+  <!-- Last Flight as Departure -->
+  <div style="border-left:3px solid var(--accent);padding-left:16px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);">Last Flight as Departure</div>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1.5px;padding:2px 7px;background:var(--accent);color:#000;border-radius:3px;">NEW</span>
+    </div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+      A new departure option in My Flights lets you use the arrival airport of your most recently saved flight as your next departure. Great for chaining a realistic trip — you land somewhere, and the next flight picks up right where you left off. Shows airport type, city, and runway length so you know what you're working with.
+    </div>
+  </div>
+
+  <!-- HTML Flight Brief -->
+  <div style="border-left:3px solid var(--accent);padding-left:16px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);">HTML Flight Brief Export</div>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1.5px;padding:2px 7px;background:var(--accent);color:#000;border-radius:3px;">NEW</span>
+    </div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+      The Flight Brief menu now includes <strong style="color:var(--text);">Save as HTML Brief</strong> — a formatted HTML document you can open in any browser. It includes a live route map, two-column departure and arrival cards with runways and METAR/TAF, flight summary, vertical profile chart, winds aloft data, and pilot notes.
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:var(--text3);">The route map requires an internet connection to load tiles. All other data is fully embedded in the file.</div>
+  </div>
+
+  <!-- Vertical info in text export -->
+  <div style="border-left:3px solid var(--border2);padding-left:16px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);">Flight Brief Now Includes Vertical Profile</div>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1.5px;padding:2px 7px;background:var(--bg3);color:var(--text2);border-radius:3px;border:1px solid var(--border);">UPDATE</span>
+    </div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+      Both the clipboard copy and text file export now include a <strong style="color:var(--text);">Vertical Profile</strong> section with cruise altitude, cruise speed, descent rate, TOC, TOD, cruise segment, and phase times. If winds aloft data is loaded, an adjusted flight time and wind component are appended as well.
+    </div>
+  </div>
+
+</div>
+
+<div style="padding:16px 28px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center;">
+  SimLetsFly.com · <a onclick="closeWhatsNewModal();showHelpModal()" style="color:var(--accent);cursor:pointer;">Full feature guide →</a>
+</div>
