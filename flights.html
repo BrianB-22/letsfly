@@ -185,6 +185,7 @@
     .btn { font-family: var(--cond); font-size: 15px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 16px; border-radius: 3px; cursor: pointer; transition: all 0.15s; border: 1px solid; }
     .btn-save  { background: rgba(82,183,136,0.1);  border-color: rgba(82,183,136,0.3);  color: var(--green); }
     .btn-save:hover  { background: rgba(82,183,136,0.2); }
+    .btn-save.clean { opacity: 0.35; }
     .btn-map   { background: rgba(0,180,216,0.1);   border-color: rgba(0,180,216,0.3);   color: var(--accent); }
     .btn-map:hover   { background: rgba(0,180,216,0.2); }
     .btn-pub   { background: transparent; border-color: var(--border2); color: var(--text3); }
@@ -774,7 +775,7 @@ function buildCard(f) {
           <div class="sec-label">Flight Details</div>
           <div class="field-group">
             <label class="field-label">Date Flown</label>
-            <input type="date" id="date-${f.id}" value="${f.flight_date || ''}">
+            <input type="date" id="date-${f.id}" value="${f.flight_date || ''}" oninput="markDirty('${f.id}')">
           </div>
           <div class="field-group">
             <div class="completed-toggle" onclick="toggleCompleted('${f.id}')">
@@ -788,7 +789,7 @@ function buildCard(f) {
           </div>
           <div class="field-group" style="margin-top:4px">
             <label class="field-label">Pilot Notes</label>
-            <textarea id="notes-${f.id}" placeholder="Add notes about this flight...">${escapeHtml(f.pilot_notes)}</textarea>
+            <textarea id="notes-${f.id}" placeholder="Add notes about this flight..." oninput="markDirty('${f.id}')">${escapeHtml(f.pilot_notes)}</textarea>
           </div>
         </div>
 
@@ -805,7 +806,7 @@ function buildCard(f) {
       </div>
 
       <div class="card-actions">
-        <button class="btn btn-save" onclick="saveDetails('${f.id}')">Save Changes</button>
+        <button class="btn btn-save clean" id="save-btn-${f.id}" onclick="saveDetails('${f.id}')">Save Changes</button>
         <button class="btn btn-map"  onclick="toggleMap('${f.id}')">View Route</button>
         <button class="btn btn-share" onclick="shareFlightFromCard('${f.id}')">Copy Link</button>
         <div class="export-wrap">
@@ -832,10 +833,16 @@ function toggleCard(id) {
   document.getElementById('card-' + id).classList.toggle('expanded');
 }
 
+// ── DIRTY STATE ──
+function markDirty(id) {
+  document.getElementById('save-btn-' + id)?.classList.remove('clean');
+}
+
 // ── RATINGS ──
 function setRating(id, cat, val) {
   const f = flights.find(f => f.id === id);
   if (!f) return;
+  markDirty(id);
   f[cat] = val;
   const container = document.querySelector(`.rating-stars[data-id="${id}"][data-cat="${cat}"]`);
   if (container) {
@@ -853,6 +860,7 @@ function setRating(id, cat, val) {
 function toggleCompleted(id) {
   const f = flights.find(f => f.id === id);
   if (!f) return;
+  markDirty(id);
   f.completed = !f.completed;
   const track = document.getElementById('toggle-' + id);
   const text  = document.getElementById('toggle-text-' + id);
@@ -885,7 +893,11 @@ async function saveDetails(id) {
   const { error } = await _sb.from('saved_flights')
     .update(updates).eq('id', id).eq('user_id', currentUser.id);
   if (error) showToast('Save failed: ' + error.message, 'err');
-  else { showToast('Flight updated! ✓', 'ok'); renderStats(); }
+  else {
+    showToast('Flight updated! ✓', 'ok');
+    document.getElementById('save-btn-' + id)?.classList.add('clean');
+    renderStats();
+  }
 }
 
 // ── DELETE ──
