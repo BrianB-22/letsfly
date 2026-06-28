@@ -2325,6 +2325,7 @@
           <div class="export-menu export-menu-up" id="brief-menu">
             <button onclick="copyFlight()">Copy to Clipboard</button>
             <button onclick="saveFlightBrief()">Save as Text File</button>
+            <button onclick="saveFlightBriefHtml()">Save as HTML Brief</button>
           </div>
         </div>
         <button class="action-btn action-btn-share" onclick="shareFlight()">Share Flight</button>
@@ -4694,6 +4695,255 @@ function saveFlightBrief() {
   URL.revokeObjectURL(a.href);
   showToast(`Saved ${filename}`, 'ok');
   try { Promise.resolve(_sb.rpc('increment_page_view', { page_name: 'flight_brief_save' })).catch(() => {}); } catch(e) {}
+}
+
+function saveFlightBriefHtml() {
+  document.getElementById('brief-menu')?.classList.remove('open');
+  const html = buildFlightBriefHtml();
+  if (!html) return;
+  const dep = currentDep.id.toUpperCase();
+  const arr = currentArr.id.toUpperCase();
+  const filename = `${dep}-${arr}-FLIGHT-BRIEF.html`;
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(`Saved ${filename}`, 'ok');
+}
+
+function buildFlightBriefHtml() {
+  if (!currentDep || !currentArr) return null;
+  const dep = currentDep, arr = currentArr;
+  const dist  = distNm(dep.lat, dep.lon, arr.lat, arr.lon);
+  const bear  = bearing(dep.lat, dep.lon, arr.lat, arr.lon);
+  const speed = parseFloat(document.getElementById('cruise-speed').value) || 280;
+  const estTime = dist / speed;
+  const hrs  = Math.floor(estTime);
+  const mins = Math.round((estTime - hrs) * 60);
+
+  const notes    = document.querySelector('#text-results textarea')?.value?.trim();
+  const depMetar = document.getElementById('metar-dep')?.textContent?.trim();
+  const arrMetar = document.getElementById('metar-arr')?.textContent?.trim();
+  const depTaf   = document.getElementById('taf-dep')?.textContent?.trim();
+  const arrTaf   = document.getElementById('taf-arr')?.textContent?.trim();
+
+  const now      = new Date();
+  const prepDate = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const prepTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  const h = s => (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const validMetar = s => s && !s.startsWith('No METAR') && !s.startsWith('METAR unavailable') && !s.startsWith('fetching') ? s : null;
+  const validTaf   = s => s && !s.startsWith('No TAF')   && !s.startsWith('fetching') && !s.startsWith('unavailable') ? s : null;
+
+  const cruiseAlt  = getCruiseAlt();
+  const profileSpd = getProfileSpeed();
+  const { todNm, tocNm, hasCruise, cruiseSegNm, descRate, climbMin, cruiseMin, descentMin } = getProfileStats(dep, arr, cruiseAlt);
+
+  // Profile SVG — replace CSS vars with hardcoded light-theme colors
+  const svgEl = document.getElementById('profile-svg-container');
+  const profileSvg = (svgEl?.innerHTML || '')
+    .replace(/var\(--accent\)/g,  '#00b4d8')
+    .replace(/var\(--border2?\)/g, '#dde1e7')
+    .replace(/var\(--green\)/g,   '#22c55e')
+    .replace(/var\(--amber\)/g,   '#f59e0b')
+    .replace(/var\(--red\)/g,     '#ef4444')
+    .replace(/var\(--bg1\)/g,     '#ffffff')
+    .replace(/var\(--text3\)/g,   '#999');
+
+  // Winds aloft block
+  let windsHtml = '';
+  if (_windsCache) {
+    const { windSpeed, windDir, temp, component, lvlLabel } = _windsCache;
+    const adjTimeMin = Math.round(dist / (profileSpd + component) * 60);
+    const deltaMin   = adjTimeMin - Math.round(dist / profileSpd * 60);
+    const adjHrs     = Math.floor(adjTimeMin / 60);
+    const adjMinsW   = adjTimeMin % 60;
+    const deltaStr   = deltaMin >= 0 ? `+${deltaMin} min` : `${deltaMin} min`;
+    const compStr    = component >= 0 ? `${Math.round(component)} kt tailwind` : `${Math.round(Math.abs(component))} kt headwind`;
+    const deltaColor = deltaMin >= 0 ? '#ef4444' : '#22c55e';
+    windsHtml = `
+  <div class="section">
+    <div class="section-title">Winds Aloft</div>
+    <div class="stat-grid">
+      <div class="stat-item"><div class="stat-label">Level</div><div class="stat-value">${h(lvlLabel)}</div></div>
+      <div class="stat-item"><div class="stat-label">Wind</div><div class="stat-value">${windDir}° @ ${windSpeed} kts</div></div>
+      <div class="stat-item"><div class="stat-label">Temp</div><div class="stat-value">${temp > 0 ? '+' : ''}${temp}°C</div></div>
+      <div class="stat-item"><div class="stat-label">Component</div><div class="stat-value">${h(compStr)}</div></div>
+      <div class="stat-item"><div class="stat-label">Adj. Time</div><div class="stat-value">${adjHrs}h ${adjMinsW.toString().padStart(2,'0')}m <span style="color:${deltaColor};font-size:12px">(${deltaStr})</span></div></div>
+    </div>
+  </div>`;
+  }
+
+  // Airport card helper
+  function aptCard(airport, metarRaw, tafRaw, side) {
+    const fuel = [airport.avgas && 'AvGas', airport.jeta && 'Jet-A'].filter(Boolean).join(', ') || 'None';
+    const nav  = [airport.ils && 'ILS', airport.vasi && 'VASI', airport.als && 'ALS'].filter(Boolean).join(', ') || 'None';
+    const validM = validMetar(metarRaw);
+    const validT = validTaf(tafRaw);
+    const rwys = (airport.runways || []).map(r => {
+      const len  = r.length > 0 ? r.length.toLocaleString() + ' ft' : '—';
+      const surf = surfLabel(r.surface || '');
+      const aids = [];
+      if (r.le_vasi || r.he_vasi) aids.push(((r.le_vasi >= 2 && r.le_vasi !== 5) || (r.he_vasi >= 2 && r.he_vasi !== 5)) ? 'PAPI' : 'VASI');
+      if (r.le_als  || r.he_als)  aids.push('ALS');
+      return `<tr><td class="rwy-id">${h(r.id)}</td><td>${len}</td><td>${surf}</td><td>${aids.join(', ')}</td></tr>`;
+    }).join('');
+
+    return `<div class="apt-card ${side}">
+      <div class="apt-badge ${side}">${side === 'dep' ? 'DEPARTURE' : 'ARRIVAL'}</div>
+      <div class="apt-icao">${h(airport.id)}</div>
+      <div class="apt-name">${h(airport.name)}</div>
+      <div class="apt-city">${h(airport.city || '—')}, ${h(airport.country)}</div>
+      <div class="apt-details"><span>Elev: ${+(airport.elev) || 0} ft</span> · <span>${h(airport.type)}</span></div>
+      <div class="apt-row"><span class="apt-label">Fuel:</span> ${fuel}</div>
+      <div class="apt-row"><span class="apt-label">Nav Aids:</span> ${nav}</div>
+      ${rwys ? `<div class="apt-section-label">Runways</div><table class="rwy-table"><tbody>${rwys}</tbody></table>` : ''}
+      ${validM ? `<div class="apt-section-label">METAR</div><div class="metar-text">${h(validM)}</div>` : ''}
+      ${validT ? `<div class="apt-section-label">TAF</div><div class="metar-text">${h(validT)}</div>` : ''}
+    </div>`;
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flight Brief — ${h(dep.id)} → ${h(arr.id)}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#eef0f3;color:#111;font-size:14px}
+.brief{max-width:920px;margin:28px auto 48px;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.13);border-radius:10px;overflow:hidden}
+.header{background:#0f1923;color:#fff;padding:20px 28px;display:flex;justify-content:space-between;align-items:center}
+.header-logo{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#00b4d8;font-weight:700}
+.header-title{font-size:17px;font-weight:600;letter-spacing:1px}
+.header-date{font-size:11px;color:#888;text-align:right;line-height:1.6}
+.route-bar{background:#f8f9fa;border-bottom:1px solid #e5e7eb;padding:20px 28px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px}
+.route-apt{}
+.route-apt.arr{text-align:right}
+.route-icao{font-size:28px;font-weight:700;font-family:'SF Mono',Consolas,monospace;letter-spacing:2px;color:#0f1923}
+.route-name{font-size:13px;color:#444;margin-top:3px}
+.route-city{font-size:11px;color:#888;margin-top:2px}
+.route-mid{text-align:center;color:#00b4d8}
+.route-arrow{font-size:24px;margin-bottom:3px}
+.route-dist{font-size:13px;font-weight:600}
+.route-bearing{font-size:11px;color:#999;margin-top:2px}
+#route-map{height:280px;border-bottom:1px solid #e5e7eb}
+.airports{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e7eb}
+.apt-card{padding:22px 24px}
+.apt-card.dep{border-right:1px solid #e5e7eb}
+.apt-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:2px;padding:2px 8px;border-radius:3px;margin-bottom:10px}
+.apt-badge.dep{background:#dcfce7;color:#166534}
+.apt-badge.arr{background:#fef3c7;color:#92400e}
+.apt-icao{font-size:22px;font-weight:700;font-family:monospace;letter-spacing:2px;color:#0f1923}
+.apt-name{font-size:13px;font-weight:500;color:#333;margin-top:3px}
+.apt-city{font-size:11px;color:#888;margin-top:2px;margin-bottom:10px}
+.apt-details{font-size:11px;color:#666;margin-bottom:6px}
+.apt-row{font-size:12px;color:#444;margin-top:4px}
+.apt-label{font-weight:600;color:#333}
+.apt-section-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#00b4d8;margin-top:14px;margin-bottom:6px}
+.rwy-table{width:100%;border-collapse:collapse;font-size:12px}
+.rwy-table td{padding:3px 8px 3px 0;color:#444}
+.rwy-id{font-family:monospace;font-weight:600;color:#222}
+.metar-text{font-family:'SF Mono',Consolas,monospace;font-size:11px;color:#444;background:#f8f9fa;padding:8px 10px;border-radius:5px;border:1px solid #e5e7eb;line-height:1.7;word-break:break-all;margin-top:2px}
+.section{padding:22px 28px;border-bottom:1px solid #e5e7eb}
+.section-title{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#00b4d8;margin-bottom:16px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:18px}
+.stat-label{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.stat-value{font-size:17px;font-weight:600;font-family:monospace;color:#111}
+.profile-svg-wrap{background:#f8f9fa;border-radius:6px;padding:12px;border:1px solid #e5e7eb;margin-bottom:18px}
+.profile-svg-wrap svg{width:100%;height:auto}
+.notes-text{font-size:13px;color:#444;white-space:pre-wrap;line-height:1.7;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:12px 14px}
+.footer{background:#f8f9fa;padding:14px 28px;font-size:11px;color:#999;display:flex;justify-content:space-between;border-top:1px solid #e5e7eb}
+</style>
+</head>
+<body>
+<div class="brief">
+
+  <div class="header">
+    <div class="header-logo">SimLetsFly</div>
+    <div class="header-title">Flight Brief</div>
+    <div class="header-date">Prepared ${prepDate}<br>${prepTime} Local</div>
+  </div>
+
+  <div class="route-bar">
+    <div class="route-apt dep">
+      <div class="route-icao">${h(dep.id)}</div>
+      <div class="route-name">${h(dep.name)}</div>
+      <div class="route-city">${h(dep.city || '—')}, ${h(dep.country)}</div>
+    </div>
+    <div class="route-mid">
+      <div class="route-arrow">→</div>
+      <div class="route-dist">${dist.toFixed(0)} nm</div>
+      <div class="route-bearing">${bear.toFixed(1)}° ${h(bearingName(bear))}</div>
+    </div>
+    <div class="route-apt arr">
+      <div class="route-icao">${h(arr.id)}</div>
+      <div class="route-name">${h(arr.name)}</div>
+      <div class="route-city">${h(arr.city || '—')}, ${h(arr.country)}</div>
+    </div>
+  </div>
+
+  <div id="route-map"></div>
+
+  <div class="airports">
+    ${aptCard(dep, depMetar, depTaf, 'dep')}
+    ${aptCard(arr, arrMetar, arrTaf, 'arr')}
+  </div>
+
+  <div class="section">
+    <div class="section-title">Flight Summary</div>
+    <div class="stat-grid">
+      <div><div class="stat-label">Distance</div><div class="stat-value">${dist.toFixed(0)} <span style="font-size:11px;color:#999">nm</span></div></div>
+      <div><div class="stat-label">Bearing</div><div class="stat-value">${bear.toFixed(1)}° <span style="font-size:12px;color:#999">${h(bearingName(bear))}</span></div></div>
+      <div><div class="stat-label">Cruise Speed</div><div class="stat-value">${speed} <span style="font-size:11px;color:#999">kts</span></div></div>
+      <div><div class="stat-label">Est. Flight Time</div><div class="stat-value">${hrs}h ${mins.toString().padStart(2,'0')}m</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Vertical Profile</div>
+    ${profileSvg ? `<div class="profile-svg-wrap">${profileSvg}</div>` : ''}
+    <div class="stat-grid">
+      <div><div class="stat-label">Cruise Alt</div><div class="stat-value">${cruiseAlt.toLocaleString()} <span style="font-size:11px;color:#999">ft</span></div></div>
+      <div><div class="stat-label">Cruise Speed</div><div class="stat-value">${profileSpd} <span style="font-size:11px;color:#999">kts</span></div></div>
+      <div><div class="stat-label">Desc Rate</div><div class="stat-value">${descRate.toLocaleString()} <span style="font-size:11px;color:#999">fpm</span></div></div>
+      <div><div class="stat-label">TOC</div><div class="stat-value">${tocNm} <span style="font-size:11px;color:#999">nm from dep</span></div></div>
+      ${hasCruise ? `<div><div class="stat-label">Cruise Seg</div><div class="stat-value">${cruiseSegNm} <span style="font-size:11px;color:#999">nm</span></div></div>` : ''}
+      <div><div class="stat-label">TOD</div><div class="stat-value">${todNm} <span style="font-size:11px;color:#999">nm from arr</span></div></div>
+      <div><div class="stat-label">Climb</div><div class="stat-value">~${h(formatPhaseTime(climbMin))}</div></div>
+      ${hasCruise ? `<div><div class="stat-label">Cruise</div><div class="stat-value">${h(formatPhaseTime(cruiseMin))}</div></div>` : ''}
+      <div><div class="stat-label">Descent</div><div class="stat-value">~${h(formatPhaseTime(descentMin))}</div></div>
+    </div>
+  </div>
+
+  ${windsHtml}
+
+  ${notes ? `<div class="section"><div class="section-title">Pilot Notes</div><div class="notes-text">${h(notes)}</div></div>` : ''}
+
+  <div class="footer">
+    <span>SimLetsFly.com</span>
+    <span>For entertainment purposes only · Not for real-world navigation</span>
+  </div>
+
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('route-map', { zoomControl: true });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+}).addTo(map);
+const depPt = [${dep.lat}, ${dep.lon}];
+const arrPt = [${arr.lat}, ${arr.lon}];
+L.polyline([depPt, arrPt], { color: '#00b4d8', weight: 2.5, dashArray: '8,5', opacity: 0.9 }).addTo(map);
+L.circleMarker(depPt, { radius: 7, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 1, weight: 2 }).addTo(map).bindPopup('<b>${h(dep.id)}</b><br>${h(dep.name)}');
+L.circleMarker(arrPt, { radius: 7, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1, weight: 2 }).addTo(map).bindPopup('<b>${h(arr.id)}</b><br>${h(arr.name)}');
+map.fitBounds([depPt, arrPt], { padding: [40, 60] });
+</script>
+</body>
+</html>`;
 }
 
 // ── Runway list helpers ────────────────────────────────────────────────────
