@@ -4929,7 +4929,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
 
 </div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
 <script>
 const map = L.map('route-map', { zoomControl: true });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -4941,7 +4941,7 @@ L.polyline([depPt, arrPt], { color: '#00b4d8', weight: 2.5, dashArray: '8,5', op
 L.circleMarker(depPt, { radius: 7, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 1, weight: 2 }).addTo(map).bindPopup('<b>${h(dep.id)}</b><br>${h(dep.name)}');
 L.circleMarker(arrPt, { radius: 7, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1, weight: 2 }).addTo(map).bindPopup('<b>${h(arr.id)}</b><br>${h(arr.name)}');
 map.fitBounds([depPt, arrPt], { padding: [40, 60] });
-</script>
+<\/script>
 </body>
 </html>`;
 }
