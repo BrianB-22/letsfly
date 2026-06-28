@@ -4597,7 +4597,10 @@ function buildFlightBriefText() {
   const depTafStr  = validTaf(depTaf);
   const arrTafStr  = validTaf(arrTaf);
 
-  let txt = `SimLetsFly — Flight Brief\n${divider}\n\n`;
+  const now = new Date();
+  const prepDate = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const prepTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  let txt = `SimLetsFly — Flight Brief — Prepared ${prepDate} | ${prepTime}\n${divider}\n\n`;
 
   txt += `  DEPARTURE  ${dep.id} · ${dep.name}\n`;
   txt += `${pad}${dep.city || '—'}, ${dep.country}\n`;
