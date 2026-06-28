@@ -1637,6 +1637,20 @@
   .toast.show { transform: translateY(0); opacity: 1; }
   .toast.ok { border-color: var(--green); color: var(--green); }
   .toast.err { border-color: var(--red); color: var(--red); }
+
+  /* ── Driver.js Tour Theme ── */
+  .driver-popover { background: var(--bg2) !important; border: 1px solid var(--border2) !important; border-radius: 6px !important; color: var(--text) !important; font-family: var(--sans) !important; box-shadow: 0 8px 32px rgba(0,0,0,0.7) !important; max-width: 300px !important; }
+  .driver-popover-title { font-family: var(--cond) !important; font-size: 15px !important; font-weight: 700 !important; letter-spacing: 2px !important; text-transform: uppercase !important; color: var(--accent) !important; margin-bottom: 8px !important; }
+  .driver-popover-description { font-size: 14px !important; color: var(--text2) !important; line-height: 1.65 !important; }
+  .driver-popover-footer { margin-top: 14px !important; }
+  .driver-popover-navigation-btns button { font-family: var(--cond) !important; font-size: 14px !important; font-weight: 600 !important; letter-spacing: 1px !important; text-transform: uppercase !important; padding: 5px 14px !important; border-radius: 3px !important; cursor: pointer !important; border: 1px solid !important; background: transparent !important; transition: all 0.15s !important; text-shadow: none !important; }
+  .driver-popover-next-btn { background: rgba(0,180,216,0.1) !important; border-color: rgba(0,180,216,0.4) !important; color: var(--accent) !important; }
+  .driver-popover-next-btn:hover { background: rgba(0,180,216,0.2) !important; }
+  .driver-popover-prev-btn, .driver-popover-close-btn { border-color: var(--border2) !important; color: var(--text3) !important; }
+  .driver-popover-prev-btn:hover, .driver-popover-close-btn:hover { color: var(--text2) !important; }
+  .driver-popover-progress-text { font-family: var(--mono) !important; font-size: 12px !important; color: var(--text3) !important; }
+  .driver-overlay { background: rgba(0,0,0,0.75) !important; }
+
   /* ── Favorites ── */
   .fav-login-msg {
     font-family: var(--mono);
@@ -3107,9 +3121,10 @@ async function loadAirports() {
     if (document.querySelector('input[name="dep-mode"]:checked')?.value === 'last-airport' && currentUser) {
       loadLastFlightAirport();
     }
+    maybeShowTour();
   } catch(e) {
     // Fallback: show graceful message
-    document.getElementById('db-count').textContent = 'offline';
+    const _dc = document.getElementById('db-count'); if (_dc) _dc.textContent = 'offline';
     setStatus('Airport database not found. Place airports.json in the same folder as this file.', 'err');
   }
 }
@@ -5799,6 +5814,106 @@ document.getElementById('dep-avgas').addEventListener('change', function() { if(
 document.getElementById('dep-jeta').addEventListener('change', function() { if(this.checked) document.getElementById('dep-avgas').checked = false; });
 document.getElementById('arr-avgas').addEventListener('change', function() { if(this.checked) document.getElementById('arr-jeta').checked = false; });
 document.getElementById('arr-jeta').addEventListener('change', function() { if(this.checked) document.getElementById('arr-avgas').checked = false; });
+
+// ═══════════════════════════════════════════════════════
+// TOUR
+// ═══════════════════════════════════════════════════════
+function _loadTourAssets(cb) {
+  if (window.driver?.js) { cb(); return; }
+  const css = document.createElement('link');
+  css.rel = 'stylesheet';
+  css.href = 'https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.css';
+  document.head.appendChild(css);
+  const js = document.createElement('script');
+  js.src = 'https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.umd.js';
+  js.onload = cb;
+  document.head.appendChild(js);
+}
+
+function startTour() {
+  closeHelpModal();
+  _loadTourAssets(() => {
+    const dObj = window.driver.js.driver({
+      animate: true,
+      smoothScroll: true,
+      showProgress: true,
+      progressText: '{{current}} of {{total}}',
+      nextBtnText: 'Next →',
+      prevBtnText: '← Back',
+      doneBtnText: 'Done ✓',
+      steps: [
+        {
+          popover: {
+            title: 'Welcome to SimLetsFly',
+            description: 'Break out of flying the same routes. This quick tour covers the key controls — takes about a minute.',
+            align: 'center',
+          }
+        },
+        {
+          element: '.dep-panel',
+          popover: {
+            title: 'Departure Airport',
+            description: 'Choose where you fly from. <strong>Random</strong> picks a surprise departure matching your filters. <strong>Specific Airport</strong> lets you enter an exact ICAO code.',
+            side: 'bottom', align: 'start',
+          }
+        },
+        {
+          element: '.arr-panel',
+          popover: {
+            title: 'Arrival Airport',
+            description: 'Set your destination criteria — distance range, direction, minimum runway length, ILS, and more. Or lock in a specific arrival airport.',
+            side: 'bottom', align: 'start',
+          }
+        },
+        {
+          element: '#aircraft-preset',
+          popover: {
+            title: 'Aircraft & Speed',
+            description: 'Pick an aircraft preset to auto-fill cruise speed — or type your own. Used for estimated flight time calculations.',
+            side: 'top', align: 'start',
+          }
+        },
+        {
+          element: '#btn-fly',
+          popover: {
+            title: "Let's Fly!",
+            description: "Hit this to generate a flight. Not happy? Hit it again for a new route, or lock the departure and randomize only the arrival.",
+            side: 'top', align: 'center',
+          }
+        },
+        {
+          element: '#whatsnew-btn',
+          popover: {
+            title: "What's New",
+            description: 'See the latest features and updates. The dot badge lights up when something new has shipped.',
+            side: 'bottom', align: 'end',
+          }
+        },
+        {
+          element: document.querySelector('a[href="flights.html"]') ?? '#whatsnew-btn',
+          popover: {
+            title: 'My Flights',
+            description: 'Save flights to your personal logbook. Rate them, add pilot notes, log completed flights, and export routes directly to your simulator.',
+            side: 'bottom', align: 'end',
+          }
+        },
+      ],
+      onDestroyed: () => localStorage.setItem('slf-tour-seen', '1'),
+    });
+    dObj.drive();
+  });
+}
+
+async function maybeShowTour() {
+  if (localStorage.getItem('slf-tour-seen')) return;
+  if (currentUser) {
+    const { count } = await _sb.from('saved_flights')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id);
+    if (count > 0) { localStorage.setItem('slf-tour-seen', '1'); return; }
+  }
+  setTimeout(startTour, 1800);
+}
 </script>
 
 <!-- AUTH MODAL -->
