@@ -4624,6 +4624,40 @@ function buildFlightBriefText() {
   txt += `  BEARING    ${bear.toFixed(1)}° (${bearingName(bear)})\n`;
   txt += `  CRUISE     ${speed} kts\n`;
   txt += `  EST. TIME  ${hrs}h ${mins.toString().padStart(2,'0')}m\n`;
+
+  const cruiseAlt  = getCruiseAlt();
+  const profileSpd = getProfileSpeed();
+  const { todNm, tocNm, hasCruise, cruiseSegNm, descRate, climbMin, cruiseMin, descentMin } = getProfileStats(dep, arr, cruiseAlt);
+  txt += `\n${divider}\n`;
+  txt += `  VERTICAL PROFILE\n`;
+  txt += `  CRUISE ALT   ${cruiseAlt.toLocaleString()} ft\n`;
+  txt += `  CRUISE SPD   ${profileSpd} kts\n`;
+  txt += `  DESC RATE    ${descRate.toLocaleString()} fpm\n`;
+  txt += `  TOC          ${tocNm} nm from departure\n`;
+  if (hasCruise) txt += `  CRUISE SEG   ${cruiseSegNm} nm\n`;
+  txt += `  TOD          ${todNm} nm from destination\n`;
+  txt += `  CLIMB        ~${formatPhaseTime(climbMin)}\n`;
+  if (hasCruise) txt += `  CRUISE       ${formatPhaseTime(cruiseMin)}\n`;
+  txt += `  DESCENT      ~${formatPhaseTime(descentMin)}\n`;
+
+  if (_windsCache) {
+    const { windSpeed, windDir, temp, component, lvlLabel } = _windsCache;
+    const adjTimeMin = Math.round(dist / (profileSpd + component) * 60);
+    const noWindMin  = Math.round(dist / profileSpd * 60);
+    const deltaMin   = adjTimeMin - noWindMin;
+    const adjHrs     = Math.floor(adjTimeMin / 60);
+    const adjMins    = adjTimeMin % 60;
+    const deltaStr   = deltaMin >= 0 ? `+${deltaMin} min` : `${deltaMin} min`;
+    const compStr    = component >= 0
+      ? `${Math.round(component)} kt tailwind`
+      : `${Math.round(Math.abs(component))} kt headwind`;
+    txt += `\n  WINDS ALOFT  ${lvlLabel}\n`;
+    txt += `  WIND         ${windDir}° at ${windSpeed} kts\n`;
+    txt += `  TEMP         ${temp > 0 ? '+' : ''}${temp}°C\n`;
+    txt += `  COMPONENT    ${compStr}\n`;
+    txt += `  ADJ. TIME    ${adjHrs}h ${adjMins.toString().padStart(2,'0')}m (${deltaStr})\n`;
+  }
+
   if (notes) txt += `\n  NOTES      ${notes.replace(/\n/g, `\n${pad}`)}\n`;
   txt += `\n${divider}\n`;
   txt += `  For entertainment purposes only · SimLetsFly.com\n`;
