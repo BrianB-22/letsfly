@@ -3,15 +3,20 @@
 ## What It Is
 
 An optional add-on to SimLetsFly. Users download a lightweight Windows client (Mac later)
-that connects to their running simulator, monitors a flight from wheels-up to parking brake,
+that connects to their running simulator, monitors a flight from departure to parking brake,
 and uploads a graded report to their SimLetsFly account.
 
-Multiple CheckRide runs can be recorded against the same My Flights card — the intent is to
-fly the same route repeatedly and watch yourself improve. A score and breakdown are shown on
-the SimLetsFly website after each run.
+The focus is **ride quality and safety** — not checklist compliance. CheckRide observes how
+the flight was flown: smoothness, speed discipline, landing quality, and whether common
+system states were correct for the phase of flight (pitot heat on while airborne, gear up
+after takeoff, flaps retracted in cruise, etc.). These are phase-based state checks, not
+procedural sequencing.
 
-This is also the test bed for the career mode grading engine in the SimCareer project. The
-monitoring and scoring logic built here transfers directly.
+Multiple runs can be recorded against the same My Flights card — fly the same route
+repeatedly and watch your scores improve over time.
+
+This is also the test bed for the career mode grading engine in the SimCareer project.
+The monitoring and scoring logic built here transfers directly.
 
 ---
 
@@ -27,12 +32,13 @@ monitoring and scoring logic built here transfers directly.
 ### 2. Supabase Backend
 - New table: `checkride_results`
 - Links to `saved_flights.id` (many runs per flight card)
-- Stores raw event log + computed score + summary stats
+- Stores event log + computed score + summary stats
 
 ### 3. SimLetsFly Website — CheckRide Report View
-- Each My Flights card shows a "CheckRides" section if runs exist
-- Expandable list of runs with date, score, and key stats
-- Drill into a run to see the full breakdown and event timeline
+- Each My Flights card shows a CheckRides section if runs exist
+- Expandable list of runs with date, score, grade, and key stats
+- Drill into a run for the full breakdown and event timeline
+- Progress trend shown if 3+ runs exist
 
 ---
 
@@ -54,34 +60,37 @@ monitoring and scoring logic built here transfers directly.
 |---|---|---|
 | Latitude / Longitude | `flightmodel/position/lat` `lon` | Route tracking |
 | Groundspeed | `flightmodel/position/groundspeed` | Takeoff/landing detection |
-| Airspeed (IAS) | `flightmodel/position/indicated_airspeed` | Overspeed detection |
-| Vertical speed | `flightmodel/position/vh_ind_fpm` | Landing quality |
+| Airspeed (IAS) | `flightmodel/position/indicated_airspeed` | Overspeed, speed management |
+| Vertical speed | `flightmodel/position/vh_ind_fpm` | Landing quality, approach rate |
 | Altitude MSL | `flightmodel/position/elevation` | Phase detection |
-| G-force (normal) | `flightmodel/forces/g_nrml` | Hard manoeuvre detection |
+| AoA | `flightmodel/position/alpha` | Stall detection (pre-warning) |
+| G-force (normal) | `flightmodel/forces/g_nrml` | Manoeuvre smoothness |
 | On ground | `flightmodel2/gear/on_ground` | Phase transitions |
+| Gear position | `flightmodel2/gear/deploy_ratio` | Gear-up after takeoff, gear-down on approach |
 | Parking brake | `flightmodel/controls/parkbrake` | Flight complete trigger |
 | Stall warning | `flightmodel/misc/stall_warning` | Stall events |
 | Damage | `flightmodel2/misc/has_crashed` | Crash flag |
 | Overspeed | `flightmodel/failures/over_vne` | Overspeed flag |
+| Flap position | `flightmodel/controls/flaprat` | Flaps retracted in cruise |
+| Pitot heat | `systems/pitot_heat_on` | On while airborne |
+| Landing lights | `electrical/landing_lights_on` | On during approach/landing |
+| Beacon | `electrical/beacon_lights_on` | On while engines running |
 | Aircraft name | `aircraft/view/acf_ui_name` | Report metadata |
 
-### Procedure Monitoring (best-effort, generic)
+### System State Checks (phase-based, best-effort)
 
-These are readable datarefs available on most aircraft. False positives possible on
-aircraft that auto-manage lights or systems. Noted as "best effort" in the report.
+These are not checklist items — they are observable system states checked at the
+appropriate phase of flight. False positives are possible on aircraft that auto-manage
+systems. Each item can only flag once per flight.
 
-| Procedure | Dataref / Check | Phase |
+| Check | What's Verified | Phase |
 |---|---|---|
-| Pitot heat | `systems/pitot_heat_on` | Airborne |
-| Taxi lights | `electrical/taxi_light_on` | Taxi phase |
-| Landing lights on | `electrical/landing_lights_on` | Final approach / landing |
-| Landing lights off | `electrical/landing_lights_on` | Cruise (if left on) |
-| Beacon / strobe | `electrical/beacon_lights_on` | Before engine start → shutdown |
-| Nav lights | `electrical/nav_lights_on` | Airborne |
-| Flaps retracted | `controls/flaprat` | Cruise (flaps left extended) |
-
-Procedure violations are logged as events with a timestamp and phase. They reduce the
-score but do not fail the flight. Each violation type can only deduct once per flight.
+| Pitot heat | Should be ON | Airborne |
+| Flaps | Should be retracted | Cruise (> 5 min airborne) |
+| Gear | Should be retracted | Climb (> 400ft AGL, airspeed increasing) |
+| Gear | Should be extended | Short final (< 500ft AGL, aligned with runway) |
+| Landing lights | Should be ON | Approach / landing |
+| Beacon | Should be ON | Engines running |
 
 ---
 
@@ -93,11 +102,11 @@ Idle → Taxiing → Airborne → Cruise → Approach → Landed → Parked (Com
 
 | Phase | Trigger |
 |---|---|
-| Idle | App started, waiting |
+| Idle | App started, waiting for sim |
 | Taxiing | Groundspeed > 2kt, on ground |
 | Airborne | on_ground transitions false |
-| Cruise | Altitude > 1,000ft AGL, climb rate settling |
-| Approach | Altitude descending below cruise, heading toward arrival |
+| Cruise | > 1,000ft AGL, climb rate < 500 fpm, stable |
+| Approach | Descending, heading toward arrival airport |
 | Landed | on_ground transitions true |
 | Parked | Parking brake set + groundspeed < 1kt |
 
@@ -105,18 +114,25 @@ Idle → Taxiing → Airborne → Cruise → Approach → Landed → Parked (Com
 
 ## CheckRide Events
 
-During the flight, events are logged with a timestamp and phase:
+Events are logged with timestamp, phase, and a plain-English description shown in the report.
 
-| Event | Trigger |
-|---|---|
-| `OVERSPEED` | `over_vne` flag true |
-| `STALL` | `stall_warning` above threshold |
-| `HIGH_G` | `g_nrml` > 2.5 |
-| `VERY_HIGH_G` | `g_nrml` > 3.5 |
-| `CRASH` | `has_crashed` true |
-| `HARD_LANDING` | touchdown VS > 600 fpm |
-| `FIRM_LANDING` | touchdown VS 300–600 fpm |
-| `PROCEDURE_*` | any procedure violation (see above) |
+| Event | Trigger | Description shown |
+|---|---|---|
+| `OVERSPEED` | `over_vne` flag true | Exceeded Vne |
+| `STALL` | `stall_warning` above threshold | Stall warning triggered |
+| `HIGH_G` | g > 2.5 | High G-force manoeuvre |
+| `VERY_HIGH_G` | g > 3.5 | Excessive G-force |
+| `CRASH` | `has_crashed` true | Aircraft damage / crash |
+| `HARD_LANDING` | touchdown VS > 600 fpm | Hard landing |
+| `FIRM_LANDING` | touchdown VS 300–600 fpm | Firm landing |
+| `HIGH_DESCENT_RATE` | VS > 1,500 fpm below 1,000ft AGL | Excessive descent on approach |
+| `GEAR_UP_LANDING` | gear not extended at touchdown | Gear-up landing |
+| `SYSTEM_PITOT_HEAT` | pitot heat off while airborne | Pitot heat off in flight |
+| `SYSTEM_FLAPS_CRUISE` | flaps extended in cruise | Flaps not retracted after climb |
+| `SYSTEM_GEAR_CRUISE` | gear extended in cruise | Gear not retracted after takeoff |
+| `SYSTEM_GEAR_APPROACH` | gear not down on short final | Gear not down on approach |
+| `SYSTEM_LANDING_LIGHTS` | landing lights off on approach | Landing lights off on approach |
+| `SYSTEM_BEACON` | beacon off while engines running | Beacon off with engines running |
 
 ---
 
@@ -135,7 +151,9 @@ Base score: **100 points**
 | Crash | −30 |
 | Hard landing (> 600 fpm) | −15 |
 | Firm landing (300–600 fpm) | −5 |
-| Each procedure violation | −3 |
+| High descent rate on approach | −5 |
+| Gear-up landing | −25 |
+| Each system state flag | −3 |
 
 ### Bonuses
 
@@ -143,8 +161,8 @@ Base score: **100 points**
 |---|---|
 | Smooth landing (< 150 fpm) | +5 |
 | Greaser (< 75 fpm) | +10 (replaces smooth) |
-| Zero procedure violations | +5 |
-| Zero overspeed / stall events | +5 |
+| No system state flags | +5 |
+| No overspeed or stall events | +5 |
 
 Minimum score: 0. Score can exceed 100 with bonuses.
 
@@ -170,24 +188,24 @@ Minimum score: 0. Score can exceed 100 with bonuses.
   "sim": "xplane12",
   "aircraft": "Cessna 172 Skyhawk",
   "recorded_at": "2026-06-28T14:22:00Z",
-  "score": 87,
+  "score": 91,
   "grade": "A",
   "dep_icao": "KPGD",
   "arr_icao": "KFFO",
   "flight_time_sec": 9840,
-  "landing_vs_fpm": -182,
+  "landing_vs_fpm": -124,
   "max_g": 1.4,
   "events": [
-    { "type": "PROCEDURE_PITOT_HEAT", "phase": "airborne", "ts": 142 },
-    { "type": "FIRM_LANDING", "phase": "landed", "ts": 9840 }
+    { "type": "SYSTEM_PITOT_HEAT", "phase": "airborne", "ts": 142, "desc": "Pitot heat off in flight" },
+    { "type": "FIRM_LANDING", "phase": "landed", "ts": 9840, "desc": "Firm landing — 312 fpm" }
   ],
   "summary": {
     "overspeed_count": 0,
     "stall_count": 0,
     "high_g_count": 0,
-    "procedure_violations": 1,
+    "system_flags": 1,
     "crashed": false,
-    "landing_quality": "Normal"
+    "landing_quality": "Smooth"
   }
 }
 ```
@@ -230,15 +248,15 @@ Each card gets a **CheckRides** section below the existing details:
 ```
 CHECKRIDES  [+ Start New Run]
 
-  Jun 28, 2026  ·  X-Plane 12  ·  Cessna 172    A  87
+  Jun 28, 2026  ·  X-Plane 12  ·  Cessna 172    A  91   ↑
   Jun 25, 2026  ·  X-Plane 12  ·  Cessna 172    C  61
   Jun 22, 2026  ·  X-Plane 12  ·  Cessna 172    B  74
 ```
 
-Clicking a row expands the full report: score breakdown, event list with timestamps,
-landing VS, max G, flight time, and procedure violations.
+Clicking a row expands the full report: score breakdown, event list with timestamps
+and plain-English descriptions, landing VS, max G, and system flags.
 
-Progress trend shown if 3+ runs exist (improving / declining / steady).
+Progress arrow (↑ improving / → steady / ↓ declining) shown when 3+ runs exist.
 
 ---
 
@@ -246,13 +264,13 @@ Progress trend shown if 3+ runs exist (improving / declining / steady).
 
 | | Career Client | CheckRide Client |
 |---|---|---|
-| Mission selection | Required (pick a career mission) | Optional (pick any My Flight) |
-| Flight validation | Must match mission dep/arr | No validation, any flight |
-| Report content | Flight record (basic stats) | Full graded event log |
+| Mission selection | Required | Optional (any My Flight) |
+| Flight validation | Must match dep/arr | None |
+| Report content | Basic flight stats | Full graded event log |
 | Score | N/A | Yes — 0–100+ with grade |
 | Multi-run | One per mission | Unlimited per flight card |
 
-The `CheckRideSession` class wraps `FlightTracker` and adds the event logger and scorer.
+`CheckRideSession` wraps `FlightTracker` and adds the event logger and scorer.
 Career mode later wraps `CheckRideSession` and adds mission matching on top.
 
 ---
@@ -261,21 +279,18 @@ Career mode later wraps `CheckRideSession` and adds mission matching on top.
 
 1. `CheckRideSession` — event logger + scorer on top of existing `FlightTracker`
 2. Supabase table + RLS policies
-3. Windows client UI — login, flight picker, session status, upload confirmation
+3. Windows client UI — login, flight picker, live session status, upload confirmation
 4. XP12 connector first (REST API, cleanest datarefs)
 5. Website: CheckRides section in My Flights cards + report view
-6. MSFS connector second
-7. XP11 connector third (UDP, most limited)
-8. Mac client last
+6. MSFS connector
+7. XP11 connector (UDP, most limited)
+8. Mac client
 
 ---
 
 ## Open Questions
 
-- **Procedure false positives** — how to handle aircraft that auto-manage lights?
-  Option: let user toggle procedure monitoring on/off per run.
-- **Route deviation scoring** — penalise flying way off the planned route?
-  Probably not for v1 — too complex, GPS drift issues.
+- **System state false positives** — aircraft that auto-manage lights/systems will flag
+  incorrectly. Option: per-run toggle to disable system checks, or a known aircraft list.
+- **Route deviation** — penalise flying way off the planned route? Probably not v1.
 - **Multiplayer / shared reports** — out of scope for v1.
-- **SimBrief integration** — share a route with CheckRide for more precise procedure timing?
-  Future consideration.
