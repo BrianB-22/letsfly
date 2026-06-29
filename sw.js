@@ -1,9 +1,10 @@
-const CACHE = 'simletsfly-v56';
+const CACHE = 'simletsfly-v57';
 const STATIC = [
   '/',
   '/index.html',
   '/flights.html',
   '/help.html',
+  '/promote.html',
   '/airports.json',
   '/banner.json',
   '/whatsnew.html',

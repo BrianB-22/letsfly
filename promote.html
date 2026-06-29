@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Share SimLetsFly — Help Us Grow</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg0: #0a0d10; --bg1: #0e1318; --bg2: #131920; --bg3: #1a2230;
+    --border: #1e2d3d; --border2: #243447;
+    --accent: #00b4d8; --accent2: #0077a8; --accent-glow: rgba(0,180,216,0.15);
+    --green: #52b788; --text: #c8d8e8; --text2: #7a92a8; --text3: #4a6070;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Barlow', sans-serif;
+    --cond: 'Barlow Condensed', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg0); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; min-height: 100vh; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── HERO ── */
+  .hero { text-align: center; padding: 60px 24px 48px; border-bottom: 1px solid var(--border); }
+  .hero-eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+  .hero-title { font-family: var(--cond); font-size: clamp(32px, 5vw, 52px); font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--text); line-height: 1.1; margin-bottom: 20px; }
+  .hero-title span { color: var(--accent); }
+  .hero-sub { max-width: 620px; margin: 0 auto 32px; font-size: 16px; color: var(--text2); line-height: 1.75; }
+  .hero-link { display: inline-block; font-family: var(--mono); font-size: 13px; letter-spacing: 2px; color: var(--accent); border: 1px solid rgba(0,180,216,0.35); padding: 8px 20px; border-radius: 3px; }
+
+  /* ── SECTION ── */
+  .section { max-width: 1100px; margin: 0 auto; padding: 56px 24px; }
+  .section-label { font-family: var(--mono); font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+  .section-title { font-family: var(--cond); font-size: 22px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text); margin-bottom: 6px; }
+  .section-desc { color: var(--text2); font-size: 14px; margin-bottom: 32px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+  /* ── SCREENSHOTS ── */
+  .screenshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 24px; }
+  .shot { border: 1px solid var(--border2); border-radius: 6px; overflow: hidden; background: var(--bg2); }
+  .shot img { width: 100%; display: block; }
+  .shot-caption { padding: 14px 16px; }
+  .shot-caption strong { font-family: var(--cond); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text); display: block; margin-bottom: 4px; }
+  .shot-caption span { font-size: 13px; color: var(--text2); }
+
+  /* ── CANNED MESSAGES ── */
+  .messages { display: flex; flex-direction: column; gap: 28px; }
+  .msg-card { background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; overflow: hidden; }
+  .msg-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
+  .msg-platform { font-family: var(--cond); font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
+  .msg-hint { font-size: 12px; color: var(--text3); }
+  .msg-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .btn-copy { font-family: var(--cond); font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 6px 16px; border-radius: 3px; cursor: pointer; background: rgba(0,180,216,0.1); border: 1px solid rgba(0,180,216,0.35); color: var(--accent); transition: all 0.15s; white-space: nowrap; }
+  .btn-copy:hover { background: rgba(0,180,216,0.2); }
+  .btn-copy.copied { background: rgba(82,183,136,0.15); border-color: rgba(82,183,136,0.4); color: var(--green); }
+  .msg-body { padding: 18px; }
+  .msg-text { font-size: 13px; color: var(--text2); line-height: 1.75; white-space: pre-wrap; font-family: var(--mono); background: var(--bg1); border: 1px solid var(--border); border-radius: 4px; padding: 14px 16px; }
+  .msg-communities { padding: 10px 18px 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .msg-communities-label { font-size: 12px; color: var(--text3); white-space: nowrap; }
+  .community-tag { font-family: var(--mono); font-size: 11px; color: var(--accent); border: 1px solid rgba(0,180,216,0.25); padding: 2px 8px; border-radius: 3px; white-space: nowrap; transition: background 0.15s; }
+  .community-tag:hover { background: rgba(0,180,216,0.1); text-decoration: none; }
+
+  /* ── FOOTER ── */
+  .footer { text-align: center; padding: 36px 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text3); }
+  .footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">SimLetsFly</div>
+  <h1 class="hero-title">Help Us <span>Grow</span></h1>
+  <p class="hero-sub">SimLetsFly is free, built by one developer, and relies on word of mouth. If it's added something to your sim flying, sharing it with a fellow sim pilot is the biggest thing you can do to keep it going.</p>
+  <a href="https://simletsfly.com" class="hero-link" target="_blank">simletsfly.com</a>
+</div>
+
+<!-- SCREENSHOTS -->
+<hr class="divider">
+<div class="section">
+  <div class="section-label">The App</div>
+  <div class="section-title">What You're Sharing</div>
+  <p class="section-desc">Feel free to save and use these screenshots in your post.</p>
+  <div class="screenshots">
+    <div class="shot">
+      <img src="marketing/pic1.png" alt="Flight generation panel">
+      <div class="shot-caption">
+        <strong>Flight Generator</strong>
+        <span>Set your criteria — distance, region, airport size, runway length, ILS, heading — and get a randomized route that matches.</span>
+      </div>
+    </div>
+    <div class="shot">
+      <img src="marketing/pic2.png" alt="Route map view">
+      <div class="shot-caption">
+        <strong>Route Map</strong>
+        <span>Every generated flight includes an interactive map showing the departure, arrival, and flight path.</span>
+      </div>
+    </div>
+    <div class="shot">
+      <img src="marketing/pic3.png" alt="Vertical profile chart">
+      <div class="shot-caption">
+        <strong>Vertical Profile</strong>
+        <span>Altitude chart with TOC, TOD, phase times, and live winds aloft — adjusted flight time with headwind/tailwind component.</span>
+      </div>
+    </div>
+    <div class="shot">
+      <img src="marketing/pic4.png" alt="My Flights logbook">
+      <div class="shot-caption">
+        <strong>My Flights Logbook</strong>
+        <span>Save flights, rate by category, add pilot notes, track stats, and export directly to your simulator.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CANNED MESSAGES -->
+<hr class="divider">
+<div class="section">
+  <div class="section-label">Ready to Post</div>
+  <div class="section-title">Copy &amp; Paste Messages</div>
+  <p class="section-desc">Pick the one that fits where you're posting. Edit to taste — a personal recommendation always lands better than a copy-paste.</p>
+
+  <div class="messages">
+
+    <!-- REDDIT -->
+    <div class="msg-card">
+      <div class="msg-header">
+        <div>
+          <div class="msg-platform">Reddit</div>
+          <div class="msg-hint">Longer format — works well as a standalone post</div>
+        </div>
+        <div class="msg-actions">
+          <button class="btn-copy" onclick="copyMsg('msg-reddit', this)">Copy</button>
+        </div>
+      </div>
+      <div class="msg-body">
+        <div class="msg-text" id="msg-reddit">Sharing a free tool I've been using to break out of flying the same routes — SimLetsFly (simletsfly.com)
+
+Works with MSFS 2020, MSFS 2024, and X-Plane 12.
+
+You set your criteria — distance range, region of the world, airport size, runway length, ILS requirement, heading direction — and it randomly picks a flight that matches. Hit the button again to get a different one, or lock the departure and randomize only the arrival.
+
+Results include:
+- Full flight brief with live METAR/TAF weather
+- Interactive route map
+- Vertical profile with TOC/TOD and live winds aloft
+- Direct export to MSFS 2020, MSFS 2024, or X-Plane 12
+
+Free account gets you a personal logbook where you can rate flights by category (takeoff, landing, scenery, ATC, fun factor), add pilot notes, mark flights completed, and track overall stats.
+
+No install, works in any browser. Originally a Windows desktop app (LetsFly), now rewritten from the ground up as a web app.</div>
+      </div>
+      <div class="msg-communities">
+        <span class="msg-communities-label">Post in:</span>
+        <a class="community-tag" href="https://reddit.com/r/MicrosoftFlightSimulator" target="_blank" rel="noopener">r/MicrosoftFlightSimulator</a>
+        <a class="community-tag" href="https://reddit.com/r/flightsim" target="_blank" rel="noopener">r/flightsim</a>
+        <a class="community-tag" href="https://reddit.com/r/xplane" target="_blank" rel="noopener">r/xplane</a>
+        <a class="community-tag" href="https://reddit.com/r/XPlanePilots" target="_blank" rel="noopener">r/XPlanePilots</a>
+        <a class="community-tag" href="https://reddit.com/r/flightsimulator" target="_blank" rel="noopener">r/flightsimulator</a>
+      </div>
+    </div>
+
+    <!-- DISCORD -->
+    <div class="msg-card">
+      <div class="msg-header">
+        <div>
+          <div class="msg-platform">Discord</div>
+          <div class="msg-hint">Short and scannable — drop it in #tools, #resources, or #general</div>
+        </div>
+        <div class="msg-actions">
+          <button class="btn-copy" onclick="copyMsg('msg-discord', this)">Copy</button>
+        </div>
+      </div>
+      <div class="msg-body">
+        <div class="msg-text" id="msg-discord">Free tool worth bookmarking → simletsfly.com
+
+Works with MSFS 2020, MSFS 2024, and X-Plane 12. Randomly generates flights matching your criteria — distance, region, airport size, ILS, runway length, and more. Results include a full flight brief with live METAR/TAF, an interactive route map, and a vertical profile with winds aloft. Free account adds a personal logbook with per-category ratings, pilot notes, and direct sim export. No install, works in any browser.</div>
+      </div>
+    </div>
+
+    <!-- SHORT BLURB -->
+    <div class="msg-card">
+      <div class="msg-header">
+        <div>
+          <div class="msg-platform">Short Blurb</div>
+          <div class="msg-hint">Forums, comment replies, or anywhere a paragraph is enough</div>
+        </div>
+        <div class="msg-actions">
+          <button class="btn-copy" onclick="copyMsg('msg-short', this)">Copy</button>
+        </div>
+      </div>
+      <div class="msg-body">
+        <div class="msg-text" id="msg-short">SimLetsFly (simletsfly.com) — free web app that randomly generates flights for MSFS and X-Plane based on your criteria. Full flight brief, METAR/TAF weather, route map, vertical profile, and a personal logbook with sim export. Worth bookmarking if you're tired of flying the same routes.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer">
+  <a href="https://simletsfly.com">← Back to SimLetsFly</a>
+</div>
+
+<script>
+function copyMsg(id, btn) {
+  const text = document.getElementById(id).textContent.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+</body>
+</html>
