@@ -1,4 +1,4 @@
 {
   "active": true,
-  "message": "Survey still open — <a href=\"https://tally.so/r/684qAJ\" target=\"_blank\" style=\"color:var(--accent);text-decoration:underline;\">Survey</a> &nbsp;·&nbsp; New Feature Info — <a href=\"#\" onclick=\"event.preventDefault();showWhatsNewModal()\" style=\"color:var(--accent);text-decoration:underline;\">What's New</a> &nbsp;·&nbsp; Please help us grow — <a href=\"/promote.html\" style=\"color:var(--accent);text-decoration:underline;\">share with your sim community</a>."
+  "message": "Survey still open — <a href=\"https://tally.so/r/684qAJ\" target=\"_blank\" style=\"color:var(--accent);text-decoration:underline;\">Survey</a> &nbsp;·&nbsp; New Feature Info — <a href=\"#\" onclick=\"event.preventDefault();showWhatsNewModal()\" style=\"color:var(--accent);text-decoration:underline;\">What's New</a> &nbsp;·&nbsp; Please help us grow — <a href=\"/promote.html\" target=\"_blank\" style=\"color:var(--accent);text-decoration:underline;\">share with your sim community</a>."
 }
