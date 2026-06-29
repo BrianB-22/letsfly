@@ -5939,15 +5939,14 @@ async function maybeShowTour() {
   <div class="modal">
     <button class="modal-close" onclick="closeAuthModal()">×</button>
     <div class="modal-title" id="modal-title">Sign In</div>
+    <form id="auth-form" autocomplete="on" onsubmit="event.preventDefault();authSubmit()">
     <div class="modal-field">
       <label>Email</label>
-      <input type="email" id="auth-email" placeholder="pilot@example.com" autocomplete="email"
-             onkeydown="if(event.key==='Enter')authSubmit()">
+      <input type="email" id="auth-email" placeholder="pilot@example.com" autocomplete="email" name="email">
     </div>
     <div class="modal-field" id="modal-password-field">
       <label>Password</label>
-      <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"
-             onkeydown="if(event.key==='Enter')authSubmit()">
+      <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password" name="password">
       <div style="text-align:right;margin-top:5px">
         <a id="modal-forgot" onclick="setAuthMode('reset')"
            style="font-size:11px;color:var(--text3);cursor:pointer;font-family:var(--mono);">
@@ -5956,7 +5955,8 @@ async function maybeShowTour() {
       </div>
     </div>
     <div class="modal-err" id="modal-err"></div>
-    <button class="modal-btn modal-btn-primary" id="modal-submit" onclick="authSubmit()">Sign In</button>
+    <button type="submit" class="modal-btn modal-btn-primary" id="modal-submit">Sign In</button>
+    </form>
     <div class="modal-switch" id="modal-switch">
       No account? <a onclick="setAuthMode('signup')">Create one</a>
     </div>
