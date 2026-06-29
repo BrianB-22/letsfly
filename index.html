@@ -2583,12 +2583,15 @@ function setAuthMode(mode) {
   document.getElementById('modal-err').textContent = '';
 
   const privacy = document.getElementById('modal-privacy');
+  const pwInput = document.getElementById('auth-password');
   if (mode === 'signin') {
     document.getElementById('modal-title').textContent  = 'Sign In';
     document.getElementById('modal-submit').textContent = 'Sign In';
     pwField.style.display  = 'block';
     forgot.style.display   = 'block';
     privacy.style.display  = 'none';
+    pwInput.autocomplete = 'current-password';
+    pwInput.name         = 'password';
     document.getElementById('modal-switch').innerHTML =
       `No account? <a onclick="setAuthMode('signup')">Create one</a>`;
   } else if (mode === 'signup') {
@@ -2597,6 +2600,8 @@ function setAuthMode(mode) {
     pwField.style.display  = 'block';
     forgot.style.display   = 'none';
     privacy.style.display  = 'block';
+    pwInput.autocomplete = 'new-password';
+    pwInput.name         = 'new-password';
     document.getElementById('modal-switch').innerHTML =
       `Have an account? <a onclick="setAuthMode('signin')">Sign in</a>`;
   } else if (mode === 'reset') {
