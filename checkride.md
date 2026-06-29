@@ -275,12 +275,57 @@ Career mode later wraps `CheckRideSession` and adds mission matching on top.
 
 ---
 
-## Build Order
+## Phase 1 — Local Prototype (build this first)
 
-1. `CheckRideSession` — event logger + scorer on top of existing `FlightTracker`
+**Goal:** Prove the monitoring and scoring engine works against a real XP12 session.
+No Supabase, no login, no flight picker. Just a tray app that records a flight to disk.
+
+### What it is
+- .NET Windows app with a system tray icon
+- Right-click menu: **Start Recording** / **End Recording**
+- X-Plane 12 only (REST API on `localhost:8086`)
+- Writes two files to disk on each session:
+  - `checkride_YYYYMMDD_HHMMSS.log` — running timestamped debug log (every poll cycle)
+  - `checkride_YYYYMMDD_HHMMSS.json` — final `CheckRideReport` on end recording
+
+### Project structure
+```
+CheckRide/
+  CheckRide.sln
+  CheckRide/
+    Program.cs           ← WinForms entry point, creates tray app
+    TrayApp.cs           ← NotifyIcon + ContextMenuStrip
+    XP12Connector.cs     ← HTTP polling of XP12 REST API (localhost:8086)
+    FlightMonitor.cs     ← phase state machine + event detection + scoring
+    EventLogger.cs       ← writes running .log file
+    ReportWriter.cs      ← serialises final CheckRideReport to .json
+    Models/
+      FlightPhase.cs
+      FlightEvent.cs
+      CheckRideReport.cs
+```
+
+### Tray behaviour
+- **Idle** — grey icon, right-click shows "Start Recording" (enabled) + "End Recording" (greyed)
+- **Recording** — coloured icon, shows "Recording… KPGD → KFFO" or just "Recording…"
+- **End Recording** — stops polling, scores the session, writes both files, shows a Windows notification with the score and output path
+
+### Output files location
+`%USERPROFILE%\Documents\CheckRide\` (created if not present)
+
+### Phase 2 (after prototype is validated)
+- Add login + Supabase upload on end recording
+- Add flight picker (My Flights list from API)
+- Replace tray notification with a brief results window
+
+---
+
+## Full Build Order (post-prototype)
+
+1. ~~Phase 1 prototype~~ (see above)
 2. Supabase table + RLS policies
-3. Windows client UI — login, flight picker, live session status, upload confirmation
-4. XP12 connector first (REST API, cleanest datarefs)
+3. Login + flight picker UI
+4. Supabase upload on end recording
 5. Website: CheckRides section in My Flights cards + report view
 6. MSFS connector
 7. XP11 connector (UDP, most limited)
