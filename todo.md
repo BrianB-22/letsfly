@@ -21,7 +21,7 @@
 
 ### High Value
 - **My Stats** — per-user page: total flights, countries visited, estimated hours flown, top regions, rating trends. All data already in Supabase — just needs aggregation queries + a page.
-- **Community feed** — page showing recent publicly shared flights from all users. `is_public` flag already in schema.
+- ~~**Community feed**~~ — dropped.
 - **Logbook CSV export** — let users download their My Flights data as a spreadsheet. Low effort, useful.
 
 ### Flight Planning
@@ -33,4 +33,4 @@
 
 ---
 
-> Top picks for next: **Logbook CSV export**, **My Stats**, **Community Feed**
+> Top picks for next: **Logbook CSV export**, **My Stats**
