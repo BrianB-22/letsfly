@@ -2677,14 +2677,14 @@ async function authSubmit() {
         <div style="font-size:36px;margin-bottom:16px">✉️</div>
         <div class="modal-title" style="margin-bottom:12px">Check Your Email</div>
         <p style="color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:20px">
-          A confirmation link has been sent to<br>
+          We sent an email to<br>
           <strong style="color:var(--text)">${_signupEmail}</strong>
         </p>
         <p style="color:var(--text3);font-size:12px;line-height:1.6;margin-bottom:8px">
-          Click the link in the email to activate your account, then come back here to sign in.
+          If this is a new account, click the confirmation link to activate it and then sign in.
         </p>
         <p style="color:var(--text3);font-size:12px;line-height:1.6;margin-bottom:24px">
-          Already have an account with this email? <a onclick="closeAuthModal();showAuthModal('reset')" style="color:var(--accent);cursor:pointer;">Forgot your password?</a>
+          If you already have an account, <a onclick="closeAuthModal();showAuthModal('reset')" style="color:var(--accent);cursor:pointer;">reset your password here</a> or just sign in below.
         </p>
         <button class="modal-btn modal-btn-primary" onclick="closeAuthModal();showAuthModal('signin')">
           OK — Take Me to Sign In
