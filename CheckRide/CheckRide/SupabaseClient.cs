@@ -108,6 +108,7 @@ internal class SupabaseClient
         await EnsureTokenAsync();
         var url = $"{Config.SupabaseUrl}/rest/v1/saved_flights" +
                   "?select=id,dep_id,dep_name,dep_lat,dep_lon,arr_id,arr_name,arr_lat,arr_lon,created_at" +
+                  $"&user_id=eq.{_session.UserId}" +
                   "&order=created_at.desc";
         var resp = await _http.SendAsync(AuthGet(url));
         resp.EnsureSuccessStatusCode();
@@ -121,6 +122,7 @@ internal class SupabaseClient
         await EnsureTokenAsync();
         var url = $"{Config.SupabaseUrl}/rest/v1/checkride_results" +
                   "?select=flight_id,score,grade" +
+                  $"&user_id=eq.{_session.UserId}" +
                   "&order=recorded_at.desc";
         var resp = await _http.SendAsync(AuthGet(url));
         resp.EnsureSuccessStatusCode();
