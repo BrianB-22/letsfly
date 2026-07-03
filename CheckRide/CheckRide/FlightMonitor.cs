@@ -171,6 +171,12 @@ public class FlightMonitor
     private bool _baroCheckedLanding;
     private double _peakAglFt;
 
+    // Flight completion
+    public event Action? FlightCompleted;
+    private bool   _completionFired;
+    private double _depLat, _depLon;
+    private bool   _depSet;
+
     // Taxi detection
     private bool _fastTaxiFlagged;
     private bool _aggressiveTurnFlagged;
@@ -254,13 +260,28 @@ public class FlightMonitor
             }
         }
 
-        // DEBUG: parking brake set — potential end-of-flight marker
-        if (snap.ParkingBrakeSet && _phase == FlightPhase.Landed)
-            logger.Log($"[DEBUG] Parking brake set  GPS=({snap.Latitude:F5},{snap.Longitude:F5})");
+        // Flight completion: parking brake set after landing at a different airport
+        if (!_completionFired && snap.ParkingBrakeSet && _phase == FlightPhase.Landed && _depSet)
+        {
+            var distNm = HaversineNm(_depLat, _depLon, snap.Latitude, snap.Longitude);
+            logger.Log($"[DEBUG] Parking brake set — {distNm:F1}nm from departure, GPS=({snap.Latitude:F5},{snap.Longitude:F5})");
+            if (distNm >= Config.CompletionDistanceNm)
+            {
+                _completionFired = true;
+                FlightCompleted?.Invoke();
+            }
+        }
 
         TransitionPhase(snap, logger);
         DetectEvents(snap, logger);
         DetectFailures(snap, logger);
+
+        // Crash triggers completion (after DetectFailures so crash event is logged first)
+        if (!_completionFired && snap.HasCrashed)
+        {
+            _completionFired = true;
+            FlightCompleted?.Invoke();
+        }
 
         logger.Log($"[{_phase}] " +
                    $"GS={snap.GroundspeedKts:F1}kt IAS={snap.IndicatedAirspeedKts:F1}kt VS={snap.VerticalSpeedFpm:F0}fpm AGL={snap.AltitudeAglFt:F0}ft " +
@@ -282,6 +303,7 @@ public class FlightMonitor
             if (snap.OnGround && snap.GroundspeedKts > 2)
             {
                 _phase = FlightPhase.Taxiing;
+                if (!_depSet) { _depLat = snap.Latitude; _depLon = snap.Longitude; _depSet = true; }
                 logger.Log($"Phase → Taxiing  GPS=({snap.Latitude:F5},{snap.Longitude:F5})");
             }
         }
