@@ -27,8 +27,12 @@ internal class FlightListForm : Form
     private readonly DataGridView _grid       = new();
     private readonly Button  _btnTake         = new();
     private readonly Button  _btnCancel       = new();
+    private readonly Button  _btnRetry        = new();
     private readonly Button  _btnDebug        = new();
     private readonly Button  _btnSignOut      = new();
+
+    // Held after a failed upload so the Retry button can re-attempt
+    private (string FlightId, CheckRideReport Report, string? LogPath)? _pendingUpload;
     private readonly CheckBox _chkLog         = new();
     private readonly Label   _lblStatus       = new();
     private readonly Label   _lblUser         = new();
@@ -175,6 +179,18 @@ internal class FlightListForm : Form
         _btnDebug.Cursor           = Cursors.Hand;
         _btnDebug.Click           += OnDebugUpload;
 
+        _btnRetry.Text             = "Retry Upload";
+        _btnRetry.BackColor        = Color.Transparent;
+        _btnRetry.ForeColor        = _amber;
+        _btnRetry.FlatStyle        = FlatStyle.Flat;
+        _btnRetry.FlatAppearance.BorderColor = _amber;
+        _btnRetry.FlatAppearance.BorderSize  = 1;
+        _btnRetry.Font             = new Font("Segoe UI", 9f);
+        _btnRetry.Size             = new Size(110, 36);
+        _btnRetry.Visible          = false;
+        _btnRetry.Cursor           = Cursors.Hand;
+        _btnRetry.Click           += OnRetryUpload;
+
         _btnCancel.Text             = "Cancel";
         _btnCancel.BackColor        = Color.Transparent;
         _btnCancel.ForeColor        = _red;
@@ -204,13 +220,14 @@ internal class FlightListForm : Form
         _lblStatus.Location  = new Point(16, 50);
         _lblStatus.Text      = "Select your flight for a CheckRide";
 
-        bottom.Controls.AddRange(new Control[] { _chkLog, _btnDebug, _btnCancel, _btnTake, _lblStatus });
+        bottom.Controls.AddRange(new Control[] { _chkLog, _btnDebug, _btnRetry, _btnCancel, _btnTake, _lblStatus });
 
         bottom.Resize += (s, e) =>
         {
             _btnTake.Location   = new Point(bottom.Width - _btnTake.Width - 16, 18);
             _btnCancel.Location = new Point(_btnTake.Left - _btnCancel.Width - 8, 18);
-            _btnDebug.Location  = new Point(_btnTake.Left - _btnCancel.Width - _btnDebug.Width - 16, 18);
+            _btnRetry.Location  = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - 16, 18);
+            _btnDebug.Location  = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnDebug.Width - 24, 18);
         };
 
         Controls.Add(bottom);
@@ -251,6 +268,7 @@ internal class FlightListForm : Form
 
         AddCol("Date",    90,  DataGridViewContentAlignment.MiddleLeft);
         AddCol("Route",   130, DataGridViewContentAlignment.MiddleLeft);
+        AddCol("NM",      55,  DataGridViewContentAlignment.MiddleRight);
         AddCol("Flight",  -1,  DataGridViewContentAlignment.MiddleLeft);  // fill
         AddCol("Grade",   60,  DataGridViewContentAlignment.MiddleCenter);
         AddCol("Score",   65,  DataGridViewContentAlignment.MiddleRight);
@@ -259,7 +277,7 @@ internal class FlightListForm : Form
 
         _grid.CellFormatting     += OnCellFormatting;
         _grid.SelectionChanged   += OnGridSelectionChanged;
-        _grid.CellDoubleClick    += (s, e) => { if (e.RowIndex >= 0 && _btnTake.Enabled) OnTakeCheckRide(s, e); };
+        _grid.CellDoubleClick    += OnGridDoubleClick;
 
         Controls.Add(_grid);
     }
@@ -308,6 +326,7 @@ internal class FlightListForm : Form
             _grid.Rows.Add(
                 f.DisplayDate,
                 f.DisplayRoute,
+                f.DistanceNm > 0 ? (object)f.DistanceNm : "—",
                 f.DisplayFlight,
                 last.Grade ?? "—",
                 last.Score > 0 ? last.Score : (object)"—");
@@ -349,12 +368,26 @@ internal class FlightListForm : Form
         Application.Restart();
     }
 
+    private void OnGridDoubleClick(object? sender, DataGridViewCellEventArgs e)
+    {
+        if (e.RowIndex < 0) return;
+        var flight = _grid.Rows[e.RowIndex].Tag as SavedFlight;
+        if (flight is null) return;
+
+        // Open the planner pre-loaded with this route so the user can review route + weather
+        var url = $"https://simletsfly.com/index.html?dep={flight.DepId}&arr={flight.ArrId}";
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+        catch { }
+    }
+
     private void OnTakeCheckRide(object? sender, EventArgs e)
     {
         var flight = SelectedFlight;
         if (flight is null) return;
 
-        _activeFlight = flight;
+        _activeFlight  = flight;
+        _pendingUpload = null;
+        _btnRetry.Visible = false;
         SetState(AppState.WaitingXP12);
         _watchTimer.Start();
     }
@@ -516,24 +549,53 @@ internal class FlightListForm : Form
             ReportWriter.Write(report, jsonPath);
 
             string? logPath = _chkLog.Checked ? _sessionLogPath : null;
-            await _client.UploadCheckRideAsync(_activeFlight!.Id, report, logPath);
+            _pendingUpload = (_activeFlight!.Id, report, logPath);
 
+            await UploadPendingAsync();
+        }
+        catch (Exception ex)
+        {
+            SetState(AppState.Idle);
+            _lblStatus.Text      = $"Upload failed — flight saved locally. Click Retry when online.";
+            _lblStatus.ForeColor = _red;
+            _btnRetry.Visible    = true;
+            // Log the actual error for debugging
+            _logger?.Log($"Upload error: {ex.Message}");
+        }
+        finally
+        {
+            _monitor = null; _logger = null;
+        }
+    }
+
+    private async void OnRetryUpload(object? sender, EventArgs e)
+    {
+        if (_pendingUpload is null) return;
+        _btnRetry.Visible = false;
+        SetState(AppState.Uploading);
+        await UploadPendingAsync();
+    }
+
+    private async Task UploadPendingAsync()
+    {
+        if (_pendingUpload is null) return;
+        var (flightId, report, logPath) = _pendingUpload.Value;
+        try
+        {
+            await _client.UploadCheckRideAsync(flightId, report, logPath);
+            _pendingUpload = null;
             ShowTrayBalloon?.Invoke("CheckRide Complete", $"Score: {report.Score}  Grade: {report.Grade}");
-
             await LoadDataAsync();
             SetState(AppState.Idle);
             _lblStatus.Text      = $"CheckRide successfully uploaded  ·  Score: {report.Score}  Grade: {report.Grade}";
             _lblStatus.ForeColor = _green;
         }
-        catch (Exception ex)
+        catch
         {
             SetState(AppState.Idle);
-            _lblStatus.Text      = $"Upload error: {ex.Message}";
+            _lblStatus.Text      = "Upload failed — flight saved locally. Click Retry when online.";
             _lblStatus.ForeColor = _red;
-        }
-        finally
-        {
-            _monitor = null; _logger = null;
+            _btnRetry.Visible    = true;
         }
     }
 

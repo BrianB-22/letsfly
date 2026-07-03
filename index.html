@@ -3118,6 +3118,7 @@ async function loadAirports() {
     initRangeMode();
     loadSharedFlight();
     loadFlightFromSession();
+    loadFlightFromUrl();
     // If last-airport mode fired before airports were ready, re-run now
     if (document.querySelector('input[name="dep-mode"]:checked')?.value === 'last-airport' && currentUser) {
       loadLastFlightAirport();
@@ -5677,6 +5678,26 @@ function loadFlightFromSession() {
     const ta = document.querySelector('#text-results textarea');
     if (ta) ta.value = saved.pilot_notes;
   }
+
+  setStatus(`Loaded: ${dep.id} → ${arr.id}`, 'ok');
+  setTimeout(() => {
+    document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function loadFlightFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const depId  = params.get('dep');
+  const arrId  = params.get('arr');
+  if (!depId || !arrId) return;
+
+  const dep = AIRPORTS.find(a => a.id === depId.toUpperCase());
+  const arr = AIRPORTS.find(a => a.id === arrId.toUpperCase());
+  if (!dep || !arr) { setStatus(`Could not find airports ${depId} / ${arrId} in database.`, 'err'); return; }
+
+  currentDep = dep;
+  currentArr = arr;
+  renderResults(dep, arr);
 
   setStatus(`Loaded: ${dep.id} → ${arr.id}`, 'ok');
   setTimeout(() => {
