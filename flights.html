@@ -478,9 +478,10 @@
     <div class="cr-modal-body">
       <div id="cr-modal-map"></div>
       <canvas id="cr-modal-chart" height="120"></canvas>
-      <div class="cr-modal-stats" id="cr-modal-stats"></div>
-      <div class="cr-events-label" style="margin-top:14px;">Events</div>
+      <div class="cr-events-label">Events</div>
       <div class="cr-event-list" id="cr-modal-events"></div>
+      <div class="cr-events-label" style="margin-top:14px;">Stats</div>
+      <div class="cr-modal-stats" id="cr-modal-stats"></div>
     </div>
   </div>
 </div>
@@ -1621,6 +1622,9 @@ function _renderCrRunBody(r) {
     : '<div class="cr-empty">No events recorded.</div>';
 
   return `
+    <div class="cr-events-label">Events</div>
+    <div class="cr-event-list">${eventsHtml}</div>
+    <div class="cr-events-label" style="margin-top:10px;">Stats</div>
     <div class="cr-stats-row">
       <div class="cr-stat"><span class="cr-stat-label">Landing</span><span class="cr-stat-val" style="color:${landingColor}">${summary.LandingQuality || '—'}</span></div>
       <div class="cr-stat"><span class="cr-stat-label">Landing VS</span><span class="cr-stat-val">${stats.LandingVsFpm ? stats.LandingVsFpm + ' fpm' : '—'}</span></div>
@@ -1630,9 +1634,7 @@ function _renderCrRunBody(r) {
       <div class="cr-stat"><span class="cr-stat-label">Flight Time</span><span class="cr-stat-val">${stats.FlightTimeSec ? fmtTime(stats.FlightTimeSec) : '—'}</span></div>
       <div class="cr-stat"><span class="cr-stat-label">Distance</span><span class="cr-stat-val">${fmt(stats.DistanceNm, ' nm')}</span></div>
       <div class="cr-stat"><span class="cr-stat-label">Autopilot</span><span class="cr-stat-val">${stats.AutopilotPct != null ? stats.AutopilotPct.toFixed(0) + '%' : '—'}</span></div>
-    </div>
-    <div class="cr-events-label">Events</div>
-    <div class="cr-event-list">${eventsHtml}</div>`;
+    </div>`;
 }
 
 function toggleCrRun(runId, flightId) {
