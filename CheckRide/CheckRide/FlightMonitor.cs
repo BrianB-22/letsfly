@@ -89,6 +89,12 @@ internal static class ScoringConfig
     public const int BonusSmooth               = 10;   // VS < 150 fpm
     public const int BonusCleanSystems         = 5;    // zero system flags
     public const int BonusCleanFlight          = 5;    // no overspeed and no stall
+    public const int BonusHandFlown            = 10;   // AP < 20% of flight
+    public const int BonusNightFlight          = 5;    // majority of flight at night
+    public const int BonusImcFlight            = 10;   // flew and landed in IMC
+    public const int BonusCrosswindLanding     = 5;    // >10kt crosswind component at touchdown
+    public const double HandFlownMaxApPct      = 20.0; // AP% threshold for hand-flown bonus
+    public const double CrosswindBonusKt       = 10.0; // minimum crosswind for bonus
 }
 
 public class FlightMonitor
@@ -200,6 +206,11 @@ public class FlightMonitor
     private bool   _completionFired;
     private double _depLat, _depLon;
     private bool   _depSet;
+
+    // Night flight tracking
+    private int _nightFlightSamples;
+    private int _totalFlightSamples;
+    private double _landingCrosswindKts;
 
     // Personality callout flags — fire once per flight
     private bool _rainCalloutFired;
@@ -478,6 +489,8 @@ public class FlightMonitor
         _landingLateralG    = snap.GForceLateral;
         _windSpeedAtLanding = snap.WindSpeedKt;
         _windDirAtLanding   = snap.WindDirectionDeg;
+        var relWindRad = (_windDirAtLanding - snap.MagHeadingDeg) * Math.PI / 180.0;
+        _landingCrosswindKts = Math.Abs(_windSpeedAtLanding * Math.Sin(relWindRad));
         var absVs  = Math.Abs(_landingVsFpm);
         var absLat = Math.Abs(snap.GForceLateral);
         var fast   = _vrefKts > 0 && snap.IndicatedAirspeedKts > _vrefKts * 1.15;
@@ -785,6 +798,9 @@ public class FlightMonitor
         var airborne = _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
         if (airborne)
         {
+            _totalFlightSamples++;
+            if (snap.SunPitchDeg < 0) _nightFlightSamples++;
+
             // Rain callout — fire once when precipitation begins
             if (!_rainCalloutFired && snap.RainPercent > 0.05)
             {
@@ -1033,6 +1049,10 @@ public class FlightMonitor
                 LandingLateralG            = Math.Round(_landingLateralG, 2),
                 WindSpeedAtLandingKt       = Math.Round(_windSpeedAtLanding, 1),
                 WindDirectionAtLandingDeg  = Math.Round(_windDirAtLanding, 0),
+                CrosswindAtLandingKt       = Math.Round(_landingCrosswindKts, 1),
+                NightFlightPct             = _totalFlightSamples > 0
+                                               ? Math.Round(_nightFlightSamples * 100.0 / _totalFlightSamples, 1)
+                                               : 0,
                 GoArounds                  = _goArounds,
                 VsoKts                     = Math.Round(_vsoKts, 1),
                 VrefKts                    = Math.Round(_vrefKts, 1),
@@ -1114,6 +1134,8 @@ public class FlightMonitor
                 FlightEventType.SystemStrobes or FlightEventType.SystemTransponder or
                 FlightEventType.SystemAntiIce or FlightEventType.SystemBarometer),
             ImcFlight      = r.Events.Any(e => e.Type == FlightEventType.SystemIMC),
+            NightFlight    = r.Stats.NightFlightPct >= 50.0,
+            CrosswindAtLandingKt = r.Stats.CrosswindAtLandingKt,
             TakeoffFlags   = r.Events.Count(e => e.Type is
                 FlightEventType.TakeoffLowPower or FlightEventType.TakeoffHeadingDeviation or
                 FlightEventType.TakeoffDirectionalControl or FlightEventType.WrongDepartureAirport),
@@ -1226,6 +1248,26 @@ public class FlightMonitor
         {
             score += ScoringConfig.BonusCleanFlight;
             bd.Add(new ScoreLineItem { Label = "Clean Flight Bonus", Count = 1, Pts = ScoringConfig.BonusCleanFlight });
+        }
+        if (r.Stats.AutopilotPct < ScoringConfig.HandFlownMaxApPct && r.Stats.FlightTimeSec > 0)
+        {
+            score += ScoringConfig.BonusHandFlown;
+            bd.Add(new ScoreLineItem { Label = "Hand Flown Bonus", Count = 1, Pts = ScoringConfig.BonusHandFlown });
+        }
+        if (r.Summary.NightFlight && !r.Summary.Crashed)
+        {
+            score += ScoringConfig.BonusNightFlight;
+            bd.Add(new ScoreLineItem { Label = "Night Flight Bonus", Count = 1, Pts = ScoringConfig.BonusNightFlight });
+        }
+        if (r.Summary.ImcFlight && !r.Summary.Crashed)
+        {
+            score += ScoringConfig.BonusImcFlight;
+            bd.Add(new ScoreLineItem { Label = "IMC Flight Bonus", Count = 1, Pts = ScoringConfig.BonusImcFlight });
+        }
+        if (r.Stats.CrosswindAtLandingKt >= ScoringConfig.CrosswindBonusKt && !r.Summary.Crashed)
+        {
+            score += ScoringConfig.BonusCrosswindLanding;
+            bd.Add(new ScoreLineItem { Label = "Crosswind Landing Bonus", Count = 1, Pts = ScoringConfig.BonusCrosswindLanding });
         }
 
         r.Breakdown = bd;

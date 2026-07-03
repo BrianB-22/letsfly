@@ -39,6 +39,8 @@ public class CheckRideSummary
     public bool Crashed { get; set; }
     public bool RunwayExcursion { get; set; }
     public bool ImcFlight { get; set; }
+    public bool NightFlight { get; set; }
+    public double CrosswindAtLandingKt { get; set; }
     public string LandingQuality { get; set; } = "Unknown";
 }
 
@@ -72,6 +74,10 @@ public class FlightStats
     public double LandingLateralG { get; set; }
     public double WindSpeedAtLandingKt { get; set; }
     public double WindDirectionAtLandingDeg { get; set; }
+    public double CrosswindAtLandingKt { get; set; }
+
+    // Night tracking
+    public double NightFlightPct { get; set; }          // % of airborne time at night
 
     // Phases
     public int GoArounds { get; set; }
