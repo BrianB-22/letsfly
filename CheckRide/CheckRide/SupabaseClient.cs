@@ -162,9 +162,11 @@ internal class SupabaseClient
             ["imc_flight"]       = report.Summary.ImcFlight,
             ["log_text"]         = logText,
             // Full JSONB blobs
-            ["events"]           = JsonSerializer.SerializeToElement(report.Events,  _enumOpts),
-            ["summary"]          = JsonSerializer.SerializeToElement(report.Summary, _enumOpts),
-            ["stats"]            = JsonSerializer.SerializeToElement(report.Stats,   _enumOpts),
+            ["events"]           = JsonSerializer.SerializeToElement(report.Events,     _enumOpts),
+            ["summary"]          = JsonSerializer.SerializeToElement(report.Summary,    _enumOpts),
+            ["stats"]            = JsonSerializer.SerializeToElement(report.Stats,      _enumOpts),
+            ["track"]            = JsonSerializer.SerializeToElement(report.Track,      _enumOpts),
+            ["conditions"]       = JsonSerializer.SerializeToElement(report.Conditions, _enumOpts),
         };
 
         var req = AuthPost($"{Config.SupabaseUrl}/rest/v1/checkride_results");
