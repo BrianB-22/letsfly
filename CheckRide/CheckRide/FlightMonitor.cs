@@ -305,6 +305,7 @@ public class FlightMonitor
             if (distNm >= Config.CompletionDistanceNm)
             {
                 _completionFired = true;
+                LogEvent(FlightEventType.ParkingBrakeSet, snap.Timestamp, "Parking brake set — flight complete");
                 FlightCompleted?.Invoke();
             }
         }
@@ -371,6 +372,7 @@ public class FlightMonitor
                 _takeoffSideloadFlagged = false;
                 SampleTrack(snap, forced: true);
                 logger.Log($"Phase → Airborne  GPS=({snap.Latitude:F5},{snap.Longitude:F5})");
+                LogEvent(FlightEventType.Takeoff, snap.Timestamp, $"Takeoff — {snap.GroundspeedKts:F0} kt GS");
                 AfterTakeoffCallout?.Invoke();
 
                 var liftoffN1 = Math.Max(snap.Eng1N1Pct, snap.Eng2N1Pct);
@@ -398,6 +400,7 @@ public class FlightMonitor
                 {
                     _phase = FlightPhase.Cruise;
                     logger.Log("Phase → Cruise");
+                    LogEvent(FlightEventType.CruiseReached, snap.Timestamp, $"Cruise — {snap.AltitudeMslFt:F0} ft");
                 }
             }
             else
@@ -418,6 +421,7 @@ public class FlightMonitor
                 _phase = FlightPhase.Approach;
                 _highDescentFlagged = false;
                 logger.Log("Phase → Approach");
+                LogEvent(FlightEventType.ApproachStarted, snap.Timestamp, $"Approach — {snap.AltitudeAglFt:F0} ft AGL");
             }
         }
         else if (_phase == FlightPhase.Approach)
@@ -434,6 +438,7 @@ public class FlightMonitor
                 _goArounds++;
                 _phase = FlightPhase.Airborne;
                 logger.Log("Phase → Airborne (go-around)");
+                LogEvent(FlightEventType.GoAround, snap.Timestamp, $"Go-around — {snap.AltitudeAglFt:F0} ft AGL");
             }
         }
         else if (_phase == FlightPhase.Landed)
@@ -521,6 +526,8 @@ public class FlightMonitor
         }
 
         logger.Log($"Touchdown quality: {quality}");
+        var qualityLabel = quality == "excellent" ? "Greaser" : quality == "good" ? "Smooth" : "Hard";
+        LogEvent(FlightEventType.Touchdown, snap.Timestamp, $"Landing — {qualityLabel} ({(int)Math.Abs(_landingVsFpm)} fpm)");
         TouchdownCallout?.Invoke(quality);
     }
 

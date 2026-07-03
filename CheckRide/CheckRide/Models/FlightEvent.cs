@@ -61,6 +61,16 @@ public enum FlightEventType
     TakeoffDirectionalControl,
     WrongDepartureAirport,
 
+    // Milestones (no scoring impact — timeline markers only)
+    RecordingStarted,
+    EngineStart,
+    Takeoff,
+    CruiseReached,
+    ApproachStarted,
+    GoAround,
+    Touchdown,
+    ParkingBrakeSet,
+
     // Aircraft failures
     FailureEngineFire,
     FailureEngineOut,
