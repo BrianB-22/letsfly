@@ -595,6 +595,8 @@ internal class FlightListForm : Form
             _monitor.CalloutRain          += () => BeginInvoke(() => PlaySoundRandom("callout_rain"));
             _monitor.CalloutIcing         += () => BeginInvoke(() => PlaySoundRandom("callout_icing"));
             _monitor.CalloutTurbulence    += () => BeginInvoke(() => PlaySoundRandom("callout_turbulence"));
+            _monitor.CalloutOverspeed     += () => BeginInvoke(() => PlaySoundRandom("callout_overspeed"));
+            _monitor.CalloutHighBank      += () => BeginInvoke(() => PlaySoundRandom("callout_highbank"));
             _monitor.FlightCompleted      += () => BeginInvoke(OnFlightCompleted);
 
             _ = _connector.StartAsync();

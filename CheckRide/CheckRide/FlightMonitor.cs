@@ -191,6 +191,10 @@ public class FlightMonitor
     public event Action? CalloutIcing;
     public event Action? CalloutTurbulence;
 
+    // Scoring-linked callouts — fire each time the event occurs
+    public event Action? CalloutOverspeed;
+    public event Action? CalloutHighBank;
+
     // Flight completion
     public event Action? FlightCompleted;
     private bool   _completionFired;
@@ -539,6 +543,7 @@ public class FlightMonitor
         {
             LogEvent(FlightEventType.Overspeed, snap.Timestamp, $"Exceeded Vno — {snap.IndicatedAirspeedKts:F0}kt (limit {_vnoKts:F0}kt)");
             logger.Log($"EVENT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt > Vno {_vnoKts:F0}kt)");
+            CalloutOverspeed?.Invoke();
         }
         _prevOverspeed = overVno;
 
@@ -594,6 +599,7 @@ public class FlightMonitor
         {
             LogEvent(FlightEventType.VeryHighBank, snap.Timestamp, $"Excessive bank — {snap.BankAngleDeg:F1}°");
             logger.Log($"EVENT: Very high bank ({snap.BankAngleDeg:F1}°)");
+            CalloutHighBank?.Invoke();
         }
         _prevVeryHighBank = isVeryHighBank;
 
@@ -602,6 +608,7 @@ public class FlightMonitor
         {
             LogEvent(FlightEventType.HighBank, snap.Timestamp, $"High bank — {snap.BankAngleDeg:F1}°");
             logger.Log($"EVENT: High bank ({snap.BankAngleDeg:F1}°)");
+            CalloutHighBank?.Invoke();
         }
         _prevHighBank = isHighBank;
 
