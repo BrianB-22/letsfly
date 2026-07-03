@@ -6,6 +6,8 @@
   <title>CheckRide Report — SimLetsFly</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="robots" content="noindex">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-TMZ18XB2ZM"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-TMZ18XB2ZM');</script>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
@@ -228,15 +230,15 @@ function escapeHtml(str) {
 _sb.auth.onAuthStateChange((event, session) => {
   currentUser = session?.user ?? null;
   renderAuthHeader();
-  if (event === 'SIGNED_IN') loadReport();
 });
 
 _sb.auth.getSession().then(({ data: { session } }) => {
   currentUser = session?.user ?? null;
   renderAuthHeader();
-  if (currentUser) loadReport();
-  else showSignInWall();
 });
+
+// Reports are public by URL — load immediately without requiring sign-in
+loadReport();
 
 function renderAuthHeader() {
   const el = document.getElementById('auth-header');
