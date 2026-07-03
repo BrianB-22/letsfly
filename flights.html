@@ -1586,7 +1586,7 @@ async function loadCheckRides(flightId) {
 
   const { data, error } = await _sb
     .from('checkride_results')
-    .select('id, score, grade, aircraft, sim, scoring_version, recorded_at, events, summary, stats, track')
+    .select('id, score, grade, aircraft, sim, scoring_version, recorded_at, events, summary, stats, breakdown, track')
     .eq('flight_id', flightId)
     .order('recorded_at', { ascending: false });
 
@@ -1747,89 +1747,29 @@ function closeCrModal() {
 }
 
 function _buildScoreBreakdown(r) {
-  const events  = r.events  || [];
-  const summary = r.summary || {};
-  const score   = r.score   ?? null;
+  const bd    = r.breakdown || [];
+  const score = r.score ?? null;
 
-  // Mirror of C# ScoringConfig — each = true means penalty * count, else capped at 1 occurrence
-  const PPEN = [
-    { types:['Overspeed'],                                          label:'Overspeed',              pts:-5,  each:true  },
-    { types:['SpeedLimitViolation'],                                label:'250 kt below 10,000 ft', pts:-10, each:true  },
-    { types:['Stall'],                                              label:'Stall',                  pts:-5,  each:true  },
-    { types:['HighG'],                                              label:'High G-Force',           pts:-3,  each:true  },
-    { types:['VeryHighG'],                                          label:'Very High G-Force',      pts:-8,  each:true  },
-    { types:['HighBank'],                                           label:'Excessive Bank',         pts:-3,  each:true  },
-    { types:['VeryHighBank'],                                       label:'Very Excessive Bank',    pts:-8,  each:true  },
-    { types:['HighDescentRate'],                                    label:'High Descent Rate',      pts:-5,  each:true  },
-    { types:['Crash'],                                              label:'Crash',                  pts:-40, each:false },
-    { types:['RunwayExcursion'],                                    label:'Runway Excursion',       pts:-35, each:false },
-    { types:['ExcessiveApproachSpeed'],                             label:'Excessive Approach Spd', pts:-15, each:false },
-    { types:['UnstableApproach'],                                   label:'Unstable Approach',      pts:-15, each:false },
-    { types:['FlapOverspeed'],                                      label:'Flap Overspeed',         pts:-10, each:false },
-    { types:['HardLanding'],                                        label:'Hard Landing',           pts:-15, each:false },
-    { types:['FastLanding'],                                        label:'Fast Landing (IAS)',     pts:-10, each:false },
-    { types:['FirmLanding'],                                        label:'Firm Landing',           pts:-5,  each:false },
-    { types:['GearUpLanding'],                                      label:'Gear Up Landing',        pts:-25, each:false },
-    { types:['SideloadLanding'],                                    label:'Sideload Landing',       pts:-10, each:false },
-    { types:['SystemPitotHeat','SystemFlapsCruise','SystemGearCruise','SystemGearApproach',
-              'SystemLandingLights','SystemBeacon','SystemStrobes','SystemTransponder',
-              'SystemAntiIce','SystemBarometer'],                   label:'System Check Failures',  pts:-3,  each:true  },
-    { types:['TaxiFastSpeed'],                                      label:'Fast Taxi',              pts:-5,  each:true  },
-    { types:['TaxiAggressiveTurn'],                                 label:'Aggressive Taxi Turn',   pts:-3,  each:true  },
-    { types:['TakeoffLowPower'],                                    label:'Takeoff Low Power',      pts:-5,  each:false },
-    { types:['TakeoffHeadingDeviation'],                            label:'Takeoff Hdg Deviation',  pts:-5,  each:false },
-    { types:['TakeoffDirectionalControl'],                          label:'Takeoff Directional Ctrl',pts:-5, each:false },
-    { types:['WrongDepartureAirport'],                              label:'Wrong Departure Airport',pts:-20, each:false },
-    { types:['FailureEngineFire'],                                  label:'Engine Fire',            pts:-30, each:false },
-    { types:['FailureEngineOut'],                                   label:'Engine Out',             pts:-25, each:false },
-    { types:['FailureEngineOverspeed'],                             label:'Engine Overspeed',       pts:-20, each:false },
-    { types:['FailureOverG'],                                       label:'Over-G Structural Dmg',  pts:-20, each:false },
-    { types:['FailureIcingDamage'],                                 label:'Icing Damage',           pts:-20, each:false },
-    { types:['FailureOilPressure','FailureFuelPressure','FailureHydraulic','FailureLowVoltage'], label:'System Failure',  pts:-10, each:true  },
-  ];
-
-  const typeSet = new Set(events.map(e => e.Type));
-  let computed = 100;
-  const rows = [];
-
-  for (const p of PPEN) {
-    const count = p.each
-      ? events.filter(e => p.types.includes(e.Type)).length
-      : (p.types.some(t => typeSet.has(t)) ? 1 : 0);
-    if (count === 0) continue;
-    const total = p.pts * count;
-    computed += total;
-    rows.push({ label: p.label, count: p.each ? count : null, pts: total });
+  if (!bd.length) {
+    // Older run recorded before breakdown was added to the upload
+    return '<div class="cr-empty" style="font-size:12px;">Score breakdown not available for this run — re-fly to record it.</div>';
   }
 
-  // Bonuses
-  const absVs = Math.abs(r.stats?.LandingVsFpm || 9999);
-  const crashed = summary.Crashed || summary.RunwayExcursion;
-  if (!crashed && absVs < 75)  { computed += 10; rows.push({ label: 'Greaser Landing Bonus', pts: 10, bonus: true }); }
-  else if (!crashed && absVs < 150) { computed += 10; rows.push({ label: 'Smooth Landing Bonus', pts: 10, bonus: true }); }
-  if (summary.SystemFlags === 0) { computed += 5; rows.push({ label: 'Clean Systems Bonus', pts: 5, bonus: true }); }
-  if (summary.OverspeedCount === 0 && summary.StallCount === 0) { computed += 5; rows.push({ label: 'Clean Flight Bonus', pts: 5, bonus: true }); }
-
-  computed = Math.max(0, Math.min(100, computed));
-
-  if (!rows.length) {
-    return `<div class="cr-score-row"><span class="cr-score-label cr-score-base">Base score</span><span class="cr-score-count"></span><span class="cr-score-pts pos">+100</span></div>
-            <div class="cr-score-row cr-score-total"><span class="cr-score-label">Final Score</span><span class="cr-score-count"></span><span class="cr-score-pts pos">${computed} pts</span></div>`;
-  }
-
-  const rowHtml = rows.map(row => {
-    const cls = row.bonus ? 'pos' : (row.pts < 0 ? 'neg' : 'zero');
-    const sign = row.pts > 0 ? '+' : '';
+  const rowHtml = bd.map(row => {
+    const cls  = row.Pts > 0 ? 'pos' : row.Pts < 0 ? 'neg' : 'zero';
+    const sign = row.Pts > 0 ? '+' : '';
+    const cnt  = row.Count > 1 ? '×' + row.Count : '';
     return `<div class="cr-score-row">
-      <span class="cr-score-label">${row.label}</span>
-      <span class="cr-score-count">${row.count != null ? '×' + row.count : ''}</span>
-      <span class="cr-score-pts ${cls}">${sign}${row.pts}</span>
+      <span class="cr-score-label">${row.Label}</span>
+      <span class="cr-score-count">${cnt}</span>
+      <span class="cr-score-pts ${cls}">${sign}${row.Pts}</span>
     </div>`;
   }).join('');
 
+  const scoreCls = score >= 90 ? 'pos' : score >= 70 ? 'zero' : 'neg';
   return `<div class="cr-score-row"><span class="cr-score-label cr-score-base">Base score</span><span class="cr-score-count"></span><span class="cr-score-pts pos">+100</span></div>
 ${rowHtml}
-<div class="cr-score-row cr-score-total"><span class="cr-score-label">Final Score</span><span class="cr-score-count"></span><span class="cr-score-pts ${computed >= 90 ? 'pos' : computed >= 70 ? 'zero' : 'neg'}">${computed} pts</span></div>`;
+<div class="cr-score-row cr-score-total"><span class="cr-score-label">Final Score</span><span class="cr-score-count"></span><span class="cr-score-pts ${scoreCls}">${score} pts</span></div>`;
 }
 
 function _renderCrModalStats(r) {

@@ -85,6 +85,13 @@ public class FlightStats
     public double VleKts { get; set; }
 }
 
+public class ScoreLineItem
+{
+    public string Label { get; init; } = "";
+    public int    Count { get; init; } = 1;  // >1 only for per-occurrence items
+    public int    Pts   { get; init; }        // negative = deduction, positive = bonus
+}
+
 public class CheckRideReport
 {
     public const string ScoringVersionConst = "xp12-1.3";
@@ -98,6 +105,7 @@ public class CheckRideReport
     public List<FlightEvent> Events { get; set; } = new();
     public CheckRideSummary Summary { get; set; } = new();
     public FlightStats Stats { get; set; } = new();
+    public List<ScoreLineItem> Breakdown { get; set; } = new();
     public List<FlightConditionSample> Conditions { get; set; } = new();
     public List<FlightTrackPoint> Track { get; set; } = new();
 }

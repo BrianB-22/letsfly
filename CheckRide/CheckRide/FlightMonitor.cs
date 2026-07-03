@@ -1140,57 +1140,95 @@ public class FlightMonitor
         if (r.Stats.FlightTimeSec == 0) return 0;
 
         int score = 100;
+        var bd = new List<ScoreLineItem>();
 
-        score += r.Events.Count(e => e.Type == FlightEventType.Overspeed)          * ScoringConfig.PenaltyOverspeed;
-        score += r.Events.Count(e => e.Type == FlightEventType.SpeedLimitViolation) * ScoringConfig.PenaltySpeedLimit;
-        score += r.Events.Count(e => e.Type == FlightEventType.Stall)              * ScoringConfig.PenaltyStall;
-        score += r.Events.Count(e => e.Type == FlightEventType.HighG)         * ScoringConfig.PenaltyHighG;
-        score += r.Events.Count(e => e.Type == FlightEventType.VeryHighG)     * ScoringConfig.PenaltyVeryHighG;
-        score += r.Events.Count(e => e.Type == FlightEventType.HighBank)      * ScoringConfig.PenaltyHighBank;
-        score += r.Events.Count(e => e.Type == FlightEventType.VeryHighBank)  * ScoringConfig.PenaltyVeryHighBank;
-        score += r.Events.Count(e => e.Type == FlightEventType.HighDescentRate) * ScoringConfig.PenaltyHighDescentRate;
-        if (r.Events.Any(e => e.Type == FlightEventType.Crash))                  score += ScoringConfig.PenaltyCrash;
-        if (r.Events.Any(e => e.Type == FlightEventType.RunwayExcursion))        score += ScoringConfig.PenaltyRunwayExcursion;
-        if (r.Events.Any(e => e.Type == FlightEventType.ExcessiveApproachSpeed)) score += ScoringConfig.PenaltyExcessApproachSpd;
-        if (r.Events.Any(e => e.Type == FlightEventType.UnstableApproach))       score += ScoringConfig.PenaltyUnstableApproach;
-        if (r.Events.Any(e => e.Type == FlightEventType.FlapOverspeed))          score += ScoringConfig.PenaltyFlapOverspeed;
-        if (r.Events.Any(e => e.Type == FlightEventType.HardLanding))            score += ScoringConfig.PenaltyHardLanding;
-        if (r.Events.Any(e => e.Type == FlightEventType.FastLanding))           score += ScoringConfig.PenaltyFastLanding;
-        if (r.Events.Any(e => e.Type == FlightEventType.FirmLanding))            score += ScoringConfig.PenaltyFirmLanding;
-        if (r.Events.Any(e => e.Type == FlightEventType.GearUpLanding))          score += ScoringConfig.PenaltyGearUpLanding;
-        if (r.Events.Any(e => e.Type == FlightEventType.SideloadLanding))        score += ScoringConfig.PenaltySideloadLanding;
-        score += r.Summary.SystemFlags * ScoringConfig.PenaltySystemFlag;
+        // Adds a per-occurrence penalty (only recorded if count > 0)
+        void PerOccurrence(string label, int count, int pts)
+        {
+            if (count == 0) return;
+            int delta = pts * count;
+            score += delta;
+            bd.Add(new ScoreLineItem { Label = label, Count = count, Pts = delta });
+        }
+
+        // Adds a one-shot penalty (only recorded if it occurred)
+        void Once(string label, bool applies, int pts)
+        {
+            if (!applies) return;
+            score += pts;
+            bd.Add(new ScoreLineItem { Label = label, Count = 1, Pts = pts });
+        }
+
+        // Speed / stall
+        PerOccurrence("Overspeed",             r.Events.Count(e => e.Type == FlightEventType.Overspeed),          ScoringConfig.PenaltyOverspeed);
+        PerOccurrence("250 kt below 10,000 ft",r.Events.Count(e => e.Type == FlightEventType.SpeedLimitViolation),ScoringConfig.PenaltySpeedLimit);
+        PerOccurrence("Stall",                 r.Events.Count(e => e.Type == FlightEventType.Stall),              ScoringConfig.PenaltyStall);
+
+        // G / bank
+        PerOccurrence("High G-Force",          r.Events.Count(e => e.Type == FlightEventType.HighG),              ScoringConfig.PenaltyHighG);
+        PerOccurrence("Very High G-Force",     r.Events.Count(e => e.Type == FlightEventType.VeryHighG),          ScoringConfig.PenaltyVeryHighG);
+        PerOccurrence("Excessive Bank",        r.Events.Count(e => e.Type == FlightEventType.HighBank),           ScoringConfig.PenaltyHighBank);
+        PerOccurrence("Very Excessive Bank",   r.Events.Count(e => e.Type == FlightEventType.VeryHighBank),       ScoringConfig.PenaltyVeryHighBank);
+        PerOccurrence("High Descent Rate",     r.Events.Count(e => e.Type == FlightEventType.HighDescentRate),    ScoringConfig.PenaltyHighDescentRate);
+
+        // Crash / excursion
+        Once("Crash",                          r.Events.Any(e => e.Type == FlightEventType.Crash),               ScoringConfig.PenaltyCrash);
+        Once("Runway Excursion",               r.Events.Any(e => e.Type == FlightEventType.RunwayExcursion),     ScoringConfig.PenaltyRunwayExcursion);
+
+        // Approach
+        Once("Excessive Approach Speed",       r.Events.Any(e => e.Type == FlightEventType.ExcessiveApproachSpeed), ScoringConfig.PenaltyExcessApproachSpd);
+        Once("Unstable Approach",              r.Events.Any(e => e.Type == FlightEventType.UnstableApproach),     ScoringConfig.PenaltyUnstableApproach);
+        Once("Flap Overspeed",                 r.Events.Any(e => e.Type == FlightEventType.FlapOverspeed),        ScoringConfig.PenaltyFlapOverspeed);
+
+        // Landing
+        Once("Hard Landing",                   r.Events.Any(e => e.Type == FlightEventType.HardLanding),          ScoringConfig.PenaltyHardLanding);
+        Once("Fast Landing (IAS)",             r.Events.Any(e => e.Type == FlightEventType.FastLanding),          ScoringConfig.PenaltyFastLanding);
+        Once("Firm Landing",                   r.Events.Any(e => e.Type == FlightEventType.FirmLanding),          ScoringConfig.PenaltyFirmLanding);
+        Once("Gear Up Landing",                r.Events.Any(e => e.Type == FlightEventType.GearUpLanding),        ScoringConfig.PenaltyGearUpLanding);
+        Once("Sideload Landing",               r.Events.Any(e => e.Type == FlightEventType.SideloadLanding),      ScoringConfig.PenaltySideloadLanding);
+
+        // Systems
+        PerOccurrence("System Check Failures", r.Summary.SystemFlags,                                             ScoringConfig.PenaltySystemFlag);
 
         // Taxi
-        score += r.Events.Count(e => e.Type == FlightEventType.TaxiFastSpeed)     * ScoringConfig.PenaltyTaxiFastSpeed;
-        score += r.Events.Count(e => e.Type == FlightEventType.TaxiAggressiveTurn) * ScoringConfig.PenaltyTaxiAggrTurn;
+        PerOccurrence("Fast Taxi",             r.Events.Count(e => e.Type == FlightEventType.TaxiFastSpeed),      ScoringConfig.PenaltyTaxiFastSpeed);
+        PerOccurrence("Aggressive Taxi Turn",  r.Events.Count(e => e.Type == FlightEventType.TaxiAggressiveTurn), ScoringConfig.PenaltyTaxiAggrTurn);
 
         // Takeoff
-        if (r.Events.Any(e => e.Type == FlightEventType.TakeoffLowPower))           score += ScoringConfig.PenaltyTakeoffLowPower;
-        if (r.Events.Any(e => e.Type == FlightEventType.TakeoffHeadingDeviation))   score += ScoringConfig.PenaltyTakeoffHdgDev;
-        if (r.Events.Any(e => e.Type == FlightEventType.TakeoffDirectionalControl)) score += ScoringConfig.PenaltyTakeoffSideload;
-        if (r.Events.Any(e => e.Type == FlightEventType.WrongDepartureAirport))     score += ScoringConfig.PenaltyWrongDepartureAirport;
+        Once("Takeoff Low Power",              r.Events.Any(e => e.Type == FlightEventType.TakeoffLowPower),      ScoringConfig.PenaltyTakeoffLowPower);
+        Once("Takeoff Hdg Deviation",          r.Events.Any(e => e.Type == FlightEventType.TakeoffHeadingDeviation), ScoringConfig.PenaltyTakeoffHdgDev);
+        Once("Takeoff Directional Control",    r.Events.Any(e => e.Type == FlightEventType.TakeoffDirectionalControl), ScoringConfig.PenaltyTakeoffSideload);
+        Once("Wrong Departure Airport",        r.Events.Any(e => e.Type == FlightEventType.WrongDepartureAirport), ScoringConfig.PenaltyWrongDepartureAirport);
 
         // Aircraft failures
-        if (r.Events.Any(e => e.Type == FlightEventType.FailureEngineFire))      score += ScoringConfig.PenaltyEngineFire;
-        if (r.Events.Any(e => e.Type == FlightEventType.FailureEngineOut))       score += ScoringConfig.PenaltyEngineOut;
-        if (r.Events.Any(e => e.Type == FlightEventType.FailureEngineOverspeed)) score += ScoringConfig.PenaltyEngineOverspeed;
-        if (r.Events.Any(e => e.Type == FlightEventType.FailureOverG))       score += ScoringConfig.PenaltyOverGFailure;
-        if (r.Events.Any(e => e.Type == FlightEventType.FailureIcingDamage)) score += ScoringConfig.PenaltyIcingDamage;
-        score += r.Events.Count(e => e.Type is
+        Once("Engine Fire",                    r.Events.Any(e => e.Type == FlightEventType.FailureEngineFire),    ScoringConfig.PenaltyEngineFire);
+        Once("Engine Out",                     r.Events.Any(e => e.Type == FlightEventType.FailureEngineOut),     ScoringConfig.PenaltyEngineOut);
+        Once("Engine Overspeed",               r.Events.Any(e => e.Type == FlightEventType.FailureEngineOverspeed), ScoringConfig.PenaltyEngineOverspeed);
+        Once("Over-G Structural Damage",       r.Events.Any(e => e.Type == FlightEventType.FailureOverG),         ScoringConfig.PenaltyOverGFailure);
+        Once("Icing Damage",                   r.Events.Any(e => e.Type == FlightEventType.FailureIcingDamage),   ScoringConfig.PenaltyIcingDamage);
+        PerOccurrence("System Failure",        r.Events.Count(e => e.Type is
             FlightEventType.FailureOilPressure or FlightEventType.FailureFuelPressure or
-            FlightEventType.FailureHydraulic or FlightEventType.FailureLowVoltage) * ScoringConfig.PenaltySystemFailure;
+            FlightEventType.FailureHydraulic or FlightEventType.FailureLowVoltage),                               ScoringConfig.PenaltySystemFailure);
 
         // Bonuses
         var absVs = Math.Abs(r.Stats.LandingVsFpm);
         if (!r.Summary.Crashed && !r.Summary.RunwayExcursion)
         {
-            if (absVs < 75)       score += ScoringConfig.BonusGreaser;
-            else if (absVs < 150) score += ScoringConfig.BonusSmooth;
+            if (absVs < 75)       { score += ScoringConfig.BonusGreaser; bd.Add(new ScoreLineItem { Label = "Greaser Landing Bonus", Count = 1, Pts = ScoringConfig.BonusGreaser }); }
+            else if (absVs < 150) { score += ScoringConfig.BonusSmooth;  bd.Add(new ScoreLineItem { Label = "Smooth Landing Bonus",  Count = 1, Pts = ScoringConfig.BonusSmooth  }); }
         }
-        if (r.Summary.SystemFlags == 0)                                  score += ScoringConfig.BonusCleanSystems;
-        if (r.Summary.OverspeedCount == 0 && r.Summary.StallCount == 0) score += ScoringConfig.BonusCleanFlight;
+        if (r.Summary.SystemFlags == 0)
+        {
+            score += ScoringConfig.BonusCleanSystems;
+            bd.Add(new ScoreLineItem { Label = "Clean Systems Bonus", Count = 1, Pts = ScoringConfig.BonusCleanSystems });
+        }
+        if (r.Summary.OverspeedCount == 0 && r.Summary.StallCount == 0)
+        {
+            score += ScoringConfig.BonusCleanFlight;
+            bd.Add(new ScoreLineItem { Label = "Clean Flight Bonus", Count = 1, Pts = ScoringConfig.BonusCleanFlight });
+        }
 
+        r.Breakdown = bd;
         return Math.Clamp(score, 0, 100);
     }
 

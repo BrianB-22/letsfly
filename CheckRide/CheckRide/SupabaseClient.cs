@@ -167,6 +167,7 @@ internal class SupabaseClient
             ["events"]           = JsonSerializer.SerializeToElement(report.Events,     _enumOpts),
             ["summary"]          = JsonSerializer.SerializeToElement(report.Summary,    _enumOpts),
             ["stats"]            = JsonSerializer.SerializeToElement(report.Stats,      _enumOpts),
+            ["breakdown"]        = JsonSerializer.SerializeToElement(report.Breakdown,  _enumOpts),
             ["track"]            = JsonSerializer.SerializeToElement(report.Track,      _enumOpts),
             ["conditions"]       = JsonSerializer.SerializeToElement(report.Conditions, _enumOpts),
         };
