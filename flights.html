@@ -2117,9 +2117,9 @@ function _getInterpolated(t) {
 
 function _updateMapMarker(lat, lon, hdg) {
   if (!_crModalMap) return;
-  const html = `<div style="font-size:20px;line-height:1;transform:rotate(${(hdg - 45).toFixed(0)}deg);filter:drop-shadow(0 0 4px rgba(0,230,118,0.9));color:#00e676;">✈</div>`;
+  const html = `<div style="font-size:32px;line-height:1;transform:rotate(${(hdg - 45).toFixed(0)}deg);filter:drop-shadow(0 0 6px rgba(0,230,118,0.95));color:#00e676;">✈</div>`;
   if (!_pb.marker) {
-    const icon = L.divIcon({ className:'', html, iconSize:[22,22], iconAnchor:[11,11] });
+    const icon = L.divIcon({ className:'', html, iconSize:[34,34], iconAnchor:[17,17] });
     _pb.marker = L.marker([lat, lon], { icon, zIndexOffset: 1000 }).addTo(_crModalMap);
   } else {
     _pb.marker.setLatLng([lat, lon]);
