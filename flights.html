@@ -1941,7 +1941,7 @@ function _renderCrModalChart(track, events) {
   // Event dots
   const BAD = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
   events.forEach(e => {
-    const pt = pts.find(p => p.T >= e.TimestampSec + tOffset) || pts[pts.length - 1];
+    const pt = pts.find(p => p.T >= e.TimestampSec) || pts[pts.length - 1];
     if (!pt) return;
     ctx.beginPath();
     ctx.arc(xOf(pt), yAlt(pt), 4, 0, Math.PI * 2);
