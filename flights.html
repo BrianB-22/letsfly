@@ -206,6 +206,29 @@
     #cr-modal-map { height: 340px; border-radius: 4px 4px 0 0; border: 1px solid var(--border); border-bottom: none; overflow: hidden; flex-shrink: 0; }
     #cr-modal-chart { width: 100%; height: 160px; border-radius: 0 0 4px 4px; border: 1px solid var(--border); background: #0b1a2c; display: block; }
     .cr-modal-stats { display: flex; flex-wrap: wrap; gap: 16px; }
+    .cr-score-breakdown { font-family: var(--mono); font-size: 12px; }
+    .cr-score-row { display: flex; align-items: center; gap: 0; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .cr-score-row:last-child { border-bottom: none; }
+    .cr-score-label { flex: 1; color: var(--text2); }
+    .cr-score-count { width: 36px; text-align: right; color: var(--text3); padding-right: 8px; }
+    .cr-score-pts { width: 52px; text-align: right; font-weight: 600; }
+    .cr-score-pts.neg { color: #ff5555; }
+    .cr-score-pts.pos { color: #00e676; }
+    .cr-score-pts.zero { color: var(--text3); }
+    .cr-score-base { color: var(--text2); }
+    .cr-score-total { border-top: 1px solid var(--border2); margin-top: 4px; padding-top: 4px; font-size: 13px; }
+    .cr-score-total .cr-score-label { color: var(--text); font-weight: 600; }
+    .cr-score-total .cr-score-pts { font-size: 14px; }
+    .cr-playback-bar { display: flex; align-items: center; gap: 10px; padding: 8px 18px; border-bottom: 1px solid var(--border); background: var(--bg2); flex-shrink: 0; flex-wrap: wrap; }
+    #cr-play-btn { font-size: 16px; background: rgba(0,180,216,0.12); border: 1px solid rgba(0,180,216,0.35); color: var(--accent); border-radius: 3px; width: 32px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    #cr-play-btn:hover { background: rgba(0,180,216,0.25); }
+    #cr-time-display { font-family: var(--mono); font-size: 12px; color: var(--text2); min-width: 56px; }
+    #cr-scrubber { flex: 1; min-width: 80px; accent-color: var(--accent); cursor: pointer; height: 3px; }
+    #cr-duration-display { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+    .cr-speed-btns { display: flex; gap: 4px; }
+    .cr-speed-btn { font-family: var(--mono); font-size: 11px; background: transparent; border: 1px solid var(--border2); color: var(--text3); border-radius: 2px; padding: 2px 7px; cursor: pointer; }
+    .cr-speed-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .cr-speed-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,180,216,0.1); }
 
     /* ── CHECKRIDE ── */
     .cr-section { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
@@ -475,6 +498,18 @@
       </div>
       <button class="modal-close" onclick="closeCrModal()">×</button>
     </div>
+    <div class="cr-playback-bar">
+      <button id="cr-play-btn" onclick="togglePlayback()" title="Play/Pause">▶</button>
+      <span id="cr-time-display">0m 00s</span>
+      <input type="range" id="cr-scrubber" min="0" value="0" step="1" oninput="onScrub(+this.value)">
+      <span id="cr-duration-display"></span>
+      <div class="cr-speed-btns">
+        <button class="cr-speed-btn" data-spd="5"  onclick="setPlaybackSpeed(5)">5×</button>
+        <button class="cr-speed-btn active" data-spd="10" onclick="setPlaybackSpeed(10)">10×</button>
+        <button class="cr-speed-btn" data-spd="30" onclick="setPlaybackSpeed(30)">30×</button>
+        <button class="cr-speed-btn" data-spd="60" onclick="setPlaybackSpeed(60)">60×</button>
+      </div>
+    </div>
     <div class="cr-modal-body">
       <div id="cr-modal-map"></div>
       <canvas id="cr-modal-chart" height="120"></canvas>
@@ -482,6 +517,8 @@
       <div class="cr-event-list" id="cr-modal-events"></div>
       <div class="cr-events-label" style="margin-top:14px;">Stats</div>
       <div class="cr-modal-stats" id="cr-modal-stats"></div>
+      <div class="cr-events-label" style="margin-top:14px;">Score Breakdown</div>
+      <div class="cr-score-breakdown" id="cr-modal-breakdown"></div>
     </div>
   </div>
 </div>
@@ -1574,6 +1611,33 @@ function _renderCheckRides(flightId, runs) {
   const cardBadge = document.getElementById('cr-card-badge-' + flightId);
   if (cardBadge) cardBadge.style.display = '';
 
+  // Auto-update flight: mark completed and set date from most recent CheckRide
+  const f = flights?.find(x => x.id === flightId);
+  if (f) {
+    const latestDate = runs[0].recorded_at.slice(0, 10); // YYYY-MM-DD
+    let needsSave = false;
+    if (!f.completed) {
+      f.completed = true;
+      const track = document.getElementById('toggle-' + flightId);
+      const text  = document.getElementById('toggle-text-' + flightId);
+      if (track) track.classList.add('on');
+      if (text)  text.textContent = 'Flight Completed';
+      const badge2 = document.querySelector(`#card-${flightId} .badge-pending`);
+      if (badge2) { badge2.className = 'badge badge-complete'; badge2.textContent = 'Completed'; }
+      needsSave = true;
+    }
+    if (!f.flight_date) {
+      f.flight_date = latestDate;
+      const dateEl = document.getElementById('date-' + flightId);
+      if (dateEl) dateEl.value = latestDate;
+      needsSave = true;
+    }
+    if (needsSave) {
+      _sb.from('saved_flights').update({ completed: f.completed, flight_date: f.flight_date })
+        .eq('id', flightId).eq('user_id', currentUser.id).then(() => {});
+    }
+  }
+
   list.innerHTML = runs.map((r, i) => {
     const prev     = runs[i + 1];
     const trend    = prev == null ? '' : r.score > prev.score ? '<span class="cr-trend cr-trend-up">↑</span>'
@@ -1634,7 +1698,9 @@ function _renderCrRunBody(r) {
       <div class="cr-stat"><span class="cr-stat-label">Flight Time</span><span class="cr-stat-val">${stats.FlightTimeSec ? fmtTime(stats.FlightTimeSec) : '—'}</span></div>
       <div class="cr-stat"><span class="cr-stat-label">Distance</span><span class="cr-stat-val">${fmt(stats.DistanceNm, ' nm')}</span></div>
       <div class="cr-stat"><span class="cr-stat-label">Autopilot</span><span class="cr-stat-val">${stats.AutopilotPct != null ? stats.AutopilotPct.toFixed(0) + '%' : '—'}</span></div>
-    </div>`;
+    </div>
+    <div class="cr-events-label" style="margin-top:10px;">Score Breakdown</div>
+    <div class="cr-score-breakdown">${_buildScoreBreakdown(r)}</div>`;
 }
 
 function toggleCrRun(runId, flightId) {
@@ -1662,6 +1728,7 @@ function openCrModal(runId, flightId) {
 
   _renderCrModalStats(r);
   _renderCrModalEvents(r);
+  document.getElementById('cr-modal-breakdown').innerHTML = _buildScoreBreakdown(r);
 
   document.getElementById('cr-modal').style.display = 'flex';
 
@@ -1670,11 +1737,99 @@ function openCrModal(runId, flightId) {
   setTimeout(() => {
     _renderCrModalMap(track, r.events || [], f?.dep_id, f?.arr_id);
     _renderCrModalChart(track, r.events || []);
+    _initPlayback(track, r.events || []);
   }, 50);
 }
 
 function closeCrModal() {
+  _stopPlayback();
   document.getElementById('cr-modal').style.display = 'none';
+}
+
+function _buildScoreBreakdown(r) {
+  const events  = r.events  || [];
+  const summary = r.summary || {};
+  const score   = r.score   ?? null;
+
+  // Mirror of C# ScoringConfig — each = true means penalty * count, else capped at 1 occurrence
+  const PPEN = [
+    { types:['Overspeed'],                                          label:'Overspeed',              pts:-5,  each:true  },
+    { types:['SpeedLimitViolation'],                                label:'250 kt below 10,000 ft', pts:-10, each:true  },
+    { types:['Stall'],                                              label:'Stall',                  pts:-5,  each:true  },
+    { types:['HighG'],                                              label:'High G-Force',           pts:-3,  each:true  },
+    { types:['VeryHighG'],                                          label:'Very High G-Force',      pts:-8,  each:true  },
+    { types:['HighBank'],                                           label:'Excessive Bank',         pts:-3,  each:true  },
+    { types:['VeryHighBank'],                                       label:'Very Excessive Bank',    pts:-8,  each:true  },
+    { types:['HighDescentRate'],                                    label:'High Descent Rate',      pts:-5,  each:true  },
+    { types:['Crash'],                                              label:'Crash',                  pts:-40, each:false },
+    { types:['RunwayExcursion'],                                    label:'Runway Excursion',       pts:-35, each:false },
+    { types:['ExcessiveApproachSpeed'],                             label:'Excessive Approach Spd', pts:-15, each:false },
+    { types:['UnstableApproach'],                                   label:'Unstable Approach',      pts:-15, each:false },
+    { types:['FlapOverspeed'],                                      label:'Flap Overspeed',         pts:-10, each:false },
+    { types:['HardLanding'],                                        label:'Hard Landing',           pts:-15, each:false },
+    { types:['FastLanding'],                                        label:'Fast Landing (IAS)',     pts:-10, each:false },
+    { types:['FirmLanding'],                                        label:'Firm Landing',           pts:-5,  each:false },
+    { types:['GearUpLanding'],                                      label:'Gear Up Landing',        pts:-25, each:false },
+    { types:['SideloadLanding'],                                    label:'Sideload Landing',       pts:-10, each:false },
+    { types:['SystemPitotHeat','SystemFlapsCruise','SystemGearCruise','SystemGearApproach',
+              'SystemLandingLights','SystemBeacon','SystemStrobes','SystemTransponder',
+              'SystemAntiIce','SystemBarometer'],                   label:'System Check Failures',  pts:-3,  each:true  },
+    { types:['TaxiFastSpeed'],                                      label:'Fast Taxi',              pts:-5,  each:true  },
+    { types:['TaxiAggressiveTurn'],                                 label:'Aggressive Taxi Turn',   pts:-3,  each:true  },
+    { types:['TakeoffLowPower'],                                    label:'Takeoff Low Power',      pts:-5,  each:false },
+    { types:['TakeoffHeadingDeviation'],                            label:'Takeoff Hdg Deviation',  pts:-5,  each:false },
+    { types:['TakeoffDirectionalControl'],                          label:'Takeoff Directional Ctrl',pts:-5, each:false },
+    { types:['WrongDepartureAirport'],                              label:'Wrong Departure Airport',pts:-20, each:false },
+    { types:['FailureEngineFire'],                                  label:'Engine Fire',            pts:-30, each:false },
+    { types:['FailureEngineOut'],                                   label:'Engine Out',             pts:-25, each:false },
+    { types:['FailureEngineOverspeed'],                             label:'Engine Overspeed',       pts:-20, each:false },
+    { types:['FailureOverG'],                                       label:'Over-G Structural Dmg',  pts:-20, each:false },
+    { types:['FailureIcingDamage'],                                 label:'Icing Damage',           pts:-20, each:false },
+    { types:['FailureOilPressure','FailureFuelPressure','FailureHydraulic','FailureLowVoltage'], label:'System Failure',  pts:-10, each:true  },
+  ];
+
+  const typeSet = new Set(events.map(e => e.Type));
+  let computed = 100;
+  const rows = [];
+
+  for (const p of PPEN) {
+    const count = p.each
+      ? events.filter(e => p.types.includes(e.Type)).length
+      : (p.types.some(t => typeSet.has(t)) ? 1 : 0);
+    if (count === 0) continue;
+    const total = p.pts * count;
+    computed += total;
+    rows.push({ label: p.label, count: p.each ? count : null, pts: total });
+  }
+
+  // Bonuses
+  const absVs = Math.abs(r.stats?.LandingVsFpm || 9999);
+  const crashed = summary.Crashed || summary.RunwayExcursion;
+  if (!crashed && absVs < 75)  { computed += 10; rows.push({ label: 'Greaser Landing Bonus', pts: 10, bonus: true }); }
+  else if (!crashed && absVs < 150) { computed += 10; rows.push({ label: 'Smooth Landing Bonus', pts: 10, bonus: true }); }
+  if (summary.SystemFlags === 0) { computed += 5; rows.push({ label: 'Clean Systems Bonus', pts: 5, bonus: true }); }
+  if (summary.OverspeedCount === 0 && summary.StallCount === 0) { computed += 5; rows.push({ label: 'Clean Flight Bonus', pts: 5, bonus: true }); }
+
+  computed = Math.max(0, Math.min(100, computed));
+
+  if (!rows.length) {
+    return `<div class="cr-score-row"><span class="cr-score-label cr-score-base">Base score</span><span class="cr-score-count"></span><span class="cr-score-pts pos">+100</span></div>
+            <div class="cr-score-row cr-score-total"><span class="cr-score-label">Final Score</span><span class="cr-score-count"></span><span class="cr-score-pts pos">${computed} pts</span></div>`;
+  }
+
+  const rowHtml = rows.map(row => {
+    const cls = row.bonus ? 'pos' : (row.pts < 0 ? 'neg' : 'zero');
+    const sign = row.pts > 0 ? '+' : '';
+    return `<div class="cr-score-row">
+      <span class="cr-score-label">${row.label}</span>
+      <span class="cr-score-count">${row.count != null ? '×' + row.count : ''}</span>
+      <span class="cr-score-pts ${cls}">${sign}${row.pts}</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="cr-score-row"><span class="cr-score-label cr-score-base">Base score</span><span class="cr-score-count"></span><span class="cr-score-pts pos">+100</span></div>
+${rowHtml}
+<div class="cr-score-row cr-score-total"><span class="cr-score-label">Final Score</span><span class="cr-score-count"></span><span class="cr-score-pts ${computed >= 90 ? 'pos' : computed >= 70 ? 'zero' : 'neg'}">${computed} pts</span></div>`;
 }
 
 function _renderCrModalStats(r) {
@@ -1895,6 +2050,186 @@ function _renderCrModalChart(track, events) {
     const x = pad.l + f * cW;
     ctx.fillText(fmtT(Math.round(tMax * f)), x, H - 8);
   });
+
+  // Save snapshot for cursor overlay during playback
+  _pb._chartImg  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  _pb._chartPad  = pad;
+  _pb._chartW    = W;
+  _pb._chartH    = H;
+  _pb._chartCW   = cW;
+  _pb._chartMaxT = tMax;
+  _pb._chartDpr  = dpr;
+}
+
+// ── CHECKRIDE PLAYBACK ──
+
+const _pb = {
+  playing: false, speed: 10, currentT: 0, maxT: 0,
+  lastWall: null, animFrame: null,
+  track: [], tOffset: 0,
+  marker: null,
+  _chartImg: null, _chartPad: null, _chartW: 0, _chartH: 0,
+  _chartCW: 0, _chartMaxT: 0, _chartDpr: 1,
+};
+
+function _initPlayback(track, events) {
+  _stopPlayback();
+  const allPts  = track.filter(p => p.Lat && p.Lon && p.T != null && p.AltMslFt != null);
+  const taxiIdx = allPts.findIndex(p => p.Phase && p.Phase !== 'Idle');
+  _pb.track   = taxiIdx > 0 ? allPts.slice(taxiIdx) : allPts;
+  _pb.tOffset = _pb.track.length ? _pb.track[0].T : 0;
+  _pb.maxT    = _pb.track.length ? _pb.track[_pb.track.length - 1].T - _pb.tOffset : 0;
+  _pb.currentT = 0;
+  _pb.marker   = null;
+
+  const scrubber = document.getElementById('cr-scrubber');
+  const dur      = document.getElementById('cr-duration-display');
+  if (scrubber) { scrubber.max = Math.ceil(_pb.maxT); scrubber.value = 0; }
+  const fmtT = s => { const m = Math.floor(s/60); return m + 'm ' + String(Math.floor(s%60)).padStart(2,'0') + 's'; };
+  if (dur) dur.textContent = fmtT(_pb.maxT);
+
+  _updatePlayBtn();
+  _updateTimeDisplay(0);
+  if (_pb.track.length) _drawChartCursor(0);
+}
+
+function _stopPlayback() {
+  _pb.playing = false;
+  if (_pb.animFrame) { cancelAnimationFrame(_pb.animFrame); _pb.animFrame = null; }
+  _pb.lastWall = null;
+}
+
+function togglePlayback() {
+  if (!_pb.track.length) return;
+  if (_pb.currentT >= _pb.maxT) _pb.currentT = 0;
+  _pb.playing = !_pb.playing;
+  _updatePlayBtn();
+  if (_pb.playing) {
+    _pb.lastWall = null;
+    _pb.animFrame = requestAnimationFrame(_playbackTick);
+  } else {
+    _stopPlayback();
+    _pb.playing = false;
+    _updatePlayBtn();
+  }
+}
+
+function _playbackTick(wallMs) {
+  if (!_pb.playing) return;
+  if (_pb.lastWall != null) {
+    _pb.currentT += ((wallMs - _pb.lastWall) / 1000) * _pb.speed;
+    if (_pb.currentT >= _pb.maxT) {
+      _pb.currentT = _pb.maxT;
+      _seekTo(_pb.currentT);
+      _stopPlayback();
+      _updatePlayBtn();
+      return;
+    }
+    _seekTo(_pb.currentT);
+  }
+  _pb.lastWall = wallMs;
+  _pb.animFrame = requestAnimationFrame(_playbackTick);
+}
+
+function onScrub(val) {
+  _stopPlayback();
+  _pb.playing = false;
+  _updatePlayBtn();
+  _pb.currentT = +val;
+  _seekTo(_pb.currentT);
+}
+
+function setPlaybackSpeed(spd) {
+  _pb.speed = spd;
+  document.querySelectorAll('.cr-speed-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.spd === spd));
+}
+
+function _seekTo(t) {
+  _pb.currentT = Math.max(0, Math.min(t, _pb.maxT));
+  const scrubber = document.getElementById('cr-scrubber');
+  if (scrubber) scrubber.value = _pb.currentT;
+  _updateTimeDisplay(_pb.currentT);
+
+  const snap = _getInterpolated(_pb.currentT);
+  if (snap && _crModalMap) _updateMapMarker(snap.Lat, snap.Lon, snap.HdgDeg);
+  _drawChartCursor(_pb.currentT);
+}
+
+function _getInterpolated(t) {
+  const pts = _pb.track;
+  if (!pts.length) return null;
+  const absT = t + _pb.tOffset;
+  if (absT <= pts[0].T) return { ...pts[0] };
+  if (absT >= pts[pts.length - 1].T) return { ...pts[pts.length - 1] };
+  const idx = pts.findIndex(p => p.T >= absT);
+  const a = pts[idx - 1], b = pts[idx];
+  const fr = (absT - a.T) / (b.T - a.T);
+  const hdgDiff = ((b.HdgDeg - a.HdgDeg + 540) % 360) - 180;
+  return {
+    Lat: a.Lat + (b.Lat - a.Lat) * fr,
+    Lon: a.Lon + (b.Lon - a.Lon) * fr,
+    HdgDeg: (a.HdgDeg + hdgDiff * fr + 360) % 360,
+    AltMslFt: a.AltMslFt + (b.AltMslFt - a.AltMslFt) * fr,
+    IasKts: (a.IasKts || 0) + ((b.IasKts || 0) - (a.IasKts || 0)) * fr,
+  };
+}
+
+function _updateMapMarker(lat, lon, hdg) {
+  if (!_crModalMap) return;
+  const html = `<div style="font-size:20px;line-height:1;transform:rotate(${(hdg - 45).toFixed(0)}deg);filter:drop-shadow(0 0 4px rgba(0,230,118,0.9));color:#00e676;">✈</div>`;
+  if (!_pb.marker) {
+    const icon = L.divIcon({ className:'', html, iconSize:[22,22], iconAnchor:[11,11] });
+    _pb.marker = L.marker([lat, lon], { icon, zIndexOffset: 1000 }).addTo(_crModalMap);
+  } else {
+    _pb.marker.setLatLng([lat, lon]);
+    const el = _pb.marker.getElement();
+    if (el) el.innerHTML = html;
+  }
+}
+
+function _drawChartCursor(t) {
+  const canvas = document.getElementById('cr-modal-chart');
+  if (!canvas || !_pb._chartImg || _pb._chartMaxT <= 0) return;
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(_pb._chartImg, 0, 0);
+
+  const { _chartPad: pad, _chartCW: cW, _chartH: H, _chartDpr: dpr, _chartMaxT: tMax } = _pb;
+  const xPx = (pad.l + (t / tMax) * cW) * dpr;
+
+  ctx.beginPath();
+  ctx.moveTo(xPx, pad.t * dpr);
+  ctx.lineTo(xPx, (pad.t + H - pad.t - pad.b) * dpr);
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+  ctx.lineWidth = 1 * dpr;
+  ctx.setLineDash([4 * dpr, 3 * dpr]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const snap = _getInterpolated(t);
+  if (snap) {
+    const label = `${Math.round(snap.AltMslFt).toLocaleString()} ft  ${Math.round(snap.IasKts)} kt`;
+    ctx.font = `${10 * dpr}px monospace`;
+    const tw = ctx.measureText(label).width;
+    const lx = Math.min(xPx + 4 * dpr, canvas.width - tw - 6 * dpr);
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillRect(lx - 2 * dpr, (pad.t + 1) * dpr, tw + 4 * dpr, 14 * dpr);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, lx, (pad.t + 11) * dpr);
+  }
+}
+
+function _updatePlayBtn() {
+  const btn = document.getElementById('cr-play-btn');
+  if (btn) btn.textContent = _pb.playing ? '⏸' : '▶';
+}
+
+function _updateTimeDisplay(t) {
+  const el = document.getElementById('cr-time-display');
+  if (el) {
+    const m = Math.floor(t / 60);
+    el.textContent = m + 'm ' + String(Math.floor(t % 60)).padStart(2, '0') + 's';
+  }
 }
 </script>
 <script>
