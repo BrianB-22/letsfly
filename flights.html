@@ -659,20 +659,23 @@ async function loadThemePref() {
   }
 }
 
+let _flightsWithCheckRide = new Set();
+
 async function loadFlights() {
   loadThemePref();
-  const { data, error } = await _sb
-    .from('saved_flights')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: false });
+  const [flightsRes, crRes] = await Promise.all([
+    _sb.from('saved_flights').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+    _sb.from('checkride_results').select('flight_id'),
+  ]);
 
-  if (error) {
+  if (flightsRes.error) {
     document.getElementById('flights-list').innerHTML =
-      `<div class="center-state"><div class="center-title">Error</div><div class="center-sub">${error.message}</div></div>`;
+      `<div class="center-state"><div class="center-title">Error</div><div class="center-sub">${flightsRes.error.message}</div></div>`;
     return;
   }
-  flights = data || [];
+  flights = flightsRes.data || [];
+  _flightsWithCheckRide = new Set((crRes.data || []).map(r => r.flight_id));
+
   document.getElementById('add-flight-btn').style.display = '';
   if (flights.length) document.getElementById('sort-bar').style.display = 'flex';
   renderStats();
@@ -816,7 +819,7 @@ function buildCard(f) {
           ${f.completed
             ? `<span class="badge badge-complete">Completed</span>`
             : `<span class="badge badge-pending">Pending</span>`}
-          <span class="badge badge-checkride" id="cr-card-badge-${f.id}" style="display:none;"></span>
+          <span class="badge badge-checkride" id="cr-card-badge-${f.id}"${_flightsWithCheckRide.has(f.id) ? '' : ' style="display:none;"'}>CHECKRIDE</span>
           <div class="stars-preview">${starsPreview(f.rating_overall)}</div>
         </div>
         <div class="card-dist">${dist}</div>
@@ -1567,14 +1570,8 @@ function _renderCheckRides(flightId, runs) {
 
   if (badge) badge.textContent = runs.length + ' run' + (runs.length !== 1 ? 's' : '');
 
-  // Show CHECKRIDE badge on the collapsed card header with best grade
-  const gradeOrder = ['S','A','B','C','D','F'];
-  const bestGrade  = runs.map(r => r.grade).sort((a, b) => gradeOrder.indexOf(a) - gradeOrder.indexOf(b))[0];
-  const cardBadge  = document.getElementById('cr-card-badge-' + flightId);
-  if (cardBadge) {
-    cardBadge.textContent = 'CHECKRIDE ' + bestGrade;
-    cardBadge.style.display = '';
-  }
+  const cardBadge = document.getElementById('cr-card-badge-' + flightId);
+  if (cardBadge) cardBadge.style.display = '';
 
   list.innerHTML = runs.map((r, i) => {
     const prev     = runs[i + 1];
