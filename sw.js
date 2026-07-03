@@ -1,4 +1,4 @@
-const CACHE = 'simletsfly-v69';
+const CACHE = 'simletsfly-v70';
 const STATIC = [
   '/',
   '/index.html',

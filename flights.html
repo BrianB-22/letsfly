@@ -1667,7 +1667,7 @@ function _renderCheckRides(flightId, runs) {
     const trend    = prev == null ? '' : r.score > prev.score ? '<span class="cr-trend cr-trend-up">↑</span>'
                                       : r.score < prev.score ? '<span class="cr-trend cr-trend-dn">↓</span>'
                                       : '<span class="cr-trend cr-trend-eq">→</span>';
-    const date     = new Date(r.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const date     = new Date(r.recorded_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
     const aircraft = r.aircraft || '—';
     const sim      = r.sim === 'xplane12' ? 'X-Plane 12' : r.sim === 'xplane11' ? 'X-Plane 11' : r.sim || '—';
     return `
