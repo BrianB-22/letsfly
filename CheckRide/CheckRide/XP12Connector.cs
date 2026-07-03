@@ -94,7 +94,8 @@ public class XP12Connector
         // Visibility / clouds (best-effort — XP12 regional weather arrays)
         "sim/weather/visibility_reported_m",
         "sim/weather/region/cloud_base_msl_m",         // float_array, index 0 = lowest layer
-        "sim/weather/region/cloud_coverage_percent"    // float_array, index 0 = lowest layer, 0–100
+        "sim/weather/region/cloud_coverage_percent",   // float_array, index 0 = lowest layer, 0–100
+        "sim/weather/rain_percent"                     // 0–1 precipitation intensity
     };
 
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(3) };
@@ -385,6 +386,7 @@ public class XP12Connector
         var visTask         = D("sim/weather/visibility_reported_m", ct);
         var cloudBaseTask   = D("sim/weather/region/cloud_base_msl_m", ct, index: 0);
         var cloudCovTask    = D("sim/weather/region/cloud_coverage_percent", ct, index: 0);
+        var rainTask        = D("sim/weather/rain_percent", ct);
 
         await Task.WhenAll(
             latTask, lonTask, gsTask, iasTask, vsTask, mslTask, aglTask,
@@ -403,7 +405,7 @@ public class XP12Connector
             windSpdTask, windDirTask,
             vsoTask, vnoTask, vneTask, vfeTask, vleTask,
             acfTask, pausedTask,
-            localTimeTask, sunPitchTask, visTask, cloudBaseTask, cloudCovTask);
+            localTimeTask, sunPitchTask, visTask, cloudBaseTask, cloudCovTask, rainTask);
 
         if (latTask.Result == 0 && lonTask.Result == 0) return null;
 
@@ -479,6 +481,7 @@ public class XP12Connector
             VisibilityM          = visTask.Result,
             CloudBaseAglM        = cloudBaseTask.Result,
             CloudCoverage        = cloudCovTask.Result,
+            RainPercent          = rainTask.Result,
             Timestamp            = DateTime.UtcNow
         };
     }

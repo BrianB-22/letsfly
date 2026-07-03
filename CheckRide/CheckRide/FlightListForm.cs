@@ -29,6 +29,8 @@ internal class FlightListForm : Form
     private readonly Button  _btnCancel       = new();
     private readonly Button  _btnRetry        = new();
     private readonly Button  _btnDebug        = new();
+    private readonly Button  _btnOpenFlight   = new();
+    private readonly Button  _btnRefresh      = new();
     private readonly Button  _btnSignOut      = new();
 
     // Held after a failed upload so the Retry button can re-attempt
@@ -162,7 +164,7 @@ internal class FlightListForm : Form
             e.Graphics.DrawLine(pen, 0, 0, bottom.Width, 0);
         };
 
-        _chkLog.Text      = "Upload debug log to help improve detection accuracy";
+        _chkLog.Text      = "Upload debug log";
         _chkLog.ForeColor = _text3;
         _chkLog.Font      = new Font("Segoe UI", 8.5f);
         _chkLog.AutoSize  = true;
@@ -224,14 +226,38 @@ internal class FlightListForm : Form
         _lblStatus.Location  = new Point(16, 50);
         _lblStatus.Text      = "Select your flight for a CheckRide";
 
-        bottom.Controls.AddRange(new Control[] { _chkLog, _btnDebug, _btnRetry, _btnCancel, _btnTake, _lblStatus });
+        _btnRefresh.Text             = "↻";
+        _btnRefresh.BackColor        = Color.Transparent;
+        _btnRefresh.ForeColor        = _text3;
+        _btnRefresh.FlatStyle        = FlatStyle.Flat;
+        _btnRefresh.FlatAppearance.BorderColor = _border;
+        _btnRefresh.FlatAppearance.BorderSize  = 1;
+        _btnRefresh.Font             = new Font("Segoe UI", 12f);
+        _btnRefresh.Size             = new Size(36, 36);
+        _btnRefresh.Cursor           = Cursors.Hand;
+        _btnRefresh.Click           += async (s, e) => await LoadDataAsync();
+
+        _btnOpenFlight.Text             = "Open in SimLetsFly";
+        _btnOpenFlight.BackColor        = Color.Transparent;
+        _btnOpenFlight.ForeColor        = _accent;
+        _btnOpenFlight.FlatStyle        = FlatStyle.Flat;
+        _btnOpenFlight.FlatAppearance.BorderColor = _accent;
+        _btnOpenFlight.FlatAppearance.BorderSize  = 1;
+        _btnOpenFlight.Font             = new Font("Segoe UI", 9f);
+        _btnOpenFlight.Size             = new Size(150, 36);
+        _btnOpenFlight.Enabled          = false;
+        _btnOpenFlight.Cursor           = Cursors.Hand;
+        _btnOpenFlight.Click           += OnOpenFlight;
+
+        bottom.Controls.AddRange(new Control[] { _chkLog, _btnRefresh, _btnDebug, _btnOpenFlight, _btnRetry, _btnCancel, _btnTake, _lblStatus });
 
         bottom.Resize += (s, e) =>
         {
-            _btnTake.Location   = new Point(bottom.Width - _btnTake.Width - 16, 18);
-            _btnCancel.Location = new Point(_btnTake.Left - _btnCancel.Width - 8, 18);
-            _btnRetry.Location  = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - 16, 18);
-            _btnDebug.Location  = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnDebug.Width - 24, 18);
+            _btnTake.Location       = new Point(bottom.Width - _btnTake.Width - 16, 18);
+            _btnCancel.Location     = new Point(_btnTake.Left - _btnCancel.Width - 8, 18);
+            _btnRetry.Location      = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - 16, 18);
+            _btnOpenFlight.Location = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnOpenFlight.Width - 24, 18);
+            _btnRefresh.Location    = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnOpenFlight.Width - _btnRefresh.Width - 32, 18);
         };
 
         Controls.Add(bottom);
@@ -393,8 +419,18 @@ internal class FlightListForm : Form
         if (e.RowIndex < 0) return;
         var flight = _grid.Rows[e.RowIndex].Tag as SavedFlight;
         if (flight is null) return;
+        OpenFlightInSimLetsFly(flight);
+    }
 
-        // Open the planner pre-loaded with this route so the user can review route + weather
+    private void OnOpenFlight(object? sender, EventArgs e)
+    {
+        var flight = _activeFlight ?? SelectedFlight;
+        if (flight is null) return;
+        OpenFlightInSimLetsFly(flight);
+    }
+
+    private static void OpenFlightInSimLetsFly(SavedFlight flight)
+    {
         var url = $"https://simletsfly.com/index.html?dep={flight.DepId}&arr={flight.ArrId}";
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
         catch { }
@@ -556,6 +592,9 @@ internal class FlightListForm : Form
             };
             _monitor.AfterTakeoffCallout  += () => BeginInvoke(() => PlaySoundRandom("after_takeoff"));
             _monitor.TouchdownCallout     += q  => BeginInvoke(() => PlaySoundRandom($"landing_{q}"));
+            _monitor.CalloutRain          += () => BeginInvoke(() => PlaySoundRandom("callout_rain"));
+            _monitor.CalloutIcing         += () => BeginInvoke(() => PlaySoundRandom("callout_icing"));
+            _monitor.CalloutTurbulence    += () => BeginInvoke(() => PlaySoundRandom("callout_turbulence"));
             _monitor.FlightCompleted      += () => BeginInvoke(OnFlightCompleted);
 
             _ = _connector.StartAsync();
@@ -686,6 +725,8 @@ internal class FlightListForm : Form
         _btnTake.BackColor       = idle ? _accent : _border;
         _btnTake.ForeColor       = idle ? Color.FromArgb(10, 13, 16) : _text3;
         _btnDebug.Enabled        = idle && _grid.SelectedRows.Count > 0;
+        _btnOpenFlight.Enabled   = (idle && _grid.SelectedRows.Count > 0) || _activeFlight is not null;
+        _btnRefresh.Enabled      = idle;
         _btnCancel.Visible       = active;
         _grid.Enabled            = idle;
         _btnSignOut.Enabled      = idle;

@@ -85,6 +85,7 @@ public class FlightDataSnapshot
     // Weather (at aircraft altitude)
     public double WindSpeedKt { get; init; }
     public double WindDirectionDeg { get; init; }
+    public double RainPercent { get; init; }       // 0–1; sim/weather/rain_percent
 
     // Aircraft performance limits (kias, static per aircraft)
     public double VsoKts { get; init; }   // stall speed, landing config

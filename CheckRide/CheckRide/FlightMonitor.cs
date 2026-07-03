@@ -47,7 +47,7 @@ internal static class ScoringConfig
     public const double AggrTaxiLateralG      = 0.30;  // lateral G for aggressive turn at any speed
 
     // Takeoff detection
-    public const double TakeoffMinThrottle    = 0.85;  // throttle below this at liftoff = low power takeoff
+    public const double TakeoffMinN1Pct       = 90.0;  // N1% below this at liftoff = low power takeoff
     public const double TakeoffHdgDevDeg      = 20.0;  // heading deviation from departure below 500ft AGL
     public const double TakeoffSideloadG      = 0.40;  // lateral G during initial climb (below 200ft AGL)
 
@@ -86,7 +86,7 @@ internal static class ScoringConfig
 
     // --- Scoring bonuses (positive) ---
     public const int BonusGreaser              = 10;   // VS < 75 fpm
-    public const int BonusSmooth               = 5;    // VS < 150 fpm
+    public const int BonusSmooth               = 10;   // VS < 150 fpm
     public const int BonusCleanSystems         = 5;    // zero system flags
     public const int BonusCleanFlight          = 5;    // no overspeed and no stall
 }
@@ -186,11 +186,22 @@ public class FlightMonitor
     // Fires at touchdown with quality: "excellent", "good", or "poor"
     public event Action<string>? TouchdownCallout;
 
+    // In-flight personality callouts — fire once per flight, no scoring impact
+    public event Action? CalloutRain;
+    public event Action? CalloutIcing;
+    public event Action? CalloutTurbulence;
+
     // Flight completion
     public event Action? FlightCompleted;
     private bool   _completionFired;
     private double _depLat, _depLon;
     private bool   _depSet;
+
+    // Personality callout flags — fire once per flight
+    private bool _rainCalloutFired;
+    private bool _icingCalloutFired;
+    private bool _turbulenceCalloutFired;
+    private int  _turbulentSampleCount;
 
     // Taxi detection
     private bool _fastTaxiFlagged;
@@ -358,11 +369,12 @@ public class FlightMonitor
                 logger.Log($"Phase → Airborne  GPS=({snap.Latitude:F5},{snap.Longitude:F5})");
                 AfterTakeoffCallout?.Invoke();
 
-                if (snap.ThrottleRatio < ScoringConfig.TakeoffMinThrottle)
+                var liftoffN1 = Math.Max(snap.Eng1N1Pct, snap.Eng2N1Pct);
+                if (liftoffN1 < ScoringConfig.TakeoffMinN1Pct)
                 {
                     LogEvent(FlightEventType.TakeoffLowPower, snap.Timestamp,
-                        $"Low power takeoff — throttle {snap.ThrottleRatio:P0} at liftoff (N1={snap.Eng1N1Pct:F0}%/{snap.Eng2N1Pct:F0}%)");
-                    logger.Log($"EVENT: Low power takeoff (Thr={snap.ThrottleRatio:F2}, N1={snap.Eng1N1Pct:F0}%/{snap.Eng2N1Pct:F0}%)");
+                        $"Low power takeoff — N1={snap.Eng1N1Pct:F0}%/{snap.Eng2N1Pct:F0}% at liftoff");
+                    logger.Log($"EVENT: Low power takeoff (N1={snap.Eng1N1Pct:F0}%/{snap.Eng2N1Pct:F0}%)");
                 }
             }
         }
@@ -698,7 +710,7 @@ public class FlightMonitor
         if (inFlight)
         {
             if (_baroOnTakeoff == 0) _baroOnTakeoff = snap.BarometerInHg;
-            if (Math.Abs(snap.BarometerInHg - _baroOnTakeoff) > 0.02) _baroEverChanged = true;
+            if (Math.Abs(snap.BarometerInHg - _baroOnTakeoff) > 0.005) _baroEverChanged = true;
             if (snap.AltitudeMslFt > 18000 && Math.Abs(snap.BarometerInHg - 29.92) < 0.02)
                 _baroEverAt2992WhileHigh = true;
             if (snap.AltitudeMslFt > _maxAltMsl) _maxAltMsl = snap.AltitudeMslFt;
@@ -753,6 +765,43 @@ public class FlightMonitor
                 $"Anti-ice off in icing conditions (OAT {snap.OutsideAirTempC:F1}°C, cloud {snap.CloudCoverage:P0})");
             logger.Log($"EVENT: Anti-ice off in icing conditions (OAT {snap.OutsideAirTempC:F1}°C)");
             _antiIceFlagged = true;
+        }
+
+        // ── Personality callouts (no scoring) ────────────────────────────────
+        var airborne = _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
+        if (airborne)
+        {
+            // Rain callout — fire once when precipitation begins
+            if (!_rainCalloutFired && snap.RainPercent > 0.05)
+            {
+                _rainCalloutFired = true;
+                CalloutRain?.Invoke();
+                logger.Log("CALLOUT: Rain detected");
+            }
+
+            // Icing callout — entering icing window (0 to -20°C in cloud)
+            if (!_icingCalloutFired && icingConditions)
+            {
+                _icingCalloutFired = true;
+                CalloutIcing?.Invoke();
+                logger.Log($"CALLOUT: Icing conditions (OAT {snap.OutsideAirTempC:F1}°C)");
+            }
+
+            // Turbulence callout — 3 consecutive samples with G deviation > 0.15
+            if (!_turbulenceCalloutFired)
+            {
+                if (Math.Abs(snap.GForceNormal - 1.0) > 0.15)
+                    _turbulentSampleCount++;
+                else
+                    _turbulentSampleCount = 0;
+
+                if (_turbulentSampleCount >= 3)
+                {
+                    _turbulenceCalloutFired = true;
+                    CalloutTurbulence?.Invoke();
+                    logger.Log($"CALLOUT: Turbulence (G={snap.GForceNormal:F2})");
+                }
+            }
         }
     }
 
