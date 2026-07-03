@@ -719,13 +719,27 @@ async function loadFlights() {
   renderStats();
   renderList(flights);
 
-  // Deep-link from CheckRide app: ?flight=<id>
-  const deepFlightId = new URLSearchParams(window.location.search).get('flight');
+  // Deep-link from CheckRide app: ?flight=<id>&checkride=<resultId>
+  const _qs = new URLSearchParams(window.location.search);
+  const deepFlightId    = _qs.get('flight');
+  const deepCheckrideId = _qs.get('checkride');
   if (deepFlightId && flights.find(f => f.id === deepFlightId)) {
-    setTimeout(() => {
+    setTimeout(async () => {
+      // Expand the flight card and load its checkride data
       toggleCard(deepFlightId);
       document.getElementById('card-' + deepFlightId)
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // If a specific result ID was given, wait for the cache then open the modal
+      if (deepCheckrideId) {
+        // loadCheckRides is already called by toggleCard; poll until data arrives
+        let waited = 0;
+        while (!_crCache[deepFlightId] && waited < 3000) {
+          await new Promise(r => setTimeout(r, 100));
+          waited += 100;
+        }
+        if (_crCache[deepFlightId]?.find(r => r.id === deepCheckrideId))
+          openCrModal(deepCheckrideId, deepFlightId);
+      }
     }, 100);
   }
 }

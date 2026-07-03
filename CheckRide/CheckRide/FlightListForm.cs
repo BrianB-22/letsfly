@@ -21,7 +21,7 @@ internal class FlightListForm : Form
 
     private readonly SupabaseClient _client;
     private List<SavedFlight>                         _flights = new();
-    private Dictionary<string, (int Score, string Grade)> _scores = new();
+    private Dictionary<string, (int Score, string Grade, string ResultId)> _scores = new();
 
     // UI controls
     private readonly DataGridView _grid       = new();
@@ -461,7 +461,8 @@ internal class FlightListForm : Form
         if (_grid.Columns[e.ColumnIndex].Name != "CR") return;
         var flight = _grid.Rows[e.RowIndex].Tag as SavedFlight;
         if (flight is null) return;
-        var url = $"https://simletsfly.com/flights.html?flight={flight.Id}";
+        _scores.TryGetValue(flight.Id, out var score);
+        var url = $"https://simletsfly.com/flights.html?flight={flight.Id}&checkride={score.ResultId}";
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
         catch { }
     }

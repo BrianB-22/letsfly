@@ -116,12 +116,12 @@ internal class SupabaseClient
                    await resp.Content.ReadAsStringAsync(), _readOpts) ?? new();
     }
 
-    // Returns latest (score, grade) per flight_id — used to show last run in the flight list
-    public async Task<Dictionary<string, (int Score, string Grade)>> GetLastScoresAsync()
+    // Returns latest (score, grade, resultId) per flight_id — used to show last run in the flight list
+    public async Task<Dictionary<string, (int Score, string Grade, string ResultId)>> GetLastScoresAsync()
     {
         await EnsureTokenAsync();
         var url = $"{Config.SupabaseUrl}/rest/v1/checkride_results" +
-                  "?select=flight_id,score,grade" +
+                  "?select=id,flight_id,score,grade" +
                   $"&user_id=eq.{_session.UserId}" +
                   "&order=recorded_at.desc";
         var resp = await _http.SendAsync(AuthGet(url));
@@ -129,10 +129,10 @@ internal class SupabaseClient
         var rows = JsonSerializer.Deserialize<List<ScoreRow>>(
                        await resp.Content.ReadAsStringAsync(), _readOpts) ?? new();
 
-        var dict = new Dictionary<string, (int, string)>();
+        var dict = new Dictionary<string, (int, string, string)>();
         foreach (var r in rows)
             if (!dict.ContainsKey(r.FlightId))
-                dict[r.FlightId] = (r.Score, r.Grade);
+                dict[r.FlightId] = (r.Score, r.Grade, r.Id);
         return dict;
     }
 
@@ -211,6 +211,7 @@ internal class SupabaseClient
         [property: JsonPropertyName("email")] string Email);
 
     private record ScoreRow(
+        [property: JsonPropertyName("id")]        string Id,
         [property: JsonPropertyName("flight_id")] string FlightId,
         [property: JsonPropertyName("score")]     int    Score,
         [property: JsonPropertyName("grade")]     string Grade);
