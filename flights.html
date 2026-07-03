@@ -196,6 +196,39 @@
     .btn-delete { background: transparent; border-color: rgba(231,111,81,0.25); color: var(--red); opacity: 0.65; margin-left: auto; }
     .btn-delete:hover { opacity: 1; background: rgba(231,111,81,0.1); }
 
+    /* ── CHECKRIDE ── */
+    .cr-section { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .cr-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .cr-list { display: flex; flex-direction: column; gap: 6px; }
+    .cr-run { background: var(--bg2); border: 1px solid var(--border2); border-radius: 4px; overflow: hidden; }
+    .cr-run-summary { display: flex; align-items: center; gap: 12px; padding: 9px 14px; cursor: pointer; }
+    .cr-run-summary:hover { background: rgba(255,255,255,0.02); }
+    .cr-grade { font-family: var(--mono); font-size: 18px; font-weight: 700; min-width: 22px; text-align: center; }
+    .cr-grade-S { color: #f4d03f; } .cr-grade-A { color: var(--green); } .cr-grade-B { color: var(--accent); }
+    .cr-grade-C { color: var(--amber); } .cr-grade-D { color: var(--red); } .cr-grade-F { color: #c0392b; }
+    .cr-score { font-family: var(--mono); font-size: 14px; color: var(--text2); min-width: 50px; }
+    .cr-meta { font-size: 13px; color: var(--text3); flex: 1; }
+    .cr-trend { font-family: var(--mono); font-size: 13px; }
+    .cr-trend-up { color: var(--green); } .cr-trend-dn { color: var(--red); } .cr-trend-eq { color: var(--text3); }
+    .cr-chevron { font-size: 13px; color: var(--text3); transition: transform 0.2s; }
+    .cr-run.open .cr-chevron { transform: rotate(180deg); }
+    .cr-run-body { display: none; padding: 14px; border-top: 1px solid var(--border); }
+    .cr-run.open .cr-run-body { display: block; }
+    .cr-stats-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; }
+    .cr-stat { font-size: 13px; }
+    .cr-stat-label { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); display: block; }
+    .cr-stat-val { color: var(--text); }
+    .cr-events-label { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+    .cr-event-list { display: flex; flex-direction: column; gap: 5px; }
+    .cr-event { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+    .cr-event-time { font-family: var(--mono); font-size: 12px; color: var(--text3); min-width: 44px; }
+    .cr-event-desc { color: var(--text2); }
+    .cr-event.is-bad .cr-event-desc { color: var(--red); }
+    .cr-event.is-warn .cr-event-desc { color: var(--amber); }
+    .cr-event.is-ok .cr-event-desc { color: var(--green); }
+    .cr-empty { font-size: 13px; color: var(--text3); padding: 4px 0; }
+    .cr-no-runs { font-size: 13px; color: var(--text3); padding: 4px 0; }
+
     /* ── EMPTY / AUTH STATES ── */
     .center-state { text-align: center; padding: 80px 20px; }
     .center-icon  { font-size: 48px; margin-bottom: 16px; opacity: 0.35; }
@@ -691,16 +724,6 @@ function sortBy(mode, btn) {
 }
 
 // ── RENDER CARDS ──
-const RATING_CATS = [
-  { key: 'rating_takeoff',    label: 'Takeoff' },
-  { key: 'rating_landing',    label: 'Landing' },
-  { key: 'rating_procedures', label: 'Procedures' },
-  { key: 'rating_navigation', label: 'Navigation' },
-  { key: 'rating_scenery',    label: 'Scenery / View' },
-  { key: 'rating_atc',        label: 'ATC' },
-  { key: 'rating_fun',        label: 'Fun Factor' },
-  { key: 'rating_overall',    label: 'Overall',  overall: true },
-];
 
 function starsPreview(val) {
   return [1,2,3,4,5].map(n =>
@@ -732,16 +755,10 @@ function buildCard(f) {
     : '';
   const dist = f.distance_nm ? Math.round(f.distance_nm).toLocaleString() + ' nm' : '—';
 
-  const ratingsHtml = RATING_CATS.map(r => `
-    <div class="rating-row${r.overall ? ' overall' : ''}">
-      <span class="rating-row-label">${r.label}</span>
-      <div class="rating-stars" data-id="${f.id}" data-cat="${r.key}">
-        ${[1,2,3,4,5].map(n =>
-          `<span class="rating-star${(f[r.key]||0) >= n ? ' filled' : ''}"
-            onclick="setRating('${f.id}','${r.key}',${n})">★</span>`
-        ).join('')}
-      </div>
-    </div>`).join('');
+  const overallStars = [1,2,3,4,5].map(n =>
+    `<span class="rating-star${(f.rating_overall||0) >= n ? ' filled' : ''}"
+      onclick="setRating('${f.id}','rating_overall',${n})">★</span>`
+  ).join('');
 
   return `
   <div class="flight-card" id="card-${f.id}">
@@ -769,10 +786,9 @@ function buildCard(f) {
     </div>
 
     <div class="card-body">
-      <div class="body-grid">
-        <!-- Left col: details + notes -->
+      <div class="sec-label">Flight Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <div>
-          <div class="sec-label">Flight Details</div>
           <div class="field-group">
             <label class="field-label" style="display:flex;align-items:center;gap:6px;">
               Date Flown
@@ -794,22 +810,33 @@ function buildCard(f) {
               </span>
             </div>
           </div>
+        </div>
+        <div>
+          <div class="field-group">
+            <label class="field-label">Route Rating</label>
+            <div class="rating-stars" data-id="${f.id}" data-cat="rating_overall" style="gap:6px;">${overallStars}</div>
+          </div>
           <div class="field-group" style="margin-top:4px">
             <label class="field-label">Pilot Notes</label>
             <textarea id="notes-${f.id}" placeholder="Add notes about this flight..." oninput="markDirty('${f.id}')">${escapeHtml(f.pilot_notes)}</textarea>
           </div>
-        </div>
-
-        <!-- Right col: ratings -->
-        <div>
-          <div class="sec-label">Ratings</div>
-          <div class="rating-grid">${ratingsHtml}</div>
         </div>
       </div>
 
       <!-- Route map (lazy) -->
       <div class="route-map-wrap" id="mapwrap-${f.id}">
         <div id="leafmap-${f.id}" style="width:100%;height:100%"></div>
+      </div>
+
+      <!-- CheckRide section -->
+      <div class="cr-section" id="cr-section-${f.id}">
+        <div class="cr-header">
+          <div class="sec-label" style="margin-bottom:0;border-bottom:none;padding-bottom:0;">CheckRide</div>
+          <span id="cr-badge-${f.id}" style="font-family:var(--mono);font-size:11px;color:var(--text3);"></span>
+        </div>
+        <div class="cr-list" id="cr-list-${f.id}">
+          <div class="cr-no-runs">Loading...</div>
+        </div>
       </div>
 
       <div class="card-actions">
@@ -836,8 +863,13 @@ function buildCard(f) {
 }
 
 // ── TOGGLE CARD ──
+const _crLoaded = new Set();
 function toggleCard(id) {
   document.getElementById('card-' + id).classList.toggle('expanded');
+  if (!_crLoaded.has(id)) {
+    _crLoaded.add(id);
+    loadCheckRides(id);
+  }
 }
 
 // ── DIRTY STATE ──
@@ -857,10 +889,8 @@ function setRating(id, cat, val) {
       s.classList.toggle('filled', i < val);
     });
   }
-  if (cat === 'rating_overall') {
-    const preview = document.querySelector(`#card-${id} .stars-preview`);
-    if (preview) preview.innerHTML = starsPreview(val);
-  }
+  const preview = document.querySelector(`#card-${id} .stars-preview`);
+  if (preview) preview.innerHTML = starsPreview(val);
 }
 
 // ── COMPLETED TOGGLE ──
@@ -888,13 +918,6 @@ async function saveDetails(id) {
     flight_date:        document.getElementById('date-' + id)?.value || null,
     pilot_notes:        document.getElementById('notes-' + id)?.value || null,
     completed:          f.completed,
-    rating_takeoff:     f.rating_takeoff    || null,
-    rating_landing:     f.rating_landing    || null,
-    rating_procedures:  f.rating_procedures || null,
-    rating_navigation:  f.rating_navigation || null,
-    rating_scenery:     f.rating_scenery    || null,
-    rating_atc:         f.rating_atc        || null,
-    rating_fun:         f.rating_fun        || null,
     rating_overall:     f.rating_overall    || null,
   };
   const { error } = await _sb.from('saved_flights')
@@ -1469,6 +1492,106 @@ function _buildMSFSPLN(nodes, f, isHigh) {
 ${waypoints}
   </FlightPlan.FlightPlan>
 </SimBase.Document>`;
+}
+
+// ── CHECKRIDE ──
+
+const _crCache = {};   // flightId → array of runs
+
+async function loadCheckRides(flightId) {
+  const list = document.getElementById('cr-list-' + flightId);
+  if (!list) return;
+  if (!currentUser) { list.innerHTML = '<div class="cr-no-runs">Sign in to view CheckRide results.</div>'; return; }
+
+  const { data, error } = await _sb
+    .from('checkride_results')
+    .select('id, score, grade, aircraft, sim, scoring_version, recorded_at, events, summary, stats')
+    .eq('flight_id', flightId)
+    .order('recorded_at', { ascending: false });
+
+  if (error || !data) { list.innerHTML = '<div class="cr-no-runs">Could not load CheckRide results.</div>'; return; }
+  _crCache[flightId] = data;
+  _renderCheckRides(flightId, data);
+}
+
+function _renderCheckRides(flightId, runs) {
+  const list  = document.getElementById('cr-list-' + flightId);
+  const badge = document.getElementById('cr-badge-' + flightId);
+  if (!list) return;
+
+  if (!runs.length) {
+    list.innerHTML = '<div class="cr-no-runs">No CheckRide results yet. Fly this route with the CheckRide app to record a session.</div>';
+    if (badge) badge.textContent = '';
+    return;
+  }
+
+  if (badge) badge.textContent = runs.length + ' run' + (runs.length !== 1 ? 's' : '');
+
+  list.innerHTML = runs.map((r, i) => {
+    const prev     = runs[i + 1];
+    const trend    = prev == null ? '' : r.score > prev.score ? '<span class="cr-trend cr-trend-up">↑</span>'
+                                      : r.score < prev.score ? '<span class="cr-trend cr-trend-dn">↓</span>'
+                                      : '<span class="cr-trend cr-trend-eq">→</span>';
+    const date     = new Date(r.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const aircraft = r.aircraft || '—';
+    const sim      = r.sim === 'xplane12' ? 'X-Plane 12' : r.sim === 'xplane11' ? 'X-Plane 11' : r.sim || '—';
+    return `
+    <div class="cr-run" id="crrun-${r.id}">
+      <div class="cr-run-summary" onclick="toggleCrRun('${r.id}', '${flightId}')">
+        <span class="cr-grade cr-grade-${r.grade}">${r.grade}</span>
+        <span class="cr-score">${r.score} pts</span>
+        <span class="cr-meta">${date} · ${sim} · ${aircraft}</span>
+        ${trend}
+        <span class="cr-chevron">▾</span>
+      </div>
+      <div class="cr-run-body" id="crrun-body-${r.id}">
+        ${_renderCrRunBody(r)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _renderCrRunBody(r) {
+  const stats   = r.stats   || {};
+  const summary = r.summary || {};
+  const events  = r.events  || [];
+
+  const fmt = (v, unit) => (v != null && v !== 0) ? `${v}${unit}` : '—';
+  const fmtTime = s => { const m = Math.floor(s/60); return m + 'm ' + (s%60) + 's'; };
+
+  const landingColor = summary.LandingQuality === 'Greaser' ? 'var(--green)' : summary.LandingQuality === 'Smooth' ? 'var(--accent)' : summary.LandingQuality === 'Firm' ? 'var(--amber)' : summary.LandingQuality === 'Hard' ? 'var(--red)' : 'var(--text)';
+
+  const BAD_EVENTS  = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
+  const WARN_EVENTS = new Set(['HighG','HighBank','HighDescentRate','UnstableApproach','ExcessiveApproachSpeed','HardLanding','FirmLanding','SystemPitotHeat','SystemLandingLights','SystemStrobes','SystemTransponder','SystemFlaps','SystemGearCruise','SystemGearApproach','SystemBeacon']);
+  const OK_EVENTS   = new Set(['SmoothLanding','Greaser']);
+
+  const eventsHtml = events.length
+    ? events.map(e => {
+        const cls = BAD_EVENTS.has(e.Type) ? 'is-bad' : OK_EVENTS.has(e.Type) ? 'is-ok' : WARN_EVENTS.has(e.Type) ? 'is-warn' : '';
+        const t   = e.TimestampSec != null ? fmtTime(e.TimestampSec) : '';
+        return `<div class="cr-event ${cls}"><span class="cr-event-time">${t}</span><span class="cr-event-desc">${e.Description || e.Type}</span></div>`;
+      }).join('')
+    : '<div class="cr-empty">No events recorded.</div>';
+
+  return `
+    <div class="cr-stats-row">
+      <div class="cr-stat"><span class="cr-stat-label">Landing</span><span class="cr-stat-val" style="color:${landingColor}">${summary.LandingQuality || '—'}</span></div>
+      <div class="cr-stat"><span class="cr-stat-label">Landing VS</span><span class="cr-stat-val">${stats.LandingVsFpm ? stats.LandingVsFpm + ' fpm' : '—'}</span></div>
+      <div class="cr-stat"><span class="cr-stat-label">Max G</span><span class="cr-stat-val">${stats.MaxGForceNormal ? stats.MaxGForceNormal.toFixed(2) + 'G' : '—'}</span></div>
+      <div class="cr-stat"><span class="cr-stat-label">Max IAS</span><span class="cr-stat-val">${fmt(stats.MaxIasKts, 'kt')}</span></div>
+      <div class="cr-stat"><span class="cr-stat-label">Max Bank</span><span class="cr-stat-val">${stats.MaxBankAngleDeg ? Math.abs(stats.MaxBankAngleDeg).toFixed(1) + '°' : '—'}</span></div>
+      <div class="cr-stat"><span class="cr-stat-label">Flight Time</span><span class="cr-stat-val">${stats.FlightTimeSec ? fmtTime(stats.FlightTimeSec) : '—'}</span></div>
+      <div class="cr-stat"><span class="cr-stat-label">Distance</span><span class="cr-stat-val">${fmt(stats.DistanceNm, ' nm')}</span></div>
+      <div class="cr-stat"><span class="cr-stat-label">Autopilot</span><span class="cr-stat-val">${stats.AutopilotPct != null ? stats.AutopilotPct.toFixed(0) + '%' : '—'}</span></div>
+    </div>
+    <div class="cr-events-label">Events</div>
+    <div class="cr-event-list">${eventsHtml}</div>`;
+}
+
+function toggleCrRun(runId, flightId) {
+  const el = document.getElementById('crrun-' + runId);
+  if (!el) return;
+  el.classList.toggle('open');
 }
 </script>
 <script>
