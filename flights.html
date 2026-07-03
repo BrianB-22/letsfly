@@ -718,6 +718,16 @@ async function loadFlights() {
   if (flights.length) document.getElementById('sort-bar').style.display = 'flex';
   renderStats();
   renderList(flights);
+
+  // Deep-link from CheckRide app: ?flight=<id>
+  const deepFlightId = new URLSearchParams(window.location.search).get('flight');
+  if (deepFlightId && flights.find(f => f.id === deepFlightId)) {
+    setTimeout(() => {
+      toggleCard(deepFlightId);
+      document.getElementById('card-' + deepFlightId)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
 }
 
 // Rough ICAO prefix → region name (first letter)

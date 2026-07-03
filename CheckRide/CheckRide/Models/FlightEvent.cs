@@ -60,6 +60,7 @@ public enum FlightEventType
     TakeoffHeadingDeviation,
     TakeoffDirectionalControl,
     WrongDepartureAirport,
+    WrongArrivalAirport,
 
     // Milestones (no scoring impact — timeline markers only)
     RecordingStarted,

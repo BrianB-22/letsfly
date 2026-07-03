@@ -143,13 +143,30 @@ internal class FlightListForm : Form
         _btnSignOut.Cursor           = Cursors.Hand;
         _btnSignOut.Click           += OnSignOut;
 
-        top.Controls.AddRange(new Control[] { lblTitle, simPanel, _lblUser, _btnSignOut });
+        var btnMyFlights = new Button
+        {
+            Text      = "My Flights ↗",
+            ForeColor = _accent,
+            BackColor = Color.Transparent,
+            FlatStyle = FlatStyle.Flat,
+            Font      = new Font("Segoe UI", 8f),
+            AutoSize  = true,
+            Cursor    = Cursors.Hand,
+        };
+        btnMyFlights.FlatAppearance.BorderSize = 0;
+        btnMyFlights.Click += (s, e) =>
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://simletsfly.com/flights.html") { UseShellExecute = true }); } catch { }
+        };
+
+        top.Controls.AddRange(new Control[] { lblTitle, simPanel, _lblUser, btnMyFlights, _btnSignOut });
 
         top.Resize += (s, e) =>
         {
-            _btnSignOut.Location = new Point(top.Width - _btnSignOut.Width - 12, (top.Height - _btnSignOut.Height) / 2);
-            _lblUser.Location    = new Point(_btnSignOut.Left - _lblUser.Width - 10, (top.Height - _lblUser.Height) / 2);
-            simPanel.Location    = new Point(_lblUser.Left - simPanel.Width - 20, (top.Height - simPanel.Height) / 2);
+            _btnSignOut.Location  = new Point(top.Width - _btnSignOut.Width - 12, (top.Height - _btnSignOut.Height) / 2);
+            btnMyFlights.Location = new Point(_btnSignOut.Left - btnMyFlights.Width - 10, (top.Height - btnMyFlights.Height) / 2);
+            _lblUser.Location     = new Point(btnMyFlights.Left - _lblUser.Width - 10, (top.Height - _lblUser.Height) / 2);
+            simPanel.Location     = new Point(_lblUser.Left - simPanel.Width - 20, (top.Height - simPanel.Height) / 2);
         };
 
         Controls.Add(top);
@@ -303,11 +320,26 @@ internal class FlightListForm : Form
         AddCol("Grade",   60,  DataGridViewContentAlignment.MiddleCenter);
         AddCol("Score",   65,  DataGridViewContentAlignment.MiddleRight);
 
+        var crLinkCol = new DataGridViewLinkColumn
+        {
+            Name              = "CR",
+            HeaderText        = "",
+            Width             = 30,
+            AutoSizeMode      = DataGridViewAutoSizeColumnMode.None,
+            LinkColor         = _accent,
+            VisitedLinkColor  = _accent,
+            ActiveLinkColor   = Color.White,
+            TrackVisitedState = false,
+            DefaultCellStyle  = { Alignment = DataGridViewContentAlignment.MiddleCenter },
+        };
+        _grid.Columns.Add(crLinkCol);
+
         _grid.Columns["Flight"]!.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
         _grid.CellFormatting     += OnCellFormatting;
         _grid.SelectionChanged   += OnGridSelectionChanged;
         _grid.CellDoubleClick    += OnGridDoubleClick;
+        _grid.CellContentClick   += OnGridCellContentClick;
 
         Controls.Add(_grid);
     }
@@ -359,7 +391,8 @@ internal class FlightListForm : Form
                 f.DistanceNm,                // int — CellFormatting shows "—" when 0
                 f.DisplayFlight,
                 last.Grade ?? "—",
-                last.Score);                 // int — CellFormatting shows "—" when 0
+                last.Score,                  // int — CellFormatting shows "—" when 0
+                last.Grade is not null ? "↗" : "");  // CR deep-link
             _grid.Rows[^1].Tag = f;
         }
     }
@@ -420,6 +453,17 @@ internal class FlightListForm : Form
         var flight = _grid.Rows[e.RowIndex].Tag as SavedFlight;
         if (flight is null) return;
         OpenFlightInSimLetsFly(flight);
+    }
+
+    private void OnGridCellContentClick(object? sender, DataGridViewCellEventArgs e)
+    {
+        if (e.RowIndex < 0) return;
+        if (_grid.Columns[e.ColumnIndex].Name != "CR") return;
+        var flight = _grid.Rows[e.RowIndex].Tag as SavedFlight;
+        if (flight is null) return;
+        var url = $"https://simletsfly.com/flights.html?flight={flight.Id}";
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+        catch { }
     }
 
     private void OnOpenFlight(object? sender, EventArgs e)
@@ -569,7 +613,9 @@ internal class FlightListForm : Form
             var flightId = _activeFlight!.Id[..8]; // first 8 chars of UUID is enough to identify
             _sessionLogPath = Path.Combine(dir, $"checkride_{flightId}_{_sessionTimestamp}.log");
             _logger    = new EventLogger(_sessionLogPath);
-            _monitor   = new FlightMonitor(_activeFlight!.DepId, _activeFlight!.DepLat, _activeFlight!.DepLon);
+            _monitor   = new FlightMonitor(
+                _activeFlight!.DepId, _activeFlight!.DepLat, _activeFlight!.DepLon,
+                _activeFlight!.ArrId, _activeFlight!.ArrLat, _activeFlight!.ArrLon);
             _connector = new XP12Connector();
 
             _connector.Log       = msg => _logger.Log($"[XP12] {msg}");
@@ -584,7 +630,7 @@ internal class FlightListForm : Form
             _connector.FlightDataReceived += snap =>
             {
                 _monitor.OnSnapshot(snap, _logger!);
-                if (!_engineStartAnnounced && snap.Engine1Running)
+                if (!_engineStartAnnounced && (snap.Engine1Running || snap.Engine2Running))
                 {
                     _engineStartAnnounced = true;
                     BeginInvoke(() => PlaySoundRandom("engine_start"));
@@ -597,7 +643,8 @@ internal class FlightListForm : Form
             _monitor.CalloutTurbulence    += () => BeginInvoke(() => PlaySoundRandom("callout_turbulence"));
             _monitor.CalloutOverspeed     += () => BeginInvoke(() => PlaySoundRandom("callout_overspeed"));
             _monitor.CalloutHighBank      += () => BeginInvoke(() => PlaySoundRandom("callout_highbank"));
-            _monitor.FlightCompleted      += () => BeginInvoke(OnFlightCompleted);
+            _monitor.WrongDepartureDetected += () => BeginInvoke(OnWrongDepartureDetected);
+            _monitor.FlightCompleted        += () => BeginInvoke(OnFlightCompleted);
 
             _ = _connector.StartAsync();
             SetState(AppState.Recording);
@@ -622,6 +669,26 @@ internal class FlightListForm : Form
         _lblStatus.Text      = "Flight not complete — lost communication with sim.";
         _lblStatus.ForeColor = _amber;
         PlaySound(Path.Combine("system_notices", "lost_sim.wav"));
+    }
+
+    private async void OnWrongDepartureDetected()
+    {
+        PlaySound(Path.Combine("system_notices", "wrong_depart.wav"));
+
+        _watchTimer.Stop();
+        XP12Connector? conn = _connector;
+        _connector = null;
+        if (conn is not null)
+            try { await conn.StopAsync(); } catch { }
+
+        _logger?.Close();
+        _monitor      = null;
+        _logger       = null;
+        _activeFlight = null;
+
+        SetState(AppState.Idle);
+        _lblStatus.Text      = "Wrong departure airport — recording cancelled, no upload.";
+        _lblStatus.ForeColor = _red;
     }
 
     private async void OnFlightCompleted()
@@ -658,7 +725,7 @@ internal class FlightListForm : Form
             // Debrief plays after parking brake — crashes end the flight immediately so no debrief
             if (!report.Summary.Crashed)
             {
-                await Task.Delay(3000);
+                await Task.Delay(4000);
                 PlaySoundRandom($"parking_brake_{gradeWavSuffix}");
             }
         }

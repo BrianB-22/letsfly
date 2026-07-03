@@ -77,6 +77,8 @@ internal static class ScoringConfig
     public const int PenaltyTakeoffHdgDev           = -5;
     public const int PenaltyTakeoffSideload         = -5;
     public const int PenaltyWrongDepartureAirport   = -20;
+    public const int PenaltyWrongArrivalAirport     = -30;
+    public const double BankAtFlareMaxDeg           = 7.0;  // max bank in last 20ft — disqualifies Greaser
     public const int PenaltyEngineFire         = -30;
     public const int PenaltyEngineOut          = -25;
     public const int PenaltyEngineOverspeed    = -20;
@@ -180,11 +182,17 @@ public class FlightMonitor
     private bool _baroCheckedLanding;
     private double _peakAglFt;
 
-    // Expected departure (from saved flight)
+    // Expected departure / arrival (from saved flight)
     private readonly string _expectedDepId;
     private readonly double _expectedDepLat;
     private readonly double _expectedDepLon;
     private bool _wrongDepFlagged;
+    private readonly string _expectedArrId;
+    private readonly double _expectedArrLat;
+    private readonly double _expectedArrLon;
+
+    // Flare bank tracking — max |bank| seen below 20ft AGL on approach
+    private double _flareMaxBankDeg;
 
     // Fires at liftoff (initial takeoff only, not go-arounds)
     public event Action? AfterTakeoffCallout;
@@ -203,6 +211,7 @@ public class FlightMonitor
 
     // Flight completion
     public event Action? FlightCompleted;
+    public event Action? WrongDepartureDetected;  // fires immediately — no upload, abort session
     private bool   _completionFired;
     private double _depLat, _depLon;
     private bool   _depSet;
@@ -248,11 +257,15 @@ public class FlightMonitor
 
     public FlightPhase CurrentPhase => _phase;
 
-    public FlightMonitor(string depId = "", double depLat = 0, double depLon = 0)
+    public FlightMonitor(string depId = "", double depLat = 0, double depLon = 0,
+                         string arrId = "", double arrLat = 0, double arrLon = 0)
     {
         _expectedDepId  = depId;
         _expectedDepLat = depLat;
         _expectedDepLon = depLon;
+        _expectedArrId  = arrId;
+        _expectedArrLat = arrLat;
+        _expectedArrLon = arrLon;
     }
 
     public void OnSnapshot(FlightDataSnapshot snap, EventLogger logger)
@@ -365,6 +378,7 @@ public class FlightMonitor
                                 $"Wrong departure airport — {distNm:F0}nm from {_expectedDepId}");
                             logger.Log($"EVENT: Wrong departure airport ({distNm:F0}nm from {_expectedDepId})");
                             _wrongDepFlagged = true;
+                            WrongDepartureDetected?.Invoke();
                         }
                     }
                 }
@@ -437,6 +451,10 @@ public class FlightMonitor
         }
         else if (_phase == FlightPhase.Approach)
         {
+            // Track max bank in the last 20ft of approach (flare window)
+            if (snap.AltitudeAglFt < 20.0 && !snap.OnGround)
+                _flareMaxBankDeg = Math.Max(_flareMaxBankDeg, Math.Abs(snap.BankAngleDeg));
+
             if (snap.OnGround)
             {
                 RecordLanding(snap, logger);
@@ -446,6 +464,7 @@ public class FlightMonitor
             else if (snap.VerticalSpeedFpm > 500 && snap.AltitudeAglFt > 1000)
             {
                 _stableCount = 0;
+                _flareMaxBankDeg = 0;  // reset for next approach
                 _goArounds++;
                 _phase = FlightPhase.Airborne;
                 logger.Log("Phase → Airborne (go-around)");
@@ -491,6 +510,19 @@ public class FlightMonitor
         _windDirAtLanding   = snap.WindDirectionDeg;
         var relWindRad = (_windDirAtLanding - snap.MagHeadingDeg) * Math.PI / 180.0;
         _landingCrosswindKts = Math.Abs(_windSpeedAtLanding * Math.Sin(relWindRad));
+        // Wrong arrival airport check
+        if (_expectedArrLat != 0)
+        {
+            var arrDistNm = HaversineNm(_expectedArrLat, _expectedArrLon, snap.Latitude, snap.Longitude);
+            logger.Log($"Arrival check — {arrDistNm:F1}nm from {_expectedArrId}");
+            if (arrDistNm > 3.0)
+            {
+                LogEvent(FlightEventType.WrongArrivalAirport, snap.Timestamp,
+                    $"Wrong arrival airport — {arrDistNm:F0}nm from {_expectedArrId}");
+                logger.Log($"EVENT: Wrong arrival airport ({arrDistNm:F0}nm from {_expectedArrId})");
+            }
+        }
+
         var absVs  = Math.Abs(_landingVsFpm);
         var absLat = Math.Abs(snap.GForceLateral);
         var fast   = _vrefKts > 0 && snap.IndicatedAirspeedKts > _vrefKts * 1.15;
@@ -536,6 +568,13 @@ public class FlightMonitor
                 logger.Log($"EVENT: Side-load landing ({absLat:F2}G lateral)");
                 quality = "poor";
             }
+
+            // Cocked/one-wheel landing: high bank in flare disqualifies Greaser bonus
+            if (_flareMaxBankDeg > ScoringConfig.BankAtFlareMaxDeg && quality == "excellent")
+            {
+                quality = "good";
+                logger.Log($"Cocked landing — max bank {_flareMaxBankDeg:F1}° in flare, downgraded from Greaser");
+            }
         }
 
         logger.Log($"Touchdown quality: {quality}");
@@ -556,13 +595,12 @@ public class FlightMonitor
         }
         _prevCrashed = snap.HasCrashed;
 
-        // Overspeed — IAS exceeds Vno + 5kt buffer; rising edge only
-        var overVno = _vnoKts > 0 && snap.IndicatedAirspeedKts > _vnoKts + ScoringConfig.VnoOverspeedBufferKts
-                      && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
+        // Overspeed — use XP12's own over_vne flag so limits are always correct per aircraft
+        var overVno = snap.Overspeed && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
         if (overVno && !_prevOverspeed)
         {
-            LogEvent(FlightEventType.Overspeed, snap.Timestamp, $"Exceeded Vno — {snap.IndicatedAirspeedKts:F0}kt (limit {_vnoKts:F0}kt)");
-            logger.Log($"EVENT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt > Vno {_vnoKts:F0}kt)");
+            LogEvent(FlightEventType.Overspeed, snap.Timestamp, $"Overspeed — {snap.IndicatedAirspeedKts:F0}kt");
+            logger.Log($"EVENT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt)");
             CalloutOverspeed?.Invoke();
         }
         _prevOverspeed = overVno;
@@ -820,7 +858,7 @@ public class FlightMonitor
             // Turbulence callout — 3 consecutive samples with G deviation > 0.15
             if (!_turbulenceCalloutFired)
             {
-                if (Math.Abs(snap.GForceNormal - 1.0) > 0.15)
+                if (Math.Abs(snap.BankAngleDeg) < 15.0 && Math.Abs(snap.GForceNormal - 1.0) > 0.15)
                     _turbulentSampleCount++;
                 else
                     _turbulentSampleCount = 0;
@@ -1221,6 +1259,7 @@ public class FlightMonitor
         Once("Takeoff Hdg Deviation",          r.Events.Any(e => e.Type == FlightEventType.TakeoffHeadingDeviation), ScoringConfig.PenaltyTakeoffHdgDev);
         Once("Takeoff Directional Control",    r.Events.Any(e => e.Type == FlightEventType.TakeoffDirectionalControl), ScoringConfig.PenaltyTakeoffSideload);
         Once("Wrong Departure Airport",        r.Events.Any(e => e.Type == FlightEventType.WrongDepartureAirport), ScoringConfig.PenaltyWrongDepartureAirport);
+        Once("Wrong Arrival Airport",          r.Events.Any(e => e.Type == FlightEventType.WrongArrivalAirport),   ScoringConfig.PenaltyWrongArrivalAirport);
 
         // Aircraft failures
         Once("Engine Fire",                    r.Events.Any(e => e.Type == FlightEventType.FailureEngineFire),    ScoringConfig.PenaltyEngineFire);
