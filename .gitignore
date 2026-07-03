@@ -2,3 +2,8 @@
 data/
 .DS_Store
 OldCode/
+
+# .NET build output
+**/bin/
+**/obj/
+*.user
