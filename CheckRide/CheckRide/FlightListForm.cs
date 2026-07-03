@@ -462,7 +462,7 @@ internal class FlightListForm : Form
         var flight = _grid.Rows[e.RowIndex].Tag as SavedFlight;
         if (flight is null) return;
         _scores.TryGetValue(flight.Id, out var score);
-        var url = $"https://simletsfly.com/flights.html?flight={flight.Id}&checkride={score.ResultId}";
+        var url = $"https://simletsfly.com/report.html?id={score.ResultId}";
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
         catch { }
     }

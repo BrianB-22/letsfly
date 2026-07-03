@@ -138,8 +138,6 @@ public class FlightMonitor
     private double _maxGLateral;
     private double _finalDescentSamples;
     private double _finalDescentSum;
-    private int _goArounds;
-
     // Flight track (30-second samples)
     private readonly List<FlightTrackPoint> _track = new();
     private DateTime _lastTrackSample = DateTime.MinValue;
@@ -465,10 +463,8 @@ public class FlightMonitor
             {
                 _stableCount = 0;
                 _flareMaxBankDeg = 0;  // reset for next approach
-                _goArounds++;
                 _phase = FlightPhase.Airborne;
-                logger.Log("Phase → Airborne (go-around)");
-                LogEvent(FlightEventType.GoAround, snap.Timestamp, $"Go-around — {snap.AltitudeAglFt:F0} ft AGL");
+                logger.Log("Phase → Airborne (missed approach)");
             }
         }
         else if (_phase == FlightPhase.Landed)
@@ -1091,7 +1087,6 @@ public class FlightMonitor
                 NightFlightPct             = _totalFlightSamples > 0
                                                ? Math.Round(_nightFlightSamples * 100.0 / _totalFlightSamples, 1)
                                                : 0,
-                GoArounds                  = _goArounds,
                 VsoKts                     = Math.Round(_vsoKts, 1),
                 VrefKts                    = Math.Round(_vrefKts, 1),
                 VnoKts                     = Math.Round(_vnoKts, 1),

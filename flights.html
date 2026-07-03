@@ -1811,7 +1811,6 @@ function _renderCrModalStats(r) {
     ['Flight Time', fmtTime(stats.FlightTimeSec)],
     ['Distance',    stats.DistanceNm    ? stats.DistanceNm.toFixed(1) + ' nm' : '—'],
     ['Autopilot',   stats.AutopilotPct  != null ? stats.AutopilotPct.toFixed(0) + '%' : '—'],
-    ['Go-Arounds',  stats.GoArounds     != null ? String(stats.GoArounds) : '—'],
   ].map(([label, val]) =>
     `<div class="cr-stat"><span class="cr-stat-label">${label}</span><span class="cr-stat-val">${val}</span></div>`
   ).join('');

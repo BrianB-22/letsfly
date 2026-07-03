@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CheckRide Report — SimLetsFly</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="robots" content="noindex">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      --bg0: #0a0d10; --bg1: #0e1318; --bg2: #131920; --bg3: #1a2230;
+      --panel: #111720; --border: #1e2d3d; --border2: #243447;
+      --accent: #00b4d8; --accent-glow: rgba(0,180,216,0.15);
+      --amber: #f4a261; --green: #52b788; --red: #e76f51;
+      --text: #c8d8e8; --text2: #7a92a8; --text3: #4a6070;
+      --mono: 'Share Tech Mono', monospace;
+      --sans: 'Barlow', sans-serif;
+      --cond: 'Barlow Condensed', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg0); color: var(--text); font-family: var(--sans); font-size: 16px; min-height: 100vh; }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: linear-gradient(rgba(0,180,216,0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,180,216,0.03) 1px, transparent 1px);
+      background-size: 40px 40px; pointer-events: none; z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative; z-index: 10; padding: 10px 20px;
+      border-bottom: 1px solid var(--border); background: var(--bg1);
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .logo-mark { font-family: var(--cond); font-size: 22px; font-weight: 700; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; text-decoration: none; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .back-link { font-family: var(--mono); font-size: 13px; color: var(--text3); text-decoration: none; letter-spacing: 1px; transition: color 0.15s; }
+    .back-link:hover { color: var(--accent); }
+    .print-btn { font-family: var(--cond); font-size: 14px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 14px; border-radius: 3px; cursor: pointer; background: transparent; border: 1px solid var(--border2); color: var(--text2); transition: all 0.15s; }
+    .print-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .user-chip { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; color: var(--text2); }
+    .signout-btn { font-family: var(--cond); font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; cursor: pointer; background: transparent; border: 1px solid var(--border2); color: var(--text3); transition: all 0.15s; }
+    .signout-btn:hover { border-color: var(--red); color: var(--red); }
+    .auth-btn { font-family: var(--cond); font-size: 14px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 3px; cursor: pointer; transition: all 0.15s; background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+    .auth-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── LAYOUT ── */
+    .report { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 28px 16px 60px; display: flex; flex-direction: column; gap: 18px; }
+
+    /* ── HERO ── */
+    .report-hero { display: flex; align-items: center; gap: 20px; padding: 20px 22px; background: var(--panel); border: 1px solid var(--border2); border-radius: 6px; }
+    .hero-grade { font-family: var(--mono); font-size: 64px; font-weight: 700; line-height: 1; min-width: 64px; text-align: center; }
+    .hero-grade.cr-grade-S { color: #f4d03f; } .hero-grade.cr-grade-A { color: var(--green); }
+    .hero-grade.cr-grade-B { color: var(--accent); } .hero-grade.cr-grade-C { color: var(--amber); }
+    .hero-grade.cr-grade-D { color: var(--red); } .hero-grade.cr-grade-F { color: #c0392b; }
+    .hero-divider { width: 1px; align-self: stretch; background: var(--border2); flex-shrink: 0; }
+    .hero-info { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .hero-route { font-family: var(--cond); font-size: 28px; font-weight: 700; letter-spacing: 3px; color: var(--text); }
+    .hero-route span { color: var(--text3); font-weight: 400; }
+    .hero-score { font-family: var(--mono); font-size: 13px; color: var(--text2); }
+    .hero-version { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+
+    /* ── SECTION LABEL ── */
+    .section-label { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+
+    /* ── MAP + CHART ── */
+    #cr-modal-map { height: 380px; border-radius: 4px 4px 0 0; border: 1px solid var(--border); border-bottom: none; overflow: hidden; }
+    #cr-modal-chart { width: 100%; height: 160px; border-radius: 0 0 4px 4px; border: 1px solid var(--border); background: #0b1a2c; display: block; }
+
+    /* ── PLAYBACK ── */
+    .cr-playback-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--border); border-top: none; background: var(--bg2); border-radius: 0 0 4px 4px; flex-wrap: wrap; margin-top: -1px; }
+    #cr-play-btn { font-size: 16px; background: rgba(0,180,216,0.12); border: 1px solid rgba(0,180,216,0.35); color: var(--accent); border-radius: 3px; width: 32px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    #cr-play-btn:hover { background: rgba(0,180,216,0.25); }
+    #cr-time-display { font-family: var(--mono); font-size: 12px; color: var(--text2); min-width: 56px; }
+    #cr-scrubber { flex: 1; min-width: 80px; accent-color: var(--accent); cursor: pointer; height: 3px; }
+    #cr-duration-display { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+    .cr-speed-btns { display: flex; gap: 4px; }
+    .cr-speed-btn { font-family: var(--mono); font-size: 11px; background: transparent; border: 1px solid var(--border2); color: var(--text3); border-radius: 2px; padding: 2px 7px; cursor: pointer; }
+    .cr-speed-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .cr-speed-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,180,216,0.1); }
+
+    /* ── TWO-COL GRID ── */
+    .report-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .report-cols { grid-template-columns: 1fr; } }
+    .report-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 16px; }
+
+    /* ── STATS ── */
+    .cr-modal-stats { display: flex; flex-wrap: wrap; gap: 16px; }
+    .cr-stat { font-size: 13px; }
+    .cr-stat-label { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); display: block; }
+    .cr-stat-val { color: var(--text); }
+
+    /* ── SCORE BREAKDOWN ── */
+    .cr-score-breakdown { font-family: var(--mono); font-size: 12px; }
+    .cr-score-row { display: flex; align-items: center; gap: 0; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .cr-score-row:last-child { border-bottom: none; }
+    .cr-score-label { flex: 1; color: var(--text2); }
+    .cr-score-count { width: 36px; text-align: right; color: var(--text3); padding-right: 8px; }
+    .cr-score-pts { width: 52px; text-align: right; font-weight: 600; }
+    .cr-score-pts.neg { color: #ff5555; }
+    .cr-score-pts.pos { color: #00e676; }
+    .cr-score-pts.zero { color: var(--text3); }
+    .cr-score-base { color: var(--text2); }
+    .cr-score-total { border-top: 1px solid var(--border2); margin-top: 4px; padding-top: 4px; font-size: 13px; }
+    .cr-score-total .cr-score-label { color: var(--text); font-weight: 600; }
+    .cr-score-total .cr-score-pts { font-size: 14px; }
+
+    /* ── EVENTS ── */
+    .cr-event-list { display: flex; flex-direction: column; gap: 5px; }
+    .cr-event { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+    .cr-event-time { font-family: var(--mono); font-size: 12px; color: var(--text3); min-width: 44px; }
+    .cr-event-desc { color: var(--text2); }
+    .cr-event.is-bad  .cr-event-desc { color: var(--red); }
+    .cr-event.is-warn .cr-event-desc { color: var(--amber); }
+    .cr-event.is-ok   .cr-event-desc { color: var(--green); }
+    .cr-event.is-info .cr-event-desc { color: var(--text3); }
+    .cr-event.is-info .cr-event-time  { color: var(--border2); }
+    .cr-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+    .is-bad  .cr-dot { background: #ff4444; box-shadow: 0 0 4px #ff4444; }
+    .is-warn .cr-dot { background: #f4d03f; box-shadow: 0 0 4px #f4d03f; }
+    .is-ok   .cr-dot { background: #00e676; box-shadow: 0 0 4px #00e676; }
+    .is-info .cr-dot { background: var(--border2); }
+    .cr-empty { font-size: 13px; color: var(--text3); padding: 4px 0; }
+
+    /* ── STATES ── */
+    .state-box { text-align: center; padding: 80px 20px; }
+    .state-icon  { font-size: 48px; margin-bottom: 16px; opacity: 0.35; }
+    .state-title { font-family: var(--cond); font-size: 20px; letter-spacing: 2px; color: var(--text2); margin-bottom: 8px; }
+    .state-sub   { font-size: 15px; color: var(--text3); margin-bottom: 20px; }
+    .btn-primary { font-family: var(--cond); font-size: 15px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 9px 22px; border-radius: 3px; cursor: pointer; background: var(--accent); border: 1px solid var(--accent); color: #000; display: inline-block; transition: all 0.15s; }
+    .btn-primary:hover { background: #00c8f0; }
+
+    /* ── AUTH MODAL ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; padding: 28px 32px; width: 100%; max-width: 380px; position: relative; }
+    .modal-title { font-family: var(--cond); font-size: 18px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; }
+    .modal-close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--text3); font-size: 20px; cursor: pointer; }
+    .modal-close:hover { color: var(--text); }
+    .modal-field { margin-bottom: 14px; }
+    .modal-field label { display: block; font-family: var(--mono); font-size: 14px; letter-spacing: 1.5px; color: var(--text3); text-transform: uppercase; margin-bottom: 5px; }
+    .modal-field input { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; padding: 8px 10px; color: var(--text); font-family: var(--mono); font-size: 15px; outline: none; }
+    .modal-field input:focus { border-color: var(--accent); }
+    .modal-err { font-size: 15px; color: var(--red); margin-bottom: 10px; min-height: 16px; }
+    .modal-btn { width: 100%; padding: 9px; border-radius: 3px; font-family: var(--cond); font-size: 15px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; border: 1px solid; transition: all 0.15s; }
+    .modal-btn-primary { background: var(--accent); border-color: var(--accent); color: #000; }
+    .modal-btn-primary:hover { background: #00c8f0; }
+    .modal-switch { text-align: center; margin-top: 14px; font-size: 15px; color: var(--text3); }
+    .modal-switch a { color: var(--accent); cursor: pointer; }
+    .modal-switch a:hover { text-decoration: underline; }
+
+    /* ── PRINT ── */
+    @media print {
+      body::before { display: none; }
+      header { position: static; }
+      .print-btn, .cr-playback-bar, #cr-play-btn { display: none !important; }
+      #cr-modal-map { height: 300px; }
+      .report { padding: 12px 0; gap: 14px; }
+      .report-cols { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo-mark" href="/">SIMLETSFLY</a>
+  <div class="header-right">
+    <a class="back-link" href="flights.html">← My Flights</a>
+    <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
+    <div id="auth-header"></div>
+  </div>
+</header>
+
+<div class="report" id="report-root">
+  <div class="state-box" id="state-loading">
+    <div class="state-title">Loading report…</div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="auth-modal" onclick="if(event.target===this)closeAuthModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAuthModal()">×</button>
+    <div class="modal-title" id="modal-title">Sign In</div>
+    <div class="modal-field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="pilot@example.com" onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="modal-field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="modal-err" id="modal-err"></div>
+    <button class="modal-btn modal-btn-primary" id="modal-submit" onclick="authSubmit()">Sign In</button>
+    <div class="modal-switch">No account? <a onclick="setAuthMode('signup')">Create one</a></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const _sb = window.supabase.createClient(
+  'https://blxugbnoitkxhdjgfkff.supabase.co',
+  'sb_publishable_LiOn1DINkHtyZOT-V6Ey2Q_OklVWUdY'
+);
+
+let currentUser = null;
+let _reportMap  = null;
+
+const _pb = {
+  playing: false, speed: 10, currentT: 0, maxT: 0,
+  lastWall: null, animFrame: null,
+  track: [], tOffset: 0,
+  marker: null,
+  _chartImg: null, _chartPad: null, _chartW: 0, _chartH: 0,
+  _chartCW: 0, _chartMaxT: 0, _chartDpr: 1,
+};
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+// ── AUTH ──
+_sb.auth.onAuthStateChange((event, session) => {
+  currentUser = session?.user ?? null;
+  renderAuthHeader();
+  if (event === 'SIGNED_IN') loadReport();
+});
+
+_sb.auth.getSession().then(({ data: { session } }) => {
+  currentUser = session?.user ?? null;
+  renderAuthHeader();
+  if (currentUser) loadReport();
+  else showSignInWall();
+});
+
+function renderAuthHeader() {
+  const el = document.getElementById('auth-header');
+  if (currentUser) {
+    el.innerHTML = `<div class="user-chip"><span>${escapeHtml(currentUser.email)}</span><button class="signout-btn" onclick="signOut()">Sign Out</button></div>`;
+  } else {
+    el.innerHTML = `<button class="auth-btn" onclick="showAuthModal('signin')">Sign In</button>`;
+  }
+}
+
+async function signOut() { await _sb.auth.signOut(); }
+
+function showSignInWall() {
+  document.getElementById('report-root').innerHTML = `
+    <div class="state-box">
+      <div class="state-icon">🔒</div>
+      <div class="state-title">Sign In to View Report</div>
+      <div class="state-sub">CheckRide reports are linked to your SimLetsFly account.</div>
+      <button class="btn-primary" onclick="showAuthModal('signin')">Sign In</button>
+    </div>`;
+}
+
+// ── LOAD ──
+async function loadReport() {
+  const id = new URLSearchParams(window.location.search).get('id');
+  if (!id) {
+    showError('No report ID specified. Use the ↗ link in the CheckRide app.');
+    return;
+  }
+
+  const [crRes, flightRes] = await Promise.all([
+    _sb.from('checkride_results')
+       .select('id,flight_id,score,grade,aircraft,sim,scoring_version,recorded_at,events,summary,stats,breakdown,track')
+       .eq('id', id)
+       .single(),
+    // Flight fetched after we know flight_id — done separately below
+    Promise.resolve({ data: null })
+  ]);
+
+  if (crRes.error || !crRes.data) {
+    showError(crRes.error?.code === 'PGRST116'
+      ? 'Report not found. It may have been deleted or belong to a different account.'
+      : 'Could not load report: ' + (crRes.error?.message || 'Unknown error'));
+    return;
+  }
+
+  const r = crRes.data;
+  let depId = '', arrId = '', depName = '', arrName = '';
+  if (r.flight_id) {
+    const { data: f } = await _sb.from('saved_flights')
+      .select('dep_id,dep_name,arr_id,arr_name')
+      .eq('id', r.flight_id)
+      .single();
+    if (f) { depId = f.dep_id || ''; arrId = f.arr_id || ''; depName = f.dep_name || ''; arrName = f.arr_name || ''; }
+  }
+
+  renderReport(r, depId, arrId, depName, arrName);
+}
+
+function showError(msg) {
+  document.getElementById('report-root').innerHTML = `
+    <div class="state-box">
+      <div class="state-icon">⚠</div>
+      <div class="state-title">Report Unavailable</div>
+      <div class="state-sub">${escapeHtml(msg)}</div>
+      <a class="btn-primary" href="flights.html">← My Flights</a>
+    </div>`;
+}
+
+// ── RENDER ──
+function renderReport(r, depId, arrId, depName, arrName) {
+  const grade   = r.grade || '?';
+  const score   = r.score ?? '—';
+  const date    = new Date(r.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const sim     = r.sim === 'xplane12' ? 'X-Plane 12' : r.sim === 'xplane11' ? 'X-Plane 11' : r.sim || '—';
+  const aircraft = r.aircraft || '—';
+  const route   = (depId && arrId) ? `${depId} <span>→</span> ${arrId}` : (depId || arrId || 'CheckRide Report');
+  const routeSub = (depName || arrName) ? escapeHtml([depName, arrName].filter(Boolean).join(' → ')) : '';
+
+  document.title = `CheckRide ${grade} · ${score}pts · ${depId || ''}→${arrId || ''} — SimLetsFly`;
+
+  document.getElementById('report-root').innerHTML = `
+    <div class="report-hero">
+      <div class="hero-grade cr-grade-${grade}">${grade}</div>
+      <div class="hero-divider"></div>
+      <div class="hero-info">
+        <div class="hero-route">${route}</div>
+        ${routeSub ? `<div class="hero-version" style="margin-top:2px;font-size:12px;">${routeSub}</div>` : ''}
+        <div class="hero-score">${score} pts · ${date} · ${escapeHtml(sim)} · ${escapeHtml(aircraft)}</div>
+        <div class="hero-version">Scoring: ${escapeHtml(r.scoring_version || '—')}</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Flight Track</div>
+      <div id="cr-modal-map"></div>
+      <canvas id="cr-modal-chart"></canvas>
+      <div class="cr-playback-bar">
+        <button id="cr-play-btn" onclick="togglePlayback()">▶</button>
+        <span id="cr-time-display">0m 00s</span>
+        <input id="cr-scrubber" type="range" min="0" value="0" step="1" oninput="onScrub(this.value)">
+        <span id="cr-duration-display">—</span>
+        <div class="cr-speed-btns">
+          <button class="cr-speed-btn active" data-spd="10"  onclick="setPlaybackSpeed(10)">10×</button>
+          <button class="cr-speed-btn"        data-spd="30"  onclick="setPlaybackSpeed(30)">30×</button>
+          <button class="cr-speed-btn"        data-spd="60"  onclick="setPlaybackSpeed(60)">60×</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-cols">
+      <div class="report-panel">
+        <div class="section-label">Flight Stats</div>
+        <div id="cr-modal-stats" class="cr-modal-stats"></div>
+      </div>
+      <div class="report-panel">
+        <div class="section-label">Score Breakdown</div>
+        <div id="cr-modal-breakdown" class="cr-score-breakdown"></div>
+      </div>
+    </div>
+
+    <div class="report-panel">
+      <div class="section-label">Event Log</div>
+      <div id="cr-modal-events" class="cr-event-list"></div>
+    </div>
+  `;
+
+  renderStats(r);
+  renderEvents(r);
+  document.getElementById('cr-modal-breakdown').innerHTML = buildScoreBreakdown(r);
+
+  setTimeout(() => {
+    renderMap(r.track || [], r.events || [], depId, arrId);
+    renderChart(r.track || [], r.events || []);
+    initPlayback(r.track || [], r.events || []);
+  }, 50);
+}
+
+// ── STATS ──
+function renderStats(r) {
+  const stats   = r.stats   || {};
+  const summary = r.summary || {};
+  const fmtTime = s => { if (!s) return '—'; const m = Math.floor(s/60); return m + 'm ' + (s%60) + 's'; };
+  const landingColor = { Greaser:'var(--green)', Smooth:'var(--accent)', Firm:'var(--amber)', Hard:'var(--red)' }[summary.LandingQuality] || 'var(--text)';
+  document.getElementById('cr-modal-stats').innerHTML = [
+    ['Landing',     `<span style="color:${landingColor}">${summary.LandingQuality || '—'}</span>`],
+    ['Landing VS',  stats.LandingVsFpm   ? stats.LandingVsFpm + ' fpm'                   : '—'],
+    ['Max G',       stats.MaxGForceNormal ? stats.MaxGForceNormal.toFixed(2) + 'G'        : '—'],
+    ['Max IAS',     stats.MaxIasKts       ? stats.MaxIasKts.toFixed(0) + ' kt'            : '—'],
+    ['Max Bank',    stats.MaxBankAngleDeg ? Math.abs(stats.MaxBankAngleDeg).toFixed(1) + '°' : '—'],
+    ['Flight Time', fmtTime(stats.FlightTimeSec)],
+    ['Distance',    stats.DistanceNm      ? stats.DistanceNm.toFixed(1) + ' nm'           : '—'],
+    ['Autopilot',   stats.AutopilotPct   != null ? stats.AutopilotPct.toFixed(0) + '%'    : '—'],
+  ].map(([label, val]) =>
+    `<div class="cr-stat"><span class="cr-stat-label">${label}</span><span class="cr-stat-val">${val}</span></div>`
+  ).join('');
+}
+
+// ── EVENTS ──
+function renderEvents(r) {
+  const events = r.events || [];
+  const BAD  = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
+  const OK   = new Set(['SmoothLanding','Greaser','LandingSmooth','LandingGreaser','Touchdown']);
+  const WARN = new Set(['HighG','HighBank','HighDescentRate','UnstableApproach','ExcessiveApproachSpeed','HardLanding','FirmLanding','SystemPitotHeat','SystemLandingLights','SystemStrobes','SystemTransponder','SystemFlaps','SystemGearCruise','SystemGearApproach','SystemBeacon']);
+  const INFO = new Set(['EngineStart','Takeoff','CruiseReached','ApproachStarted','ParkingBrakeSet','RecordingStarted','RecordingEnded']);
+  const fmtTime = s => { if (s == null) return ''; const m = Math.floor(s/60); return m + 'm ' + (s%60) + 's'; };
+  document.getElementById('cr-modal-events').innerHTML = events.length
+    ? events.map(e => {
+        const cls = BAD.has(e.Type) ? 'is-bad' : OK.has(e.Type) ? 'is-ok' : WARN.has(e.Type) ? 'is-warn' : 'is-info';
+        return `<div class="cr-event ${cls}"><span class="cr-event-time">${fmtTime(e.TimestampSec)}</span><div class="cr-dot"></div><span class="cr-event-desc">${escapeHtml(e.Description || e.Type)}</span></div>`;
+      }).join('')
+    : '<div class="cr-empty">No events recorded.</div>';
+}
+
+// ── SCORE BREAKDOWN ──
+function buildScoreBreakdown(r) {
+  const bd = r.breakdown || [];
+  if (!bd.length) return '<div class="cr-empty" style="font-size:12px;">Score breakdown not available — re-fly to record it.</div>';
+  const score = r.score ?? null;
+  const rowHtml = bd.map(row => {
+    const cls  = row.Pts > 0 ? 'pos' : row.Pts < 0 ? 'neg' : 'zero';
+    const sign = row.Pts > 0 ? '+' : '';
+    const cnt  = row.Count > 1 ? '×' + row.Count : '';
+    return `<div class="cr-score-row"><span class="cr-score-label">${escapeHtml(row.Label)}</span><span class="cr-score-count">${cnt}</span><span class="cr-score-pts ${cls}">${sign}${row.Pts}</span></div>`;
+  }).join('');
+  const scoreCls = score >= 90 ? 'pos' : score >= 70 ? 'zero' : 'neg';
+  return `<div class="cr-score-row"><span class="cr-score-label cr-score-base">Base score</span><span class="cr-score-count"></span><span class="cr-score-pts pos">+100</span></div>
+${rowHtml}
+<div class="cr-score-row cr-score-total"><span class="cr-score-label">Final Score</span><span class="cr-score-count"></span><span class="cr-score-pts ${scoreCls}">${score} pts</span></div>`;
+}
+
+// ── MAP ──
+function renderMap(track, events, depIcao, arrIcao) {
+  const mapEl = document.getElementById('cr-modal-map');
+  if (_reportMap) { _reportMap.remove(); _reportMap = null; }
+  _reportMap = L.map(mapEl, { zoomControl: true, attributionControl: false });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(_reportMap);
+
+  const pts = track.filter(p => p.Lat && p.Lon);
+  if (!pts.length) {
+    mapEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#4a6070;font-size:13px;font-family:monospace;">No track data</div>';
+    return;
+  }
+
+  L.polyline(pts.map(p => [p.Lat, p.Lon]), { color: '#00e676', weight: 2.5, opacity: 0.95 }).addTo(_reportMap);
+
+  const BAD = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
+  events.forEach(e => {
+    const t  = e.TimestampSec;
+    const pt = pts.find(p => p.T >= t) || pts[pts.length - 1];
+    if (!pt) return;
+    const color = BAD.has(e.Type) ? '#ff4444' : '#f4d03f';
+    const icon = L.divIcon({ className:'', html:`<div style="width:9px;height:9px;border-radius:50%;background:${color};border:1.5px solid rgba(255,255,255,0.8);box-shadow:0 0 4px ${color};"></div>`, iconSize:[9,9], iconAnchor:[4,4] });
+    L.marker([pt.Lat, pt.Lon], { icon }).bindTooltip(e.Description || e.Type, { direction:'top' }).addTo(_reportMap);
+  });
+
+  const icaoIcon = label => L.divIcon({
+    className: '',
+    html: `<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#f4d03f;text-shadow:0 0 6px rgba(0,0,0,0.9),0 0 2px rgba(0,0,0,1);white-space:nowrap;letter-spacing:1px;">${label}</div>`,
+    iconAnchor: [0, 0]
+  });
+  if (depIcao) L.marker([pts[0].Lat, pts[0].Lon], { icon: icaoIcon(depIcao) }).addTo(_reportMap);
+  if (arrIcao) L.marker([pts[pts.length-1].Lat, pts[pts.length-1].Lon], { icon: icaoIcon(arrIcao) }).addTo(_reportMap);
+
+  const startDot = L.divIcon({ className:'', html:`<div style="width:10px;height:10px;border-radius:50%;background:#00e676;border:2px solid #fff;box-shadow:0 0 6px #00e676;"></div>`, iconSize:[10,10], iconAnchor:[5,5] });
+  L.marker([pts[0].Lat, pts[0].Lon], { icon: startDot }).addTo(_reportMap);
+  const endDot = L.divIcon({ className:'', html:`<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #00e676;box-shadow:0 0 6px rgba(0,230,118,0.6);"></div>`, iconSize:[10,10], iconAnchor:[5,5] });
+  L.marker([pts[pts.length-1].Lat, pts[pts.length-1].Lon], { icon: endDot }).addTo(_reportMap);
+
+  _reportMap.fitBounds(L.latLngBounds(pts.map(p => [p.Lat, p.Lon])), { padding: [40, 40] });
+}
+
+// ── CHART ──
+function renderChart(track, events) {
+  const canvas = document.getElementById('cr-modal-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = devicePixelRatio || 1;
+  const W   = canvas.offsetWidth;
+  const H   = 160;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const allPts  = track.filter(p => p.AltMslFt != null && p.T != null);
+  const taxiIdx = allPts.findIndex(p => p.Phase && p.Phase !== 'Idle');
+  const pts     = taxiIdx > 0 ? allPts.slice(taxiIdx) : allPts;
+  const tOffset = pts.length ? pts[0].T : 0;
+  const adjT    = p => p.T - tOffset;
+  if (pts.length < 2) {
+    ctx.fillStyle = '#4a6070'; ctx.font = '12px monospace';
+    ctx.fillText('No altitude data', 12, H / 2); return;
+  }
+
+  const pad  = { t: 14, b: 28, l: 56, r: 56 };
+  const cW   = W - pad.l - pad.r;
+  const cH   = H - pad.t - pad.b;
+  const tMax = adjT(pts[pts.length - 1]) || 1;
+  const alts  = pts.map(p => p.AltMslFt);
+  const maxAlt = Math.max(...alts) * 1.1 || 1000;
+  const xOf  = p => pad.l + (adjT(p) / tMax) * cW;
+  const yAlt = p => pad.t + cH - ((p.AltMslFt - 0) / maxAlt) * cH;
+  const hasSpeeds = pts.some(p => p.IasKts > 0);
+  const maxSpd = Math.max(...pts.map(p => p.IasKts || 0)) * 1.1 || 1;
+  const ySpd   = p => pad.t + cH - ((p.IasKts || 0) / maxSpd) * cH;
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75].forEach(f => {
+    const y = pad.t + cH * (1 - f);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cW, y); ctx.stroke();
+    const x = pad.l + cW * f;
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + cH); ctx.stroke();
+  });
+
+  ctx.beginPath(); ctx.moveTo(xOf(pts[0]), yAlt(pts[0]));
+  pts.forEach(p => ctx.lineTo(xOf(p), yAlt(p)));
+  ctx.lineTo(xOf(pts[pts.length-1]), pad.t + cH); ctx.lineTo(xOf(pts[0]), pad.t + cH); ctx.closePath();
+  ctx.fillStyle = 'rgba(0,230,118,0.12)'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(xOf(pts[0]), yAlt(pts[0]));
+  pts.forEach(p => ctx.lineTo(xOf(p), yAlt(p)));
+  ctx.strokeStyle = '#00e676'; ctx.lineWidth = 2; ctx.stroke();
+
+  if (hasSpeeds) {
+    ctx.beginPath(); ctx.moveTo(xOf(pts[0]), ySpd(pts[0]));
+    pts.forEach(p => ctx.lineTo(xOf(p), ySpd(p)));
+    ctx.strokeStyle = '#f4d03f'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  const BAD = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
+  events.forEach(e => {
+    const pt = pts.find(p => p.T >= e.TimestampSec) || pts[pts.length-1];
+    if (!pt) return;
+    ctx.beginPath(); ctx.arc(xOf(pt), yAlt(pt), 4, 0, Math.PI*2);
+    ctx.fillStyle = BAD.has(e.Type) ? '#ff4444' : '#f4d03f'; ctx.fill();
+  });
+
+  ctx.fillStyle = '#00e676'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+  [0, 0.5, 1].forEach(f => {
+    const alt = Math.round(maxAlt * f / 1000) * 1000;
+    ctx.fillText(alt.toLocaleString(), pad.l - 6, pad.t + cH - f * cH + 4);
+  });
+  ctx.save(); ctx.translate(12, pad.t + cH/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign = 'center'; ctx.fillText('ALTITUDE (ft)', 0, 0); ctx.restore();
+
+  if (hasSpeeds) {
+    ctx.fillStyle = '#f4d03f'; ctx.textAlign = 'left';
+    [0, 0.5, 1].forEach(f => {
+      ctx.fillText(Math.round(maxSpd * f / 10) * 10 + ' kt', pad.l + cW + 6, pad.t + cH - f * cH + 4);
+    });
+    ctx.save(); ctx.translate(W - 10, pad.t + cH/2); ctx.rotate(Math.PI/2);
+    ctx.textAlign = 'center'; ctx.fillText('SPEED (kt)', 0, 0); ctx.restore();
+  }
+
+  ctx.fillStyle = '#4a6070'; ctx.textAlign = 'center';
+  const fmtT = s => { const m = Math.floor(s/60); return m + ':' + String(s%60).padStart(2,'0'); };
+  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+    ctx.fillText(fmtT(Math.round(tMax * f)), pad.l + f * cW, H - 8);
+  });
+
+  _pb._chartImg  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  _pb._chartPad  = pad; _pb._chartW = W; _pb._chartH = H;
+  _pb._chartCW   = cW; _pb._chartMaxT = tMax; _pb._chartDpr = dpr;
+}
+
+// ── PLAYBACK ──
+function initPlayback(track, events) {
+  _stopPlayback();
+  const allPts  = track.filter(p => p.Lat && p.Lon && p.T != null && p.AltMslFt != null);
+  const taxiIdx = allPts.findIndex(p => p.Phase && p.Phase !== 'Idle');
+  _pb.track   = taxiIdx > 0 ? allPts.slice(taxiIdx) : allPts;
+  _pb.tOffset = _pb.track.length ? _pb.track[0].T : 0;
+  _pb.maxT    = _pb.track.length ? _pb.track[_pb.track.length-1].T - _pb.tOffset : 0;
+  _pb.currentT = 0; _pb.marker = null;
+  const scrubber = document.getElementById('cr-scrubber');
+  const dur      = document.getElementById('cr-duration-display');
+  if (scrubber) { scrubber.max = Math.ceil(_pb.maxT); scrubber.value = 0; }
+  const fmtT = s => { const m = Math.floor(s/60); return m + 'm ' + String(Math.floor(s%60)).padStart(2,'0') + 's'; };
+  if (dur) dur.textContent = fmtT(_pb.maxT);
+  _updatePlayBtn(); _updateTimeDisplay(0);
+  if (_pb.track.length) _drawChartCursor(0);
+}
+
+function _stopPlayback() {
+  _pb.playing = false;
+  if (_pb.animFrame) { cancelAnimationFrame(_pb.animFrame); _pb.animFrame = null; }
+  _pb.lastWall = null;
+}
+
+function togglePlayback() {
+  if (!_pb.track.length) return;
+  if (_pb.currentT >= _pb.maxT) _pb.currentT = 0;
+  _pb.playing = !_pb.playing;
+  _updatePlayBtn();
+  if (_pb.playing) { _pb.lastWall = null; _pb.animFrame = requestAnimationFrame(_playbackTick); }
+  else { _stopPlayback(); _pb.playing = false; _updatePlayBtn(); }
+}
+
+function _playbackTick(wallMs) {
+  if (!_pb.playing) return;
+  if (_pb.lastWall != null) {
+    _pb.currentT += ((wallMs - _pb.lastWall) / 1000) * _pb.speed;
+    if (_pb.currentT >= _pb.maxT) {
+      _pb.currentT = _pb.maxT; _seekTo(_pb.currentT);
+      _stopPlayback(); _updatePlayBtn(); return;
+    }
+    _seekTo(_pb.currentT);
+  }
+  _pb.lastWall = wallMs;
+  _pb.animFrame = requestAnimationFrame(_playbackTick);
+}
+
+function onScrub(val) {
+  _stopPlayback(); _pb.playing = false; _updatePlayBtn();
+  _pb.currentT = +val; _seekTo(_pb.currentT);
+}
+
+function setPlaybackSpeed(spd) {
+  _pb.speed = spd;
+  document.querySelectorAll('.cr-speed-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.spd === spd));
+}
+
+function _seekTo(t) {
+  _pb.currentT = Math.max(0, Math.min(t, _pb.maxT));
+  const scrubber = document.getElementById('cr-scrubber');
+  if (scrubber) scrubber.value = _pb.currentT;
+  _updateTimeDisplay(_pb.currentT);
+  const snap = _getInterpolated(_pb.currentT);
+  if (snap && _reportMap) _updateMapMarker(snap.Lat, snap.Lon, snap.HdgDeg);
+  _drawChartCursor(_pb.currentT);
+}
+
+function _getInterpolated(t) {
+  const pts = _pb.track;
+  if (!pts.length) return null;
+  const absT = t + _pb.tOffset;
+  if (absT <= pts[0].T) return { ...pts[0] };
+  if (absT >= pts[pts.length-1].T) return { ...pts[pts.length-1] };
+  const idx = pts.findIndex(p => p.T >= absT);
+  const a = pts[idx-1], b = pts[idx];
+  const fr = (absT - a.T) / (b.T - a.T);
+  const hdgDiff = ((b.HdgDeg - a.HdgDeg + 540) % 360) - 180;
+  return {
+    Lat: a.Lat + (b.Lat - a.Lat) * fr,
+    Lon: a.Lon + (b.Lon - a.Lon) * fr,
+    HdgDeg: (a.HdgDeg + hdgDiff * fr + 360) % 360,
+    AltMslFt: a.AltMslFt + (b.AltMslFt - a.AltMslFt) * fr,
+    IasKts: (a.IasKts || 0) + ((b.IasKts || 0) - (a.IasKts || 0)) * fr,
+  };
+}
+
+function _updateMapMarker(lat, lon, hdg) {
+  if (!_reportMap) return;
+  const html = `<div style="font-size:32px;line-height:1;transform:rotate(${(hdg-90).toFixed(0)}deg);filter:drop-shadow(0 0 6px rgba(0,230,118,0.95));color:#00e676;">✈</div>`;
+  if (!_pb.marker) {
+    _pb.marker = L.marker([lat, lon], { icon: L.divIcon({ className:'', html, iconSize:[34,34], iconAnchor:[17,17] }), zIndexOffset:1000 }).addTo(_reportMap);
+  } else {
+    _pb.marker.setLatLng([lat, lon]);
+    const el = _pb.marker.getElement();
+    if (el) el.innerHTML = html;
+  }
+}
+
+function _drawChartCursor(t) {
+  const canvas = document.getElementById('cr-modal-chart');
+  if (!canvas || !_pb._chartImg || _pb._chartMaxT <= 0) return;
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(_pb._chartImg, 0, 0);
+  const { _chartPad: pad, _chartCW: cW, _chartH: H, _chartDpr: dpr, _chartMaxT: tMax } = _pb;
+  const xPx = (pad.l + (t / tMax) * cW) * dpr;
+  ctx.beginPath(); ctx.moveTo(xPx, pad.t * dpr); ctx.lineTo(xPx, (pad.t + H - pad.t - pad.b) * dpr);
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1 * dpr;
+  ctx.setLineDash([4*dpr, 3*dpr]); ctx.stroke(); ctx.setLineDash([]);
+  const snap = _getInterpolated(t);
+  if (snap) {
+    const label = `${Math.round(snap.AltMslFt).toLocaleString()} ft  ${Math.round(snap.IasKts)} kt`;
+    ctx.font = `${10*dpr}px monospace`;
+    const tw = ctx.measureText(label).width;
+    const lx = Math.min(xPx + 4*dpr, canvas.width - tw - 6*dpr);
+    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(lx - 2*dpr, (pad.t+1)*dpr, tw + 4*dpr, 14*dpr);
+    ctx.fillStyle = '#fff'; ctx.fillText(label, lx, (pad.t+11)*dpr);
+  }
+}
+
+function _updatePlayBtn() {
+  const btn = document.getElementById('cr-play-btn');
+  if (btn) btn.textContent = _pb.playing ? '⏸' : '▶';
+}
+
+function _updateTimeDisplay(t) {
+  const el = document.getElementById('cr-time-display');
+  if (el) { const m = Math.floor(t/60); el.textContent = m + 'm ' + String(Math.floor(t%60)).padStart(2,'0') + 's'; }
+}
+
+// ── AUTH MODAL ──
+let _authMode = 'signin';
+function showAuthModal(mode) {
+  _authMode = mode;
+  document.getElementById('modal-title').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  document.getElementById('modal-submit').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  document.getElementById('auth-modal').classList.add('open');
+  setTimeout(() => document.getElementById('auth-email').focus(), 80);
+}
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('open');
+  document.getElementById('modal-err').textContent = '';
+}
+function setAuthMode(mode) {
+  _authMode = mode;
+  document.getElementById('modal-title').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  document.getElementById('modal-submit').textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  document.querySelector('.modal-switch').innerHTML = mode === 'signup'
+    ? `Have an account? <a onclick="setAuthMode('signin')">Sign in</a>`
+    : `No account? <a onclick="setAuthMode('signup')">Create one</a>`;
+}
+async function authSubmit() {
+  const email    = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl    = document.getElementById('modal-err');
+  const btn      = document.getElementById('modal-submit');
+  if (!email || !password) { errEl.textContent = 'Email and password required.'; return; }
+  btn.disabled = true; btn.textContent = '...'; errEl.textContent = '';
+  const { error } = _authMode === 'signin'
+    ? await _sb.auth.signInWithPassword({ email, password })
+    : await _sb.auth.signUp({ email, password });
+  btn.disabled = false;
+  btn.textContent = _authMode === 'signup' ? 'Create Account' : 'Sign In';
+  if (error) errEl.textContent = error.message;
+  else closeAuthModal();
+}
+</script>
+</body>
+</html>
