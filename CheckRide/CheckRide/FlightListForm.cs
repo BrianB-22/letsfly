@@ -33,6 +33,7 @@ internal class FlightListForm : Form
 
     // Held after a failed upload so the Retry button can re-attempt
     private (string FlightId, CheckRideReport Report, string? LogPath)? _pendingUpload;
+    private bool _engineStartAnnounced;
     private readonly CheckBox _chkLog         = new();
     private readonly Label   _lblStatus       = new();
     private readonly Label   _lblUser         = new();
@@ -54,7 +55,9 @@ internal class FlightListForm : Form
     {
         _client = client;
 
-        Text            = "CheckRide — SimLetsFly";
+        Text            = "CheckRide for SimLetsFly";
+        var icoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", "icon_256x256.ico");
+        if (File.Exists(icoPath)) try { Icon = new Icon(icoPath); } catch { }
         ClientSize      = new Size(880, 560);
         BackColor       = _bg;
         ForeColor       = _text;
@@ -176,6 +179,7 @@ internal class FlightListForm : Form
         _btnDebug.Font             = new Font("Segoe UI", 8.5f);
         _btnDebug.Size             = new Size(130, 36);
         _btnDebug.Enabled          = false;
+        _btnDebug.Visible          = false;
         _btnDebug.Cursor           = Cursors.Hand;
         _btnDebug.Click           += OnDebugUpload;
 
@@ -324,18 +328,34 @@ internal class FlightListForm : Form
         {
             _scores.TryGetValue(f.Id, out var last);
             _grid.Rows.Add(
-                f.DisplayDate,
+                f.CreatedAt.ToLocalTime(),   // DateTime — sorts correctly; formatted in CellFormatting
                 f.DisplayRoute,
-                f.DistanceNm > 0 ? (object)f.DistanceNm : "—",
+                f.DistanceNm,                // int — CellFormatting shows "—" when 0
                 f.DisplayFlight,
                 last.Grade ?? "—",
-                last.Score > 0 ? last.Score : (object)"—");
+                last.Score);                 // int — CellFormatting shows "—" when 0
             _grid.Rows[^1].Tag = f;
         }
     }
 
     private void OnCellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
     {
+        if (_grid.Columns[e.ColumnIndex].Name == "Date" && e.Value is DateTime dt)
+        {
+            e.Value = dt.ToString("MMM d, yyyy");
+            e.FormattingApplied = true;
+            return;
+        }
+
+        if (e.Value is int n && n == 0 &&
+            _grid.Columns[e.ColumnIndex].Name is "Score" or "NM")
+        {
+            e.Value = "—";
+            e.CellStyle.ForeColor = _text3;
+            e.FormattingApplied = true;
+            return;
+        }
+
         if (_grid.Columns[e.ColumnIndex].Name != "Grade") return;
         if (e.Value is not string g || g == "—") return;
 
@@ -389,6 +409,8 @@ internal class FlightListForm : Form
         _pendingUpload = null;
         _btnRetry.Visible = false;
         SetState(AppState.WaitingXP12);
+        _lblStatus.Text      = $"Waiting for XP12 to be available…  Open XP12 and load your aircraft for {flight.DisplayRoute}.";
+        _lblStatus.ForeColor = _amber;
         _watchTimer.Start();
     }
 
@@ -486,8 +508,15 @@ internal class FlightListForm : Form
     {
         if (_connector is not null) return;
 
+        _lblStatus.Text      = $"Looking for XP12…  ({DateTime.Now:HH:mm:ss})";
+        _lblStatus.ForeColor = _amber;
+
         var live = await XP12Connector.ProbeAsync();
-        if (!live) return;
+        if (!live)
+        {
+            _lblStatus.Text = $"XP12 not detected — open XP12 and load your aircraft for {_activeFlight!.DisplayRoute}.";
+            return;
+        }
 
         _watchTimer.Stop();
         StartRecording();
@@ -504,21 +533,35 @@ internal class FlightListForm : Form
             var flightId = _activeFlight!.Id[..8]; // first 8 chars of UUID is enough to identify
             _sessionLogPath = Path.Combine(dir, $"checkride_{flightId}_{_sessionTimestamp}.log");
             _logger    = new EventLogger(_sessionLogPath);
-            _monitor   = new FlightMonitor();
+            _monitor   = new FlightMonitor(_activeFlight!.DepId, _activeFlight!.DepLat, _activeFlight!.DepLon);
             _connector = new XP12Connector();
 
             _connector.Log       = msg => _logger.Log($"[XP12] {msg}");
-            _connector.Connected = () => BeginInvoke(() =>
+            _engineStartAnnounced = false;
+            _connector.Connected     = () => BeginInvoke(() =>
             {
-                PlaySound("start.wav");
+                PlaySoundRandom("ready");
                 ShowTrayBalloon?.Invoke("CheckRide is Recording", $"Flight: {_activeFlight!.DisplayRoute}");
             });
+            _connector.Disconnected  = () => BeginInvoke(OnSimDisconnected);
 
-            _connector.FlightDataReceived += snap => _monitor.OnSnapshot(snap, _logger!);
+            _connector.FlightDataReceived += snap =>
+            {
+                _monitor.OnSnapshot(snap, _logger!);
+                if (!_engineStartAnnounced && snap.Engine1Running)
+                {
+                    _engineStartAnnounced = true;
+                    BeginInvoke(() => PlaySoundRandom("engine_start"));
+                }
+            };
+            _monitor.AfterTakeoffCallout  += () => BeginInvoke(() => PlaySoundRandom("after_takeoff"));
+            _monitor.TouchdownCallout     += q  => BeginInvoke(() => PlaySoundRandom($"landing_{q}"));
             _monitor.FlightCompleted      += () => BeginInvoke(OnFlightCompleted);
 
             _ = _connector.StartAsync();
             SetState(AppState.Recording);
+            _lblStatus.Text      = $"Flight in Progress  ·  Log: {_sessionLogPath}";
+            _lblStatus.ForeColor = _green;
         }
         catch (Exception ex)
         {
@@ -526,6 +569,18 @@ internal class FlightListForm : Form
             SetState(AppState.Idle);
             _connector = null; _monitor = null; _logger = null;
         }
+    }
+
+    private void OnSimDisconnected()
+    {
+        _watchTimer.Stop();
+        _ = _connector?.StopAsync();
+        _logger?.Close();
+        _connector = null; _monitor = null; _logger = null;
+        SetState(AppState.Idle);
+        _lblStatus.Text      = "Flight not complete — lost communication with sim.";
+        _lblStatus.ForeColor = _amber;
+        PlaySound(Path.Combine("system_notices", "lost_sim.wav"));
     }
 
     private async void OnFlightCompleted()
@@ -543,7 +598,12 @@ internal class FlightListForm : Form
             _logger!.Log($"Session ended — Score: {report.Score}  Grade: {report.Grade}");
             _logger.Close();
 
-            PlaySound("stop.wav");
+            if (report.Summary.Crashed)
+                PlaySoundRandom("landing_crash");
+
+            var gradeWavSuffix = report.Grade is "S" or "A" or "B" ? "excellent"
+                               : report.Grade == "C"                ? "good"
+                               : "poor";
 
             var jsonPath = Path.Combine(OutputDir(), $"checkride_{_activeFlight!.Id[..8]}_{_sessionTimestamp}.json");
             ReportWriter.Write(report, jsonPath);
@@ -552,14 +612,22 @@ internal class FlightListForm : Form
             _pendingUpload = (_activeFlight!.Id, report, logPath);
 
             await UploadPendingAsync();
+            PlaySound(Path.Combine("system_notices", "upload_success.wav"));
+
+            // Debrief plays after parking brake — crashes end the flight immediately so no debrief
+            if (!report.Summary.Crashed)
+            {
+                await Task.Delay(3000);
+                PlaySoundRandom($"parking_brake_{gradeWavSuffix}");
+            }
         }
         catch (Exception ex)
         {
+            PlaySound(Path.Combine("system_notices", "upload_failed.wav"));
             SetState(AppState.Idle);
             _lblStatus.Text      = $"Upload failed — flight saved locally. Click Retry when online.";
             _lblStatus.ForeColor = _red;
             _btnRetry.Visible    = true;
-            // Log the actual error for debugging
             _logger?.Log($"Upload error: {ex.Message}");
         }
         finally
@@ -644,12 +712,29 @@ internal class FlightListForm : Form
     private static string OutputDir() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CheckRide");
 
+    private static readonly Random _soundRng = new();
+
+    // Plays a single named file from the sounds\ root (start.wav, stop.wav, etc.)
     private static void PlaySound(string file)
     {
         try
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", file);
             if (File.Exists(path)) new SoundPlayer(path).Play();
+        }
+        catch { }
+    }
+
+    // Picks a random WAV from sounds\<folder>\ and plays it
+    private static void PlaySoundRandom(string folder)
+    {
+        try
+        {
+            var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", folder);
+            if (!Directory.Exists(dir)) return;
+            var files = Directory.GetFiles(dir, "*.wav");
+            if (files.Length == 0) return;
+            new SoundPlayer(files[_soundRng.Next(files.Length)]).Play();
         }
         catch { }
     }

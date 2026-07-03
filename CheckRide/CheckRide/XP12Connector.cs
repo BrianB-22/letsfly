@@ -77,7 +77,6 @@ public class XP12Connector
         "sim/weather/aircraft/wind_direction_degt",
         // Controls
         "sim/cockpit2/engine/actuators/throttle_ratio", // float_array → index 0
-        "sim/flightmodel2/engines/prop_in_beta",        // float_array → index 0; 1.0 = prop in beta/reverse range (turboprop)
         "sim/flightmodel2/controls/speedbrake_ratio",
         "sim/cockpit2/gauges/actuators/barometer_setting_in_hg_pilot",
         // Gear
@@ -106,6 +105,7 @@ public class XP12Connector
 
     public Action<string>? Log { get; set; }
     public Action? Connected { get; set; }
+    public Action? Disconnected { get; set; }
 
     public event Action<FlightDataSnapshot>? FlightDataReceived;
 
@@ -208,6 +208,9 @@ public class XP12Connector
         Connected?.Invoke();
 
         // Phase 3: poll snapshots — fill in any IDs still missing from partial resolution
+        int nullStreak = 0;
+        const int MaxNullStreak = 10; // ~10s of no data = sim gone
+
         while (!ct.IsCancellationRequested)
         {
             if (_ids.Count + _notFound.Count < Datarefs.Length)
@@ -216,7 +219,22 @@ public class XP12Connector
             try
             {
                 var snap = await BuildSnapshotAsync(ct);
-                if (snap is not null) FlightDataReceived?.Invoke(snap);
+                if (snap is not null)
+                {
+                    nullStreak = 0;
+                    FlightDataReceived?.Invoke(snap);
+                }
+                else
+                {
+                    nullStreak++;
+                    Log?.Invoke($"No data from XP12 ({nullStreak}/{MaxNullStreak})…");
+                    if (nullStreak >= MaxNullStreak)
+                    {
+                        Log?.Invoke("XP12 disconnected — ending session.");
+                        Disconnected?.Invoke();
+                        return;
+                    }
+                }
             }
             catch (OperationCanceledException) { break; }
             catch { }
@@ -311,7 +329,6 @@ public class XP12Connector
         var flapTask  = D("sim/flightmodel/controls/flaprat", ct);
         var sbrakeTask= D("sim/flightmodel2/controls/speedbrake_ratio", ct);
         var thrTask   = D("sim/cockpit2/engine/actuators/throttle_ratio", ct, index: 0);
-        var betaTask  = D("sim/flightmodel2/engines/prop_in_beta", ct, index: 0);
         // Flags
         var stallTask = D("sim/cockpit2/annunciators/stall_warning", ct);
         var crashTask = D("sim/flightmodel2/misc/has_crashed", ct);
@@ -375,7 +392,7 @@ public class XP12Connector
             gnTask, glTask, gaTask,
             rollRTask, pitRTask, yawRTask,
             ogTask, gearTask, sinkTask,
-            pbTask, flapTask, sbrakeTask, thrTask, betaTask,
+            pbTask, flapTask, sbrakeTask, thrTask,
             stallTask, crashTask, ovTask,
             pitotTask, llTask, beacTask, strbTask, xpdrTask, apTask,
             antiIceTask, baroTask, eng1Task, eng2Task,
@@ -397,7 +414,7 @@ public class XP12Connector
             AltitudeMslFt        = MetersToFeet(mslTask.Result),
             AltitudeAglFt        = MetersToFeet(aglTask.Result),
             GroundspeedKts       = MsToKts(gsTask.Result),
-            IndicatedAirspeedKts = iasTask.Result,          // already kias
+            IndicatedAirspeedKts = Math.Max(0, iasTask.Result), // clamp: headwind can make IAS negative on ground
             VerticalSpeedFpm     = vsTask.Result,
             AngleOfAttackDeg     = aoaTask.Result,
             BankAngleDeg         = bankTask.Result,
@@ -417,7 +434,6 @@ public class XP12Connector
             FlapRatio            = flapTask.Result,
             SpeedbrakeRatio      = sbrakeTask.Result,
             ThrottleRatio        = thrTask.Result,
-            PropInBeta           = betaTask.Result > 0.5,
             StallWarning         = stallTask.Result,
             HasCrashed           = crashTask.Result > 0.5,
             Overspeed            = ovTask.Result > 0.5,

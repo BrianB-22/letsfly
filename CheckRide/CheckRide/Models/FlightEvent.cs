@@ -59,6 +59,7 @@ public enum FlightEventType
     TakeoffLowPower,
     TakeoffHeadingDeviation,
     TakeoffDirectionalControl,
+    WrongDepartureAirport,
 
     // Aircraft failures
     FailureEngineFire,

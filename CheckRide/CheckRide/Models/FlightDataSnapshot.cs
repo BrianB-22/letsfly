@@ -39,8 +39,7 @@ public class FlightDataSnapshot
     // Controls
     public double FlapRatio { get; init; }
     public double SpeedbrakeRatio { get; init; }
-    public double ThrottleRatio { get; init; }      // engine 0; NOTE: reads 1.0 for full reverse on turboprops — check PropInBeta
-    public bool PropInBeta { get; init; }           // true = prop in beta/reverse range (turboprop)
+    public double ThrottleRatio { get; init; }
     public bool ParkingBrakeSet { get; init; }
 
     // Systems

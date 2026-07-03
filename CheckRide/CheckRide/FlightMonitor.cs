@@ -33,7 +33,9 @@ internal static class ScoringConfig
     public const double AntiIceTempHighC    = 0.0;   // upper bound of icing window
     public const double AntiIceCloudMin     = 0.1;   // minimum cloud coverage to flag icing
     public const double IceDamageThreshold  = 0.01;  // frm_ice above this = icing damage event
-    public const double N1OverspeedPct     = 100.0; // N1% above this = prop/turbine over-speed (universal %)
+    public const double N1OverspeedPct        = 100.0; // N1% above this = prop/turbine over-speed (universal %)
+    public const double N1OverspeedBufferPct  = 2.0;  // grace buffer before flagging
+    public const double VnoOverspeedBufferKts = 5.0;  // kt above Vno before flagging
 
     public const int    CruiseStableCount   = 30;    // consecutive polls above cruise altitude to transition
     public const double CruiseAglFt         = 3000.0; // AGL above this = cruise phase candidate
@@ -71,9 +73,10 @@ internal static class ScoringConfig
     public const int PenaltySystemFlag         = -3;   // per system check failure
     public const int PenaltyTaxiFastSpeed      = -5;
     public const int PenaltyTaxiAggrTurn       = -3;
-    public const int PenaltyTakeoffLowPower    = -5;
-    public const int PenaltyTakeoffHdgDev      = -5;
-    public const int PenaltyTakeoffSideload    = -5;
+    public const int PenaltyTakeoffLowPower         = -5;
+    public const int PenaltyTakeoffHdgDev           = -5;
+    public const int PenaltyTakeoffSideload         = -5;
+    public const int PenaltyWrongDepartureAirport   = -20;
     public const int PenaltyEngineFire         = -30;
     public const int PenaltyEngineOut          = -25;
     public const int PenaltyEngineOverspeed    = -20;
@@ -171,6 +174,18 @@ public class FlightMonitor
     private bool _baroCheckedLanding;
     private double _peakAglFt;
 
+    // Expected departure (from saved flight)
+    private readonly string _expectedDepId;
+    private readonly double _expectedDepLat;
+    private readonly double _expectedDepLon;
+    private bool _wrongDepFlagged;
+
+    // Fires at liftoff (initial takeoff only, not go-arounds)
+    public event Action? AfterTakeoffCallout;
+
+    // Fires at touchdown with quality: "excellent", "good", or "poor"
+    public event Action<string>? TouchdownCallout;
+
     // Flight completion
     public event Action? FlightCompleted;
     private bool   _completionFired;
@@ -206,6 +221,13 @@ public class FlightMonitor
     private const int StableRequired = 30; // ~30 consecutive 1-second polls
 
     public FlightPhase CurrentPhase => _phase;
+
+    public FlightMonitor(string depId = "", double depLat = 0, double depLon = 0)
+    {
+        _expectedDepId  = depId;
+        _expectedDepLat = depLat;
+        _expectedDepLon = depLon;
+    }
 
     public void OnSnapshot(FlightDataSnapshot snap, EventLogger logger)
     {
@@ -288,7 +310,7 @@ public class FlightMonitor
                    $"Bnk={snap.BankAngleDeg:F1}° Pit={snap.PitchAngleDeg:F1}° Hdg={snap.MagHeadingDeg:F0}° " +
                    $"Gn={snap.GForceNormal:F2} Gl={snap.GForceLateral:F2} Ga={snap.GForceAxial:F2} " +
                    $"Sink={snap.TireSinkDepthM:F3}m " +
-                   $"Thr={snap.ThrottleRatio:F2} Rev={snap.PropInBeta} Flp={snap.FlapRatio:F2} Sbk={snap.SpeedbrakeRatio:F2} " +
+                   $"Thr={snap.ThrottleRatio:F2} Flp={snap.FlapRatio:F2} Sbk={snap.SpeedbrakeRatio:F2} " +
                    $"Wind={snap.WindSpeedKt:F0}kt@{snap.WindDirectionDeg:F0}° " +
                    $"Xpdr={snap.TransponderMode} AP={snap.AutopilotOn} " +
                    $"GS={snap.GlideslopeDevDots:F2}dot LOC={snap.LocalizerDevDots:F2}dot " +
@@ -303,7 +325,22 @@ public class FlightMonitor
             if (snap.OnGround && snap.GroundspeedKts > 2)
             {
                 _phase = FlightPhase.Taxiing;
-                if (!_depSet) { _depLat = snap.Latitude; _depLon = snap.Longitude; _depSet = true; }
+                if (!_depSet)
+                {
+                    _depLat = snap.Latitude; _depLon = snap.Longitude; _depSet = true;
+                    if (_expectedDepLat != 0 && !_wrongDepFlagged)
+                    {
+                        var distNm = HaversineNm(_expectedDepLat, _expectedDepLon, snap.Latitude, snap.Longitude);
+                        logger.Log($"Departure check — {distNm:F1}nm from {_expectedDepId}");
+                        if (distNm > 3.0)
+                        {
+                            LogEvent(FlightEventType.WrongDepartureAirport, snap.Timestamp,
+                                $"Wrong departure airport — {distNm:F0}nm from {_expectedDepId}");
+                            logger.Log($"EVENT: Wrong departure airport ({distNm:F0}nm from {_expectedDepId})");
+                            _wrongDepFlagged = true;
+                        }
+                    }
+                }
                 logger.Log($"Phase → Taxiing  GPS=({snap.Latitude:F5},{snap.Longitude:F5})");
             }
         }
@@ -319,8 +356,9 @@ public class FlightMonitor
                 _takeoffSideloadFlagged = false;
                 SampleTrack(snap, forced: true);
                 logger.Log($"Phase → Airborne  GPS=({snap.Latitude:F5},{snap.Longitude:F5})");
+                AfterTakeoffCallout?.Invoke();
 
-                if (!snap.PropInBeta && snap.ThrottleRatio < ScoringConfig.TakeoffMinThrottle)
+                if (snap.ThrottleRatio < ScoringConfig.TakeoffMinThrottle)
                 {
                     LogEvent(FlightEventType.TakeoffLowPower, snap.Timestamp,
                         $"Low power takeoff — throttle {snap.ThrottleRatio:P0} at liftoff (N1={snap.Eng1N1Pct:F0}%/{snap.Eng2N1Pct:F0}%)");
@@ -415,49 +453,59 @@ public class FlightMonitor
     {
         SampleTrack(snap, forced: true);
         logger.Log($"Landing  GPS=({snap.Latitude:F5},{snap.Longitude:F5})  VS={snap.VerticalSpeedFpm:F0}fpm");
-        _landingVsFpm      = snap.VerticalSpeedFpm;
-        _landingLateralG   = snap.GForceLateral;
+        _landingVsFpm       = snap.VerticalSpeedFpm;
+        _landingLateralG    = snap.GForceLateral;
         _windSpeedAtLanding = snap.WindSpeedKt;
-        _windDirAtLanding  = snap.WindDirectionDeg;
-        var absVs = Math.Abs(_landingVsFpm);
+        _windDirAtLanding   = snap.WindDirectionDeg;
+        var absVs  = Math.Abs(_landingVsFpm);
+        var absLat = Math.Abs(snap.GForceLateral);
+        var fast   = _vrefKts > 0 && snap.IndicatedAirspeedKts > _vrefKts * 1.15;
+
+        var quality = "excellent";
 
         if (snap.GearDeployRatio < 0.9)
         {
             LogEvent(FlightEventType.GearUpLanding, snap.Timestamp, "Gear-up landing");
             logger.Log("EVENT: Gear-up landing");
-            return;
-        }
-
-        if (absVs > 600)
-        {
-            LogEvent(FlightEventType.HardLanding, snap.Timestamp, $"Hard landing — {absVs:F0} fpm");
-            logger.Log($"EVENT: Hard landing ({absVs:F0} fpm)");
-        }
-        else if (absVs > 300)
-        {
-            LogEvent(FlightEventType.FirmLanding, snap.Timestamp, $"Firm landing — {absVs:F0} fpm");
-            logger.Log($"EVENT: Firm landing ({absVs:F0} fpm)");
+            quality = "poor";
         }
         else
         {
-            logger.Log($"Landing: {absVs:F0} fpm");
+            if (absVs > ScoringConfig.HardLandingFpm)
+            {
+                LogEvent(FlightEventType.HardLanding, snap.Timestamp, $"Hard landing — {absVs:F0} fpm");
+                logger.Log($"EVENT: Hard landing ({absVs:F0} fpm)");
+                quality = "poor";
+            }
+            else if (absVs > ScoringConfig.FirmLandingFpm)
+            {
+                LogEvent(FlightEventType.FirmLanding, snap.Timestamp, $"Firm landing — {absVs:F0} fpm");
+                logger.Log($"EVENT: Firm landing ({absVs:F0} fpm)");
+                quality = "good";
+            }
+            else
+            {
+                logger.Log($"Landing: {absVs:F0} fpm");
+            }
+
+            if (fast)
+            {
+                LogEvent(FlightEventType.FastLanding, snap.Timestamp,
+                    $"High speed landing — {snap.IndicatedAirspeedKts:F0}kt (Vref={_vrefKts:F0}kt)");
+                logger.Log($"EVENT: High speed landing ({snap.IndicatedAirspeedKts:F0}kt, Vref={_vrefKts:F0}kt)");
+                if (quality == "excellent") quality = "good";
+            }
+
+            if (absLat > ScoringConfig.SideloadLandingG)
+            {
+                LogEvent(FlightEventType.SideloadLanding, snap.Timestamp, $"Side-load landing — {absLat:F2}G lateral");
+                logger.Log($"EVENT: Side-load landing ({absLat:F2}G lateral)");
+                quality = "poor";
+            }
         }
 
-        // Fast landing — high IAS at touchdown regardless of VS
-        if (_vrefKts > 0 && snap.IndicatedAirspeedKts > _vrefKts * 1.15)
-        {
-            LogEvent(FlightEventType.FastLanding, snap.Timestamp,
-                $"High speed landing — {snap.IndicatedAirspeedKts:F0}kt (Vref={_vrefKts:F0}kt)");
-            logger.Log($"EVENT: High speed landing ({snap.IndicatedAirspeedKts:F0}kt, Vref={_vrefKts:F0}kt)");
-        }
-
-        // Side load — lateral G at touchdown indicates drift or crab not kicked out
-        var absLat = Math.Abs(snap.GForceLateral);
-        if (absLat > 0.3)
-        {
-            LogEvent(FlightEventType.SideloadLanding, snap.Timestamp, $"Side-load landing — {absLat:F2}G lateral");
-            logger.Log($"EVENT: Side-load landing ({absLat:F2}G lateral)");
-        }
+        logger.Log($"Touchdown quality: {quality}");
+        TouchdownCallout?.Invoke(quality);
     }
 
     private void DetectEvents(FlightDataSnapshot snap, EventLogger logger)
@@ -472,8 +520,8 @@ public class FlightMonitor
         }
         _prevCrashed = snap.HasCrashed;
 
-        // Overspeed — IAS exceeds Vno (normal ops limit); rising edge only
-        var overVno = _vnoKts > 0 && snap.IndicatedAirspeedKts > _vnoKts
+        // Overspeed — IAS exceeds Vno + 5kt buffer; rising edge only
+        var overVno = _vnoKts > 0 && snap.IndicatedAirspeedKts > _vnoKts + ScoringConfig.VnoOverspeedBufferKts
                       && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
         if (overVno && !_prevOverspeed)
         {
@@ -710,9 +758,9 @@ public class FlightMonitor
 
     private void DetectFailures(FlightDataSnapshot snap, EventLogger logger)
     {
-        // N1 > 100% = prop/turbine over-speed (N1% is universal, already normalized)
+        // N1 > 102% = prop/turbine over-speed (2% buffer avoids noise)
         var maxN1 = Math.Max(snap.Eng1N1Pct, snap.Eng2N1Pct);
-        if (maxN1 > ScoringConfig.N1OverspeedPct && !_engOverspeedFlagged)
+        if (maxN1 > ScoringConfig.N1OverspeedPct + ScoringConfig.N1OverspeedBufferPct && !_engOverspeedFlagged)
         {
             var eng = snap.Eng1N1Pct > snap.Eng2N1Pct ? 1 : 2;
             LogEvent(FlightEventType.FailureEngineOverspeed, snap.Timestamp,
@@ -943,6 +991,9 @@ public class FlightMonitor
 
     private void SampleConditions(FlightDataSnapshot snap)
     {
+        // Skip snapshots during sim loading (WindSpeedKt = -1 while loading)
+        if (snap.WindSpeedKt < 0 || snap.AltitudeAglFt < -5) return;
+
         var elapsed = (snap.Timestamp - _lastConditionSample).TotalSeconds;
         if (_lastConditionSample != DateTime.MinValue && elapsed < ConditionIntervalSec) return;
 
@@ -963,6 +1014,9 @@ public class FlightMonitor
 
     private void SampleTrack(FlightDataSnapshot snap, bool forced = false)
     {
+        // Skip snapshots during sim loading
+        if (snap.WindSpeedKt < 0 || snap.AltitudeAglFt < -5) return;
+
         var elapsed = (snap.Timestamp - _lastTrackSample).TotalSeconds;
         if (!forced && elapsed < TrackIntervalSec) return;
 
@@ -999,7 +1053,7 @@ public class FlightMonitor
             ImcFlight      = r.Events.Any(e => e.Type == FlightEventType.SystemIMC),
             TakeoffFlags   = r.Events.Count(e => e.Type is
                 FlightEventType.TakeoffLowPower or FlightEventType.TakeoffHeadingDeviation or
-                FlightEventType.TakeoffDirectionalControl),
+                FlightEventType.TakeoffDirectionalControl or FlightEventType.WrongDepartureAirport),
             TaxiFlags      = r.Events.Count(e => e.Type is
                 FlightEventType.TaxiFastSpeed or FlightEventType.TaxiAggressiveTurn),
             FailureCount   = r.Events.Count(e => e.Type is
@@ -1052,6 +1106,7 @@ public class FlightMonitor
         if (r.Events.Any(e => e.Type == FlightEventType.TakeoffLowPower))           score += ScoringConfig.PenaltyTakeoffLowPower;
         if (r.Events.Any(e => e.Type == FlightEventType.TakeoffHeadingDeviation))   score += ScoringConfig.PenaltyTakeoffHdgDev;
         if (r.Events.Any(e => e.Type == FlightEventType.TakeoffDirectionalControl)) score += ScoringConfig.PenaltyTakeoffSideload;
+        if (r.Events.Any(e => e.Type == FlightEventType.WrongDepartureAirport))     score += ScoringConfig.PenaltyWrongDepartureAirport;
 
         // Aircraft failures
         if (r.Events.Any(e => e.Type == FlightEventType.FailureEngineFire))      score += ScoringConfig.PenaltyEngineFire;

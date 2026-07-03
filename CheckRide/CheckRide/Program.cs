@@ -5,7 +5,7 @@ if (!isNew)
 {
     MessageBox.Show(
         "CheckRide is already running.",
-        "CheckRide — SimLetsFly",
+        "CheckRide for SimLetsFly",
         MessageBoxButtons.OK,
         MessageBoxIcon.Information);
     return;
