@@ -1777,7 +1777,11 @@ function _renderCrModalChart(track, events) {
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, W, H);
 
-  const pts = track.filter(p => p.AltMslFt != null && p.T != null);
+  const allPts  = track.filter(p => p.AltMslFt != null && p.T != null);
+  const taxiIdx = allPts.findIndex(p => p.Phase && p.Phase !== 'Idle');
+  const pts     = taxiIdx > 0 ? allPts.slice(taxiIdx) : allPts;
+  const tOffset = pts.length ? pts[0].T : 0;
+  const adjT    = p => p.T - tOffset;
   if (pts.length < 2) {
     ctx.fillStyle = '#4a6070';
     ctx.font = '12px monospace';
@@ -1788,13 +1792,13 @@ function _renderCrModalChart(track, events) {
   const pad  = { t: 14, b: 28, l: 56, r: 56 };
   const cW   = W - pad.l - pad.r;
   const cH   = H - pad.t - pad.b;
-  const tMax = pts[pts.length - 1].T || 1;
+  const tMax = adjT(pts[pts.length - 1]) || 1;
 
   // Altitude (left axis, green)
   const alts   = pts.map(p => p.AltMslFt);
   const minAlt = 0;
   const maxAlt = Math.max(...alts) * 1.1 || 1000;
-  const xOf    = p => pad.l + (p.T / tMax) * cW;
+  const xOf    = p => pad.l + (adjT(p) / tMax) * cW;
   const yAlt   = p => pad.t + cH - ((p.AltMslFt - minAlt) / (maxAlt - minAlt)) * cH;
 
   // Speed (right axis, yellow) — IasKts
@@ -1843,7 +1847,7 @@ function _renderCrModalChart(track, events) {
   // Event dots
   const BAD = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
   events.forEach(e => {
-    const pt = pts.find(p => p.T >= e.TimestampSec) || pts[pts.length - 1];
+    const pt = pts.find(p => p.T >= e.TimestampSec + tOffset) || pts[pts.length - 1];
     if (!pt) return;
     ctx.beginPath();
     ctx.arc(xOf(pt), yAlt(pt), 4, 0, Math.PI * 2);
