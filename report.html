@@ -182,7 +182,7 @@
     <div id="auth-header"></div>
   </div>
 </header>
-<div id="cr-toast">Copied to clipboard</div>
+<div id="cr-toast">Link copied — anyone with this link can view the report</div>
 
 <div class="report" id="report-root">
   <div class="state-box" id="state-loading">
@@ -233,7 +233,7 @@ function shareReport() {
   navigator.clipboard.writeText(window.location.href).then(() => {
     const t = document.getElementById('cr-toast');
     t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2200);
+    setTimeout(() => t.classList.remove('show'), 3000);
   });
 }
 
