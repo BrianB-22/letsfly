@@ -1680,7 +1680,8 @@ function _renderCheckRides(flightId, runs) {
         <span class="cr-score">${r.score} pts</span>
         <span class="cr-meta">${date} · ${sim} · ${aircraft}</span>
         ${trend}
-        <a href="https://simletsfly.com/report.html?id=${r.id}" target="_blank" onclick="event.stopPropagation()" title="Share report" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-decoration:none;padding:1px 6px;border:1px solid var(--border);border-radius:2px;margin-left:4px;">↗</a>
+        <button onclick="event.stopPropagation();toggleCrRun('${r.id}','${flightId}')" style="font-family:var(--mono);font-size:11px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:2px;padding:1px 7px;cursor:pointer;margin-left:4px;">⊞ Quick View</button>
+        <a href="https://simletsfly.com/report.html?id=${r.id}" target="_blank" onclick="event.stopPropagation()" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-decoration:none;padding:1px 7px;border:1px solid var(--border);border-radius:2px;margin-left:4px;">↗ Report</a>
         <span class="cr-chevron">▾</span>
       </div>
       <div class="cr-run-body" id="crrun-body-${r.id}">
