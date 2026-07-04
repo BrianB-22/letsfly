@@ -163,11 +163,14 @@
       body::before { display: none; }
       header { position: static; background: #fff !important; border-bottom: 1px solid #ddd !important; }
       .logo-mark { color: #111 !important; }
-      .print-btn, .share-btn, #auth-header, .back-link, .cr-playback-bar, #cr-play-btn { display: none !important; }
-      #cr-modal-map { height: 300px; }
+      .print-btn, .share-btn, #auth-header, .back-link, .cr-playback-bar, #cr-play-btn, #cr-toast { display: none !important; }
+      #cr-modal-map { display: none !important; }
+      #print-map-url { display: block !important; }
+      #cr-modal-chart { background: #fff !important; border: 1px solid #ccc !important; }
       .report { padding: 12px 0; gap: 14px; }
       .report-cols { grid-template-columns: 1fr 1fr; }
     }
+    #print-map-url { display: none; font-family: var(--mono); font-size: 11px; color: #555; padding: 6px 0; }
   </style>
 </head>
 <body>
@@ -415,6 +418,7 @@ function renderReport(r, depId, arrId, depName, arrName) {
     <div>
       <div class="section-label">Flight Track</div>
       <div id="cr-modal-map"></div>
+      <div id="print-map-url"></div>
       <canvas id="cr-modal-chart"></canvas>
       <div class="cr-playback-bar">
         <button id="cr-play-btn" onclick="togglePlayback()">▶</button>
@@ -553,18 +557,44 @@ function renderMap(track, events, depIcao, arrIcao) {
   _reportMap.fitBounds(L.latLngBounds(pts.map(p => [p.Lat, p.Lon])), { padding: [40, 40] });
 }
 
+// ── PRINT HOOKS ──
+let _printTrack = [], _printEvents = [];
+window.addEventListener('beforeprint', () => {
+  // Populate map URL label
+  const el = document.getElementById('print-map-url');
+  if (el) el.textContent = 'Flight track: ' + window.location.href;
+  // Re-render chart in light mode
+  renderChart(_printTrack, _printEvents, true);
+});
+window.addEventListener('afterprint', () => {
+  renderChart(_printTrack, _printEvents, false);
+});
+
 // ── CHART ──
-function renderChart(track, events) {
+function renderChart(track, events, printMode = false) {
   const canvas = document.getElementById('cr-modal-chart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
+  _printTrack = track; _printEvents = events; // save for print re-render
   const dpr = devicePixelRatio || 1;
   const W   = canvas.offsetWidth;
   const H   = 160;
   canvas.width  = W * dpr;
   canvas.height = H * dpr;
   ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, W, H);
+
+  // Theme colours
+  const BG       = printMode ? '#ffffff' : '#0b1a2c';
+  const GRID     = printMode ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
+  const ALT_LINE = printMode ? '#1a7a45' : '#00e676';
+  const ALT_FILL = printMode ? 'rgba(26,122,69,0.12)' : 'rgba(0,230,118,0.12)';
+  const SPD_LINE = printMode ? '#b08000' : '#f4d03f';
+  const AXIS_CLR = printMode ? '#333' : '#7a92a8';
+  const DOT_BAD  = '#cc2222';
+  const DOT_WARN = printMode ? '#b08000' : '#f4d03f';
+
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, W, H);
 
   const allPts  = track.filter(p => p.AltMslFt != null && p.T != null);
   const taxiIdx = allPts.findIndex(p => p.Phase && p.Phase !== 'Idle');
@@ -588,7 +618,7 @@ function renderChart(track, events) {
   const maxSpd = Math.max(...pts.map(p => p.IasKts || 0)) * 1.1 || 1;
   const ySpd   = p => pad.t + cH - ((p.IasKts || 0) / maxSpd) * cH;
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = GRID; ctx.lineWidth = 1;
   [0.25, 0.5, 0.75].forEach(f => {
     const y = pad.t + cH * (1 - f);
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cW, y); ctx.stroke();
@@ -599,15 +629,15 @@ function renderChart(track, events) {
   ctx.beginPath(); ctx.moveTo(xOf(pts[0]), yAlt(pts[0]));
   pts.forEach(p => ctx.lineTo(xOf(p), yAlt(p)));
   ctx.lineTo(xOf(pts[pts.length-1]), pad.t + cH); ctx.lineTo(xOf(pts[0]), pad.t + cH); ctx.closePath();
-  ctx.fillStyle = 'rgba(0,230,118,0.12)'; ctx.fill();
+  ctx.fillStyle = ALT_FILL; ctx.fill();
   ctx.beginPath(); ctx.moveTo(xOf(pts[0]), yAlt(pts[0]));
   pts.forEach(p => ctx.lineTo(xOf(p), yAlt(p)));
-  ctx.strokeStyle = '#00e676'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.strokeStyle = ALT_LINE; ctx.lineWidth = 2; ctx.stroke();
 
   if (hasSpeeds) {
     ctx.beginPath(); ctx.moveTo(xOf(pts[0]), ySpd(pts[0]));
     pts.forEach(p => ctx.lineTo(xOf(p), ySpd(p)));
-    ctx.strokeStyle = '#f4d03f'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle = SPD_LINE; ctx.lineWidth = 1.5; ctx.stroke();
   }
 
   const BAD = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
@@ -615,10 +645,10 @@ function renderChart(track, events) {
     const pt = pts.find(p => p.T >= e.TimestampSec) || pts[pts.length-1];
     if (!pt) return;
     ctx.beginPath(); ctx.arc(xOf(pt), yAlt(pt), 4, 0, Math.PI*2);
-    ctx.fillStyle = BAD.has(e.Type) ? '#ff4444' : '#f4d03f'; ctx.fill();
+    ctx.fillStyle = BAD.has(e.Type) ? DOT_BAD : DOT_WARN; ctx.fill();
   });
 
-  ctx.fillStyle = '#00e676'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+  ctx.fillStyle = ALT_LINE; ctx.font = '10px monospace'; ctx.textAlign = 'right';
   [0, 0.5, 1].forEach(f => {
     const alt = Math.round(maxAlt * f / 1000) * 1000;
     ctx.fillText(alt.toLocaleString(), pad.l - 6, pad.t + cH - f * cH + 4);
@@ -627,7 +657,7 @@ function renderChart(track, events) {
   ctx.textAlign = 'center'; ctx.fillText('ALTITUDE (ft)', 0, 0); ctx.restore();
 
   if (hasSpeeds) {
-    ctx.fillStyle = '#f4d03f'; ctx.textAlign = 'left';
+    ctx.fillStyle = SPD_LINE; ctx.textAlign = 'left';
     [0, 0.5, 1].forEach(f => {
       ctx.fillText(Math.round(maxSpd * f / 10) * 10 + ' kt', pad.l + cW + 6, pad.t + cH - f * cH + 4);
     });
@@ -635,7 +665,7 @@ function renderChart(track, events) {
     ctx.textAlign = 'center'; ctx.fillText('SPEED (kt)', 0, 0); ctx.restore();
   }
 
-  ctx.fillStyle = '#4a6070'; ctx.textAlign = 'center';
+  ctx.fillStyle = AXIS_CLR; ctx.textAlign = 'center';
   const fmtT = s => { const m = Math.floor(s/60); return m + ':' + String(s%60).padStart(2,'0'); };
   [0, 0.25, 0.5, 0.75, 1].forEach(f => {
     ctx.fillText(fmtT(Math.round(tMax * f)), pad.l + f * cW, H - 8);
