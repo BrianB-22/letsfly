@@ -1726,6 +1726,7 @@ function _renderCrRunBody(r) {
       <div class="cr-stat"><span class="cr-stat-label">Flight Time</span><span class="cr-stat-val">${stats.FlightTimeSec ? fmtTime(stats.FlightTimeSec) : '—'}</span></div>
       <div class="cr-stat"><span class="cr-stat-label">Distance</span><span class="cr-stat-val">${fmt(stats.DistanceNm, ' nm')}</span></div>
       <div class="cr-stat"><span class="cr-stat-label">Autopilot</span><span class="cr-stat-val">${stats.AutopilotPct != null ? stats.AutopilotPct.toFixed(0) + '%' : '—'}</span></div>
+      ${(() => { const c = calcPassengerComfort(r); return `<div class="cr-stat"><span class="cr-stat-label">Pax Comfort</span><span class="cr-stat-val" style="color:${c.color}">${c.label} <span style="color:var(--text3);font-size:11px;">${c.score}/100</span></span></div>`; })()}
     </div>
     <div class="cr-events-label" style="margin-top:10px;">Score Breakdown</div>
     <div class="cr-score-breakdown">${_buildScoreBreakdown(r)}</div>`;
@@ -1773,6 +1774,36 @@ function openCrModal(runId, flightId) {
 function closeCrModal() {
   _stopPlayback();
   document.getElementById('cr-modal').style.display = 'none';
+}
+
+function calcPassengerComfort(r) {
+  const stats   = r.stats   || {};
+  const events  = r.events  || [];
+  const summary = r.summary || {};
+  let score = 100;
+  const absVs = Math.abs(stats.LandingVsFpm || 0);
+  if      (absVs >= 600) score -= 35;
+  else if (absVs >= 300) score -= 18;
+  else if (absVs >= 150) score -= 5;
+  if (events.some(e => e.Type === 'SideloadLanding')) score -= 15;
+  const maxG = stats.MaxGForceNormal || 0;
+  if      (maxG >= 3.0) score -= 25;
+  else if (maxG >= 2.5) score -= 15;
+  else if (maxG >= 2.0) score -= 8;
+  else if (maxG >= 1.8) score -= 3;
+  score -= events.filter(e => e.Type === 'HighG').length     * 5;
+  score -= events.filter(e => e.Type === 'VeryHighG').length * 12;
+  const maxBank = Math.abs(stats.MaxBankAngleDeg || 0);
+  if      (maxBank >= 60) score -= 18;
+  else if (maxBank >= 45) score -= 8;
+  else if (maxBank >= 35) score -= 2;
+  score -= events.filter(e => e.Type === 'HighBank').length     * 3;
+  score -= events.filter(e => e.Type === 'VeryHighBank').length * 8;
+  if (summary.Crashed || summary.RunwayExcursion) score = 0;
+  score = Math.max(0, Math.min(100, score));
+  const label = score >= 90 ? 'Excellent' : score >= 75 ? 'Good' : score >= 55 ? 'Fair' : score >= 30 ? 'Poor' : 'Uncomfortable';
+  const color = score >= 90 ? 'var(--green)' : score >= 75 ? 'var(--accent)' : score >= 55 ? 'var(--amber)' : 'var(--red)';
+  return { score, label, color };
 }
 
 function _buildScoreBreakdown(r) {
