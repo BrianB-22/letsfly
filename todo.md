@@ -23,6 +23,7 @@
 - **My Stats** — per-user page: total flights, countries visited, estimated hours flown, top regions, rating trends. All data already in Supabase — just needs aggregation queries + a page.
 - ~~**Community feed**~~ — dropped.
 - **Logbook CSV export** — let users download their My Flights data as a spreadsheet. Low effort, useful.
+- **Fuel tracking (CheckRide client)** — capture fuel quantity (lbs or kg) at takeoff and at landing via XP12 REST API. Upload `FuelAtTakeoffLbs` / `FuelAtLandingLbs` to `stats`. Website can then show fuel burned per flight and average consumption (lbs/hr or gal/hr) in My Stats.
 
 ### Flight Planning
 - **Aircraft profiles** — save multiple aircraft (C172 @ 120kt, A320 @ 450kt) instead of one cruise speed. Quick switch before generating a flight.

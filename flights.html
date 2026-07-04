@@ -409,8 +409,8 @@
         <div class="stat-chip-value" id="stat-completed" style="color:var(--green)">—</div>
       </div>
       <div class="stat-chip">
-        <div class="stat-chip-label">Pending</div>
-        <div class="stat-chip-value" id="stat-pending" style="color:var(--text2)">—</div>
+        <div class="stat-chip-label">CheckRides</div>
+        <div class="stat-chip-value" id="stat-checkrides" style="color:var(--accent)">—</div>
       </div>
       <div class="stat-chip">
         <div class="stat-chip-label">Total Distance</div>
@@ -701,6 +701,7 @@ async function loadThemePref() {
 }
 
 let _flightsWithCheckRide = new Set();
+let _totalCheckRideCount  = 0;
 
 async function loadFlights() {
   loadThemePref();
@@ -715,7 +716,9 @@ async function loadFlights() {
     return;
   }
   flights = flightsRes.data || [];
-  _flightsWithCheckRide = new Set((crRes.data || []).map(r => r.flight_id));
+  const crData = crRes.data || [];
+  _flightsWithCheckRide = new Set(crData.map(r => r.flight_id));
+  _totalCheckRideCount  = crData.length;
 
   document.getElementById('add-flight-btn').style.display = '';
   if (flights.length) document.getElementById('sort-bar').style.display = 'flex';
@@ -776,9 +779,9 @@ function renderStats() {
     : '—';
 
   // Row 1
-  document.getElementById('stat-total').textContent     = flights.length;
-  document.getElementById('stat-completed').textContent = completed.length;
-  document.getElementById('stat-pending').textContent   = flights.length - completed.length;
+  document.getElementById('stat-total').textContent      = flights.length;
+  document.getElementById('stat-completed').textContent  = completed.length;
+  document.getElementById('stat-checkrides').textContent = _totalCheckRideCount || '—';
   document.getElementById('stat-dist').textContent      = Math.round(totalDist).toLocaleString() + ' nm';
   document.getElementById('stat-rating').textContent    = avg !== '—' ? '★ ' + avg : '—';
   document.getElementById('stat-challenge').textContent = challenges.length || '—';
