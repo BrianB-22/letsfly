@@ -42,6 +42,10 @@
     .back-link:hover { color: var(--accent); }
     .print-btn { font-family: var(--cond); font-size: 14px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 14px; border-radius: 3px; cursor: pointer; background: transparent; border: 1px solid var(--border2); color: var(--text2); transition: all 0.15s; }
     .print-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .share-btn { font-family: var(--cond); font-size: 14px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 14px; border-radius: 3px; cursor: pointer; background: transparent; border: 1px solid var(--border2); color: var(--text2); transition: all 0.15s; }
+    .share-btn:hover { border-color: var(--accent); color: var(--accent); }
+    #cr-toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--bg3); border: 1px solid var(--border2); color: var(--text); font-family: var(--mono); font-size: 13px; padding: 8px 20px; border-radius: 4px; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 9999; }
+    #cr-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     .user-chip { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; color: var(--text2); }
     .signout-btn { font-family: var(--cond); font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; cursor: pointer; background: transparent; border: 1px solid var(--border2); color: var(--text3); transition: all 0.15s; }
     .signout-btn:hover { border-color: var(--red); color: var(--red); }
@@ -155,9 +159,11 @@
 
     /* ── PRINT ── */
     @media print {
+      body { background: #fff !important; color: #111 !important; }
       body::before { display: none; }
-      header { position: static; }
-      .print-btn, .cr-playback-bar, #cr-play-btn { display: none !important; }
+      header { position: static; background: #fff !important; border-bottom: 1px solid #ddd !important; }
+      .logo-mark { color: #111 !important; }
+      .print-btn, .share-btn, #auth-header, .back-link, .cr-playback-bar, #cr-play-btn { display: none !important; }
       #cr-modal-map { height: 300px; }
       .report { padding: 12px 0; gap: 14px; }
       .report-cols { grid-template-columns: 1fr 1fr; }
@@ -170,10 +176,12 @@
   <a class="logo-mark" href="/">SIMLETSFLY</a>
   <div class="header-right">
     <a class="back-link" href="flights.html">← My Flights</a>
+    <button class="share-btn" onclick="shareReport()">↗ Share</button>
     <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
     <div id="auth-header"></div>
   </div>
 </header>
+<div id="cr-toast">Copied to clipboard</div>
 
 <div class="report" id="report-root">
   <div class="state-box" id="state-loading">
@@ -219,6 +227,14 @@ const _pb = {
   _chartImg: null, _chartPad: null, _chartW: 0, _chartH: 0,
   _chartCW: 0, _chartMaxT: 0, _chartDpr: 1,
 };
+
+function shareReport() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    const t = document.getElementById('cr-toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  });
+}
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({
@@ -312,7 +328,7 @@ function showError(msg) {
 function renderReport(r, depId, arrId, depName, arrName) {
   const grade   = r.grade || '?';
   const score   = r.score ?? '—';
-  const date    = new Date(r.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const date    = new Date(r.recorded_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
   const sim     = r.sim === 'xplane12' ? 'X-Plane 12' : r.sim === 'xplane11' ? 'X-Plane 11' : r.sim || '—';
   const aircraft = r.aircraft || '—';
   const route   = (depId && arrId) ? `${depId} <span>→</span> ${arrId}` : (depId || arrId || 'CheckRide Report');
