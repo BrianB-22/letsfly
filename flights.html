@@ -1633,7 +1633,7 @@ function _renderCheckRides(flightId, runs) {
     return;
   }
 
-  if (badge) badge.textContent = runs.length + ' run' + (runs.length !== 1 ? 's' : '');
+  if (badge) badge.textContent = runs.length + ' report' + (runs.length !== 1 ? 's' : '');
 
   const cardBadge = document.getElementById('cr-card-badge-' + flightId);
   if (cardBadge) cardBadge.style.display = '';
