@@ -1,4 +1,4 @@
-const CACHE = 'simletsfly-v76';
+const CACHE = 'simletsfly-v77';
 const STATIC = [
   '/',
   '/index.html',
@@ -48,7 +48,21 @@ self.addEventListener('fetch', e => {
   ];
   if (passThrough.some(h => url.hostname.includes(h))) return;
 
-  // Cache-first for same-origin static assets
+  // Network-first for HTML navigations so page updates are instant
+  if (e.request.mode === 'navigate' || e.request.destination === 'document') {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match(e.request, { ignoreSearch: true }))
+    );
+    return;
+  }
+
+  // Cache-first for all other static assets (JS, CSS, images, JSON)
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
