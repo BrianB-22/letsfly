@@ -164,13 +164,10 @@
       header { position: static; background: #fff !important; border-bottom: 1px solid #ddd !important; }
       .logo-mark { color: #111 !important; }
       .print-btn, .share-btn, #auth-header, .back-link, .cr-playback-bar, #cr-play-btn, #cr-toast { display: none !important; }
-      #cr-modal-map { display: none !important; }
-      #print-map-url { display: block !important; }
       #cr-modal-chart { background: #fff !important; border: 1px solid #ccc !important; }
       .report { padding: 12px 0; gap: 14px; }
       .report-cols { grid-template-columns: 1fr 1fr; }
     }
-    #print-map-url { display: none; font-family: var(--mono); font-size: 11px; color: #555; padding: 6px 0; }
   </style>
 </head>
 <body>
@@ -418,7 +415,6 @@ function renderReport(r, depId, arrId, depName, arrName) {
     <div>
       <div class="section-label">Flight Track</div>
       <div id="cr-modal-map"></div>
-      <div id="print-map-url"></div>
       <canvas id="cr-modal-chart"></canvas>
       <div class="cr-playback-bar">
         <button id="cr-play-btn" onclick="togglePlayback()">▶</button>
@@ -521,7 +517,7 @@ function renderMap(track, events, depIcao, arrIcao) {
   const mapEl = document.getElementById('cr-modal-map');
   if (_reportMap) { _reportMap.remove(); _reportMap = null; }
   _reportMap = L.map(mapEl, { zoomControl: true, attributionControl: false });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(_reportMap);
+  _darkTileLayer = L.tileLayer(TILE_DARK, { maxZoom: 19 }).addTo(_reportMap);
 
   const pts = track.filter(p => p.Lat && p.Lon);
   if (!pts.length) {
@@ -559,14 +555,27 @@ function renderMap(track, events, depIcao, arrIcao) {
 
 // ── PRINT HOOKS ──
 let _printTrack = [], _printEvents = [];
+const TILE_DARK  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+let _darkTileLayer = null;
+
 window.addEventListener('beforeprint', () => {
-  // Populate map URL label
-  const el = document.getElementById('print-map-url');
-  if (el) el.textContent = 'Flight track: ' + window.location.href;
+  // Switch map to light tiles for print
+  if (_reportMap && _darkTileLayer) {
+    _reportMap.removeLayer(_darkTileLayer);
+    _darkTileLayer = L.tileLayer(TILE_LIGHT, { maxZoom: 19 }).addTo(_reportMap);
+    _reportMap.invalidateSize();
+  }
   // Re-render chart in light mode
   renderChart(_printTrack, _printEvents, true);
 });
 window.addEventListener('afterprint', () => {
+  // Restore dark map tiles
+  if (_reportMap && _darkTileLayer) {
+    _reportMap.removeLayer(_darkTileLayer);
+    _darkTileLayer = L.tileLayer(TILE_DARK, { maxZoom: 19 }).addTo(_reportMap);
+    _reportMap.invalidateSize();
+  }
   renderChart(_printTrack, _printEvents, false);
 });
 
