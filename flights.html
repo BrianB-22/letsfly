@@ -496,7 +496,10 @@
         <span class="cr-modal-title" id="cr-modal-title"></span>
         <span id="cr-modal-version" style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-left:14px;letter-spacing:1px;"></span>
       </div>
-      <button class="modal-close" onclick="closeCrModal()">×</button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <a id="cr-share-link" href="#" target="_blank" title="Share report" style="font-family:var(--mono);font-size:12px;color:var(--text3);text-decoration:none;letter-spacing:1px;border:1px solid var(--border2);padding:3px 10px;border-radius:3px;transition:color 0.15s,border-color 0.15s;">↗ SHARE</a>
+        <button class="modal-close" onclick="closeCrModal()">×</button>
+      </div>
     </div>
     <div class="cr-playback-bar">
       <button id="cr-play-btn" onclick="togglePlayback()" title="Play/Pause">▶</button>
@@ -1677,6 +1680,7 @@ function _renderCheckRides(flightId, runs) {
         <span class="cr-score">${r.score} pts</span>
         <span class="cr-meta">${date} · ${sim} · ${aircraft}</span>
         ${trend}
+        <a href="https://simletsfly.com/report.html?id=${r.id}" target="_blank" onclick="event.stopPropagation()" title="Share report" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-decoration:none;padding:1px 6px;border:1px solid var(--border);border-radius:2px;margin-left:4px;">↗</a>
         <span class="cr-chevron">▾</span>
       </div>
       <div class="cr-run-body" id="crrun-body-${r.id}">
@@ -1749,6 +1753,7 @@ function openCrModal(runId, flightId) {
   document.getElementById('cr-modal-grade').className    = 'cr-modal-grade cr-grade-' + grade;
   document.getElementById('cr-modal-title').textContent  = `${r.score} pts · ${date} · ${sim} · ${aircraft}`;
   document.getElementById('cr-modal-version').textContent = `Scoring: ${r.scoring_version || '—'}`;
+  document.getElementById('cr-share-link').href = `https://simletsfly.com/report.html?id=${r.id}`;
 
   _renderCrModalStats(r);
   _renderCrModalEvents(r);
