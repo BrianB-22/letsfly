@@ -199,7 +199,7 @@ async Task<ScanResult> Probe(string name, int idx)
             return new(name, idx, "404", "", "");
 
         var entry = arr[0];
-        int id    = entry.GetProperty("id").GetInt32();
+        long id   = entry.GetProperty("id").GetInt64();
         string typ = entry.TryGetProperty("value_type", out var vt) ? vt.GetString() ?? "" : "";
 
         var valUrl = $"{BASE}/datarefs/{id}/value";
@@ -235,7 +235,7 @@ async Task<ScanResult> Probe(string name, int idx)
     }
     catch (TaskCanceledException) { return new(name, idx, "TIMEOUT", "", ""); }
     catch (HttpRequestException ex) { return new(name, idx, "CONN-ERR", ex.Message, ""); }
-    catch (Exception ex)            { return new(name, idx, "ERR", ex.Message, ""); }
+    catch (Exception ex)            { return new(name, idx, "ERR", $"{ex.GetType().Name}: {ex.Message}", ""); }
 }
 
 static string FormatElem(JsonElement e) => e.ValueKind == JsonValueKind.Number
@@ -452,22 +452,46 @@ Console.WriteLine("Connected.");
 Console.ResetColor();
 Console.WriteLine();
 
-// ── Diagnostic: show raw response for one known dataref ──
-Console.WriteLine("Diagnostic — raw API response for 'sim/flightmodel/position/latitude':");
+// ── Diagnostic: trace full probe for one known dataref ──
+Console.WriteLine("Diagnostic — tracing full probe for 'sim/flightmodel/position/latitude':");
 try
 {
-    var testUrl  = $"{BASE}/datarefs?filter[name]=sim%2Fflightmodel%2Fposition%2Flatitude";
-    var testResp = await http.GetAsync(testUrl);
-    var testBody = await testResp.Content.ReadAsStringAsync();
+    // Step 1: list request
+    var listUrl  = $"{BASE}/datarefs?filter[name]={Uri.EscapeDataString("sim/flightmodel/position/latitude")}";
+    Console.WriteLine($"  LIST  GET {listUrl}");
+    var listResp = await http.GetAsync(listUrl);
+    var listBody = await listResp.Content.ReadAsStringAsync();
     Console.ForegroundColor = ConsoleColor.DarkGray;
-    Console.WriteLine($"  HTTP {(int)testResp.StatusCode}");
-    Console.WriteLine($"  {testBody[..Math.Min(300, testBody.Length)]}");
+    Console.WriteLine($"  LIST  HTTP {(int)listResp.StatusCode}");
+    Console.WriteLine($"  LIST  {listBody[..Math.Min(300, listBody.Length)]}");
     Console.ResetColor();
+
+    // Step 2: parse ID
+    using var listDoc = JsonDocument.Parse(listBody);
+    var arr = listDoc.RootElement.GetProperty("data");
+    Console.WriteLine($"  LIST  array length = {arr.GetArrayLength()}");
+    if (arr.GetArrayLength() > 0)
+    {
+        var entry = arr[0];
+        Console.WriteLine($"  LIST  id raw text = {entry.GetProperty("id").GetRawText()}");
+        long id = entry.GetProperty("id").GetInt64();
+        Console.WriteLine($"  LIST  id as long  = {id}");
+
+        // Step 3: value request
+        var valUrl = $"{BASE}/datarefs/{id}/value";
+        Console.WriteLine($"  VALUE GET {valUrl}");
+        var valResp = await http.GetAsync(valUrl);
+        var valBody = await valResp.Content.ReadAsStringAsync();
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.WriteLine($"  VALUE HTTP {(int)valResp.StatusCode}");
+        Console.WriteLine($"  VALUE {valBody[..Math.Min(300, valBody.Length)]}");
+        Console.ResetColor();
+    }
 }
 catch (Exception ex)
 {
     Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine($"  FAILED: {ex.Message}");
+    Console.WriteLine($"  FAILED ({ex.GetType().Name}): {ex.Message}");
     Console.ResetColor();
 }
 Console.WriteLine();
@@ -508,7 +532,7 @@ Console.WriteLine();
 Console.ForegroundColor = ConsoleColor.Yellow;
 Console.WriteLine("SCAN 2 — ENGINES RUNNING");
 Console.ResetColor();
-Console.WriteLine("Start both engines and get the aircraft ready for flight.");
+Console.WriteLine("Start all engines. Start both engines and get the aircraft ready for flight.");
 Console.WriteLine("Avionics on, systems running — whatever 'ready for departure' means for this aircraft.");
 Console.Write("Press Enter when ready...");
 Console.ReadLine();
