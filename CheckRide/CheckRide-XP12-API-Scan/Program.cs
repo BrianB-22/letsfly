@@ -1,3 +1,4 @@
+using System.Management;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -273,7 +274,9 @@ async Task<List<ScanResult>> RunScan(string label, StringBuilder log)
 
         log.AppendLine(r.Status == "OK"
             ? $"  {Key(r.Name, r.Idx),-72} = {r.Value}  [{r.RawType}]"
-            : $"  {Key(r.Name, r.Idx),-72}   [{r.Status}]");
+            : string.IsNullOrEmpty(r.Value)
+                ? $"  {Key(r.Name, r.Idx),-72}   [{r.Status}]"
+                : $"  {Key(r.Name, r.Idx),-72}   [{r.Status}] {r.Value}");
 
         Console.Write($"\r  {done}/{total}  {Key(name, idx),-65}");
     }
@@ -326,6 +329,99 @@ void WriteDiff(List<ScanResult> idle, List<ScanResult> eng, StringBuilder log)
     log.AppendLine();
 }
 
+// ── System info ───────────────────────────────────────────────────────────────
+
+static string WmiFirst(string query, string prop)
+{
+    try
+    {
+        using var searcher = new ManagementObjectSearcher(query);
+        foreach (ManagementObject obj in searcher.Get())
+            return obj[prop]?.ToString()?.Trim() ?? "—";
+    }
+    catch { }
+    return "—";
+}
+
+static string WmiAll(string query, string prop)
+{
+    try
+    {
+        var results = new List<string>();
+        using var searcher = new ManagementObjectSearcher(query);
+        foreach (ManagementObject obj in searcher.Get())
+        {
+            var val = obj[prop]?.ToString()?.Trim();
+            if (!string.IsNullOrEmpty(val)) results.Add(val);
+        }
+        return results.Count > 0 ? string.Join(", ", results) : "—";
+    }
+    catch { }
+    return "—";
+}
+
+async Task<string> GetXP12Version()
+{
+    try
+    {
+        var resp = await http.GetAsync("http://localhost:8086/api/capabilities");
+        if (!resp.IsSuccessStatusCode) return "unknown";
+        var json = await resp.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        // Try common paths
+        if (root.TryGetProperty("data", out var data))
+        {
+            if (data.TryGetProperty("xplane_version_number", out var v)) return v.ToString();
+            if (data.TryGetProperty("version", out var v2))              return v2.GetString() ?? "unknown";
+        }
+        // Return raw if we can't parse it
+        return json[..Math.Min(200, json.Length)];
+    }
+    catch { return "unknown"; }
+}
+
+void AppendSystemInfo(StringBuilder log, string xp12Version)
+{
+    log.AppendLine("=== SYSTEM INFORMATION ===");
+
+    // OS
+    log.AppendLine($"OS:          {WmiFirst("SELECT * FROM Win32_OperatingSystem", "Caption")} " +
+                   $"(Build {WmiFirst("SELECT * FROM Win32_OperatingSystem", "BuildNumber")})");
+
+    // CPU
+    log.AppendLine($"CPU:         {WmiFirst("SELECT * FROM Win32_Processor", "Name")}");
+    log.AppendLine($"CPU Cores:   {WmiFirst("SELECT * FROM Win32_Processor", "NumberOfCores")} cores / " +
+                   $"{WmiFirst("SELECT * FROM Win32_Processor", "NumberOfLogicalProcessors")} logical");
+    log.AppendLine($"CPU Speed:   {WmiFirst("SELECT * FROM Win32_Processor", "MaxClockSpeed")} MHz");
+
+    // RAM
+    try
+    {
+        long totalBytes = 0;
+        using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PhysicalMemory");
+        foreach (ManagementObject obj in searcher.Get())
+            totalBytes += Convert.ToInt64(obj["Capacity"]);
+        log.AppendLine($"RAM:         {totalBytes / (1024L * 1024 * 1024)} GB installed");
+    }
+    catch { log.AppendLine("RAM:         —"); }
+
+    // GPU(s)
+    log.AppendLine($"GPU:         {WmiAll("SELECT * FROM Win32_VideoController", "Name")}");
+    log.AppendLine($"VRAM:        {WmiAll("SELECT * FROM Win32_VideoController", "AdapterRAM")} bytes");
+    log.AppendLine($"Driver:      {WmiAll("SELECT * FROM Win32_VideoController", "DriverVersion")}");
+
+    // Display
+    log.AppendLine($"Resolution:  {WmiFirst("SELECT * FROM Win32_VideoController", "CurrentHorizontalResolution")}" +
+                   $" × {WmiFirst("SELECT * FROM Win32_VideoController", "CurrentVerticalResolution")}");
+
+    // XP12
+    log.AppendLine($"XP12 API:    {xp12Version}");
+
+    log.AppendLine(new string('=', 78));
+    log.AppendLine();
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 Console.OutputEncoding = Encoding.UTF8;
@@ -356,6 +452,26 @@ Console.WriteLine("Connected.");
 Console.ResetColor();
 Console.WriteLine();
 
+// ── Diagnostic: show raw response for one known dataref ──
+Console.WriteLine("Diagnostic — raw API response for 'sim/flightmodel/position/latitude':");
+try
+{
+    var testUrl  = $"{BASE}/datarefs?filter[name]=sim%2Fflightmodel%2Fposition%2Flatitude";
+    var testResp = await http.GetAsync(testUrl);
+    var testBody = await testResp.Content.ReadAsStringAsync();
+    Console.ForegroundColor = ConsoleColor.DarkGray;
+    Console.WriteLine($"  HTTP {(int)testResp.StatusCode}");
+    Console.WriteLine($"  {testBody[..Math.Min(300, testBody.Length)]}");
+    Console.ResetColor();
+}
+catch (Exception ex)
+{
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine($"  FAILED: {ex.Message}");
+    Console.ResetColor();
+}
+Console.WriteLine();
+
 var log = new StringBuilder();
 log.AppendLine("CheckRide XP12 API Debug Scan");
 log.AppendLine($"Version:   {VERSION}");
@@ -363,6 +479,14 @@ log.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
 log.AppendLine($"Datarefs:  {DATAREFS.Length} probed");
 log.AppendLine(new string('=', 78));
 log.AppendLine();
+
+Console.Write("Collecting system information... ");
+var xp12Ver = await GetXP12Version();
+AppendSystemInfo(log, xp12Ver);
+Console.ForegroundColor = ConsoleColor.Green;
+Console.WriteLine("Done.");
+Console.ResetColor();
+Console.WriteLine();
 
 // ── Scan 1 — Idle ──
 Console.ForegroundColor = ConsoleColor.Yellow;
