@@ -218,7 +218,8 @@ const _sb = window.supabase.createClient(
 );
 
 let currentUser = null;
-let _reportMap  = null;
+let _reportMap   = null;
+let _savedReport = null; // cached for offline HTML export
 
 const _pb = {
   playing: false, speed: 10, currentT: 0, maxT: 0,
@@ -238,12 +239,56 @@ function shareReport() {
 }
 
 function saveHtml() {
-  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  if (!_savedReport) return;
+  const { r } = _savedReport;
+
+  // 1. Convert canvas chart → static PNG img
+  const canvas = document.getElementById('cr-modal-chart');
+  let restoredCanvas = null;
+  if (canvas) {
+    const img = document.createElement('img');
+    img.src = canvas.toDataURL('image/png');
+    img.id = 'cr-modal-chart';
+    img.style.cssText = `width:100%;height:${canvas.offsetHeight}px;display:block;border-radius:0 0 4px 4px;border:1px solid var(--border);`;
+    canvas.replaceWith(img);
+    restoredCanvas = () => img.replaceWith(canvas);
+  }
+
+  // 2. Replace Leaflet map → static SVG track
+  const mapDiv = document.getElementById('cr-modal-map');
+  const origMapHtml = mapDiv ? mapDiv.innerHTML : '';
+  if (mapDiv) mapDiv.innerHTML = renderTrackSvg(r.track || []);
+
+  // 3. Embed report data as JSON
+  const existing = document.getElementById('__embedded_report__');
+  if (existing) existing.remove();
+  const tag = document.createElement('script');
+  tag.id = '__embedded_report__';
+  tag.type = 'application/json';
+  tag.textContent = JSON.stringify(_savedReport);
+  document.head.appendChild(tag);
+
+  // 4. Capture HTML and strip CDN scripts not needed offline
+  let html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  html = html
+    .replace(/<link[^>]*fonts\.googleapis[^>]*>/g, '')
+    .replace(/<link[^>]*leaflet[^>]*>/g, '')
+    .replace(/<script[^>]*leaflet[^>]*><\/script>/g, '')
+    .replace(/<script[^>]*supabase[^>]*><\/script>/g, '')
+    .replace(/<script[^>]*googletagmanager[^>]*><\/script>/g, '')
+    .replace(/<script[^>]*gtag[^>]*><\/script>/g, '');
+
+  // 5. Restore live DOM
+  tag.remove();
+  if (mapDiv) mapDiv.innerHTML = origMapHtml;
+  if (restoredCanvas) restoredCanvas();
+
+  // 6. Download
   const blob = new Blob([html], { type: 'text/html' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  const id = new URLSearchParams(window.location.search).get('id') || 'report';
-  a.download = `checkride-${id.slice(0,8)}.html`;
+  const id = new URLSearchParams(window.location.search).get('id') || r.id || 'report';
+  a.download = `checkride-${id.slice(0, 8)}.html`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -343,6 +388,17 @@ function showSignInWall() {
 
 // ── LOAD ──
 async function loadReport() {
+  // Offline saved file: data embedded as JSON script tag
+  const embedded = document.getElementById('__embedded_report__');
+  if (embedded) {
+    try {
+      const { r, depId, arrId, depName, arrName } = JSON.parse(embedded.textContent);
+      _savedReport = { r, depId, arrId, depName, arrName };
+      renderReport(r, depId, arrId, depName, arrName);
+      return;
+    } catch(e) { /* fall through to network fetch */ }
+  }
+
   const id = new URLSearchParams(window.location.search).get('id');
   if (!id) {
     showError('No report ID specified. Use the ↗ link in the CheckRide app.');
@@ -375,6 +431,7 @@ async function loadReport() {
     if (f) { depId = f.dep_id || ''; arrId = f.arr_id || ''; depName = f.dep_name || ''; arrName = f.arr_name || ''; }
   }
 
+  _savedReport = { r, depId, arrId, depName, arrName };
   renderReport(r, depId, arrId, depName, arrName);
 }
 
@@ -513,8 +570,30 @@ ${rowHtml}
 }
 
 // ── MAP ──
+function renderTrackSvg(track) {
+  const pts = (track || []).filter(p => p.Lat != null && p.Lon != null);
+  if (pts.length < 2) return '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#4a6070;font-family:monospace;font-size:12px;">No track data</div>';
+  const lats = pts.map(p => p.Lat), lons = pts.map(p => p.Lon);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+  const W = 800, H = 340, pad = 30;
+  const ranLon = maxLon - minLon || 0.01, ranLat = maxLat - minLat || 0.01;
+  const scale = Math.min((W - pad * 2) / ranLon, (H - pad * 2) / ranLat);
+  const offX = (W - ranLon * scale) / 2, offY = (H - ranLat * scale) / 2;
+  const sx = lon => offX + (lon - minLon) * scale;
+  const sy = lat => H - offY - (lat - minLat) * scale;
+  const polyPts = pts.map(p => `${sx(p.Lon).toFixed(1)},${sy(p.Lat).toFixed(1)}`).join(' ');
+  const s = pts[0], e = pts[pts.length - 1];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:100%;background:#0b1a2c;display:block;">
+    <polyline points="${polyPts}" fill="none" stroke="#00e676" stroke-width="2.5" stroke-linejoin="round" opacity="0.9"/>
+    <circle cx="${sx(s.Lon).toFixed(1)}" cy="${sy(s.Lat).toFixed(1)}" r="6" fill="#00e676" stroke="#fff" stroke-width="1.5"/>
+    <circle cx="${sx(e.Lon).toFixed(1)}" cy="${sy(e.Lat).toFixed(1)}" r="6" fill="#fff" stroke="#00e676" stroke-width="2"/>
+  </svg>`;
+}
+
 function renderMap(track, events, depIcao, arrIcao) {
   const mapEl = document.getElementById('cr-modal-map');
+  if (typeof L === 'undefined') { mapEl.innerHTML = renderTrackSvg(track); return; }
   if (_reportMap) { _reportMap.remove(); _reportMap = null; }
   _reportMap = L.map(mapEl, { zoomControl: true, attributionControl: false });
   _darkTileLayer = L.tileLayer(TILE_DARK, { maxZoom: 19 }).addTo(_reportMap);
