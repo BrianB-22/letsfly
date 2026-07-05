@@ -249,6 +249,10 @@
     .cr-run-body { display: none; padding: 14px; border-top: 1px solid var(--border); }
     .cr-run.open .cr-run-body { display: block; }
     .cr-stats-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; }
+    .cr-wx-strip { border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-family: var(--mono); font-size: 11px; }
+    .cr-wx-row { display: grid; grid-template-columns: 52px 26px 1.4fr 0.8fr 1fr 0.6fr; gap: 8px; padding: 2px 0; color: var(--text2); }
+    .cr-wx-head { color: var(--text3); font-size: 9px; letter-spacing: 1px; border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 2px; }
+    .cr-wx-t { color: var(--text3); }
     .cr-stat { font-size: 13px; }
     .cr-stat-label { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); display: block; }
     .cr-stat-val { color: var(--text); }
@@ -520,6 +524,7 @@
       <div class="cr-event-list" id="cr-modal-events"></div>
       <div class="cr-events-label" style="margin-top:14px;">Stats</div>
       <div class="cr-modal-stats" id="cr-modal-stats"></div>
+      <div id="cr-modal-weather"></div>
       <div class="cr-events-label" style="margin-top:14px;">Score Breakdown</div>
       <div class="cr-score-breakdown" id="cr-modal-breakdown"></div>
     </div>
@@ -1614,9 +1619,10 @@ async function loadCheckRides(flightId) {
   if (!list) return;
   if (!currentUser) { list.innerHTML = '<div class="cr-no-runs">Sign in to view CheckRide results.</div>'; return; }
 
+  // track (the biggest blob) is fetched lazily when the modal opens — see openCrModal
   const { data, error } = await _sb
     .from('checkride_results')
-    .select('id, score, grade, aircraft, sim, scoring_version, recorded_at, events, summary, stats, breakdown, track')
+    .select('id, score, grade, aircraft, sim, scoring_version, recorded_at, events, summary, stats, breakdown, conditions')
     .eq('flight_id', flightId)
     .eq('user_id', currentUser.id)
     .order('recorded_at', { ascending: false });
@@ -1672,9 +1678,14 @@ function _renderCheckRides(flightId, runs) {
 
   list.innerHTML = runs.map((r, i) => {
     const prev     = runs[i + 1];
-    const trend    = prev == null ? '' : r.score > prev.score ? '<span class="cr-trend cr-trend-up">↑</span>'
-                                      : r.score < prev.score ? '<span class="cr-trend cr-trend-dn">↓</span>'
-                                      : '<span class="cr-trend cr-trend-eq">→</span>';
+    // Flag trend comparisons across different scoring versions — the delta may
+    // reflect rule changes rather than flying skill
+    const verNote  = prev && prev.scoring_version !== r.scoring_version
+      ? ` title="Compared with a run scored under ${escapeHtml(prev.scoring_version || 'an older version')} — scoring rules changed between runs" style="opacity:0.55;"`
+      : ` title="Score vs previous run"`;
+    const trend    = prev == null ? '' : r.score > prev.score ? `<span class="cr-trend cr-trend-up"${verNote}>↑${prev.scoring_version !== r.scoring_version ? '*' : ''}</span>`
+                                      : r.score < prev.score ? `<span class="cr-trend cr-trend-dn"${verNote}>↓${prev.scoring_version !== r.scoring_version ? '*' : ''}</span>`
+                                      : `<span class="cr-trend cr-trend-eq"${verNote}>→</span>`;
     const date     = new Date(r.recorded_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
     const aircraft = escapeHtml(r.aircraft || '—');
     const sim      = r.sim === 'xplane12' ? 'X-Plane 12' : r.sim === 'xplane11' ? 'X-Plane 11' : escapeHtml(r.sim || '—');
@@ -1687,6 +1698,7 @@ function _renderCheckRides(flightId, runs) {
         ${trend}
         <button onclick="event.stopPropagation();toggleCrRun('${r.id}','${flightId}')" style="font-family:var(--mono);font-size:11px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:2px;padding:1px 7px;cursor:pointer;margin-left:4px;">⊞ Quick View</button>
         <a href="https://simletsfly.com/report.html?id=${r.id}" target="_blank" onclick="event.stopPropagation()" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-decoration:none;padding:1px 7px;border:1px solid var(--border);border-radius:2px;margin-left:4px;">↗ Report</a>
+        <button onclick="event.stopPropagation();deleteCrRun('${r.id}','${flightId}')" title="Delete this report" style="font-family:var(--mono);font-size:11px;color:var(--red);background:none;border:1px solid var(--border);border-radius:2px;padding:1px 7px;cursor:pointer;margin-left:4px;">✕</button>
         <span class="cr-chevron">▾</span>
       </div>
       <div class="cr-run-body" id="crrun-body-${r.id}">
@@ -1734,12 +1746,32 @@ function _renderCrRunBody(r) {
       <div class="cr-stat"><span class="cr-stat-label">Autopilot</span><span class="cr-stat-val">${stats.AutopilotPct != null ? stats.AutopilotPct.toFixed(0) + '%' : '—'}</span></div>
       ${(() => { const c = calcPassengerComfort(r); return `<div class="cr-stat"><span class="cr-stat-label">Pax Comfort</span><span class="cr-stat-val" style="color:${c.color}">${c.label} <span style="color:var(--text3);font-size:11px;">${c.score}/100</span></span></div>`; })()}
     </div>
+    ${buildWeatherStrip(r.conditions)}
     <div class="cr-events-label" style="margin-top:10px;">Score Breakdown</div>
     <div class="cr-score-breakdown">${_buildScoreBreakdown(r)}</div>`;
 }
 
 function toggleCrRun(runId, flightId) {
   openCrModal(runId, flightId);
+}
+
+async function deleteCrRun(runId, flightId) {
+  const r = _crCache[flightId]?.find(x => x.id === runId);
+  if (!r) return;
+  const date = new Date(r.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  if (!confirm(`Delete this CheckRide report?\n\n${r.score} pts · Grade ${r.grade} · ${date}\n\nThis cannot be undone.`)) return;
+
+  const { error } = await _sb.from('checkride_results')
+    .delete().eq('id', runId).eq('user_id', currentUser.id);
+  if (error) { alert('Could not delete report: ' + error.message); return; }
+
+  // Update caches and stat chip, then re-render the run list
+  _crCache[flightId] = _crCache[flightId].filter(x => x.id !== runId);
+  _totalCheckRideCount = Math.max(0, _totalCheckRideCount - 1);
+  if (!_crCache[flightId].length) _flightsWithCheckRide.delete(flightId);
+  const chip = document.getElementById('stat-checkrides');
+  if (chip) chip.textContent = _totalCheckRideCount || '—';
+  _renderCheckRides(flightId, _crCache[flightId]);
 }
 
 // ── CHECKRIDE DETAIL MODAL ──
@@ -1768,13 +1800,23 @@ function openCrModal(runId, flightId) {
 
   document.getElementById('cr-modal').style.display = 'flex';
 
-  const track = r.track || [];
-  const f     = flights?.find(x => x.id === flightId);
-  setTimeout(() => {
+  const f = flights?.find(x => x.id === flightId);
+  const renderTrack = (track) => setTimeout(() => {
     _renderCrModalMap(track, r.events || [], f?.dep_id, f?.arr_id);
     _renderCrModalChart(track, r.events || []);
     _initPlayback(track, r.events || []);
   }, 50);
+
+  // track is excluded from the list query (largest blob) — fetch on first open
+  if (r.track === undefined) {
+    _sb.from('checkride_results').select('track').eq('id', r.id).single()
+      .then(({ data }) => {
+        r.track = data?.track || [];
+        renderTrack(r.track);
+      });
+  } else {
+    renderTrack(r.track || []);
+  }
 }
 
 function closeCrModal() {
@@ -1850,18 +1892,54 @@ function _renderCrModalStats(r) {
   const fmtTime = s => { if (!s) return '—'; const m = Math.floor(s/60); return m + 'm ' + (s%60) + 's'; };
   const landingColor = { Greaser:'var(--green)', Smooth:'var(--accent)', Firm:'var(--amber)', Hard:'var(--red)' }[summary.LandingQuality] || 'var(--text)';
 
+  const comfort = calcPassengerComfort(r);
   document.getElementById('cr-modal-stats').innerHTML = [
     ['Landing',     `<span style="color:${landingColor}">${summary.LandingQuality || '—'}</span>`],
     ['Landing VS',  stats.LandingVsFpm  ? stats.LandingVsFpm + ' fpm' : '—'],
+    ['Crosswind',   stats.CrosswindAtLandingKt ? stats.CrosswindAtLandingKt.toFixed(0) + ' kt' : '—'],
     ['Max G',       stats.MaxGForceNormal ? stats.MaxGForceNormal.toFixed(2) + 'G' : '—'],
     ['Max IAS',     stats.MaxIasKts     ? stats.MaxIasKts.toFixed(0) + ' kt' : '—'],
+    ['Max Alt',     stats.MaxAltitudeMslFt ? Math.round(stats.MaxAltitudeMslFt).toLocaleString() + ' ft' : '—'],
     ['Max Bank',    stats.MaxBankAngleDeg ? Math.abs(stats.MaxBankAngleDeg).toFixed(1) + '°' : '—'],
+    ['Avg Final VS', stats.AvgFinalDescentRateFpm ? '-' + Math.abs(stats.AvgFinalDescentRateFpm).toFixed(0) + ' fpm' : '—'],
     ['Flight Time', fmtTime(stats.FlightTimeSec)],
+    ['Day / Night', stats.NightFlightPct != null && stats.FlightTimeSec
+                      ? `${(100 - stats.NightFlightPct).toFixed(0)}% / ${stats.NightFlightPct.toFixed(0)}%${stats.NightFlightPct > 0 ? ` <span style="color:var(--text3);font-size:11px;">(${fmtTime(Math.round(stats.FlightTimeSec * stats.NightFlightPct / 100))} night)</span>` : ''}`
+                      : '—'],
     ['Distance',    stats.DistanceNm    ? stats.DistanceNm.toFixed(1) + ' nm' : '—'],
     ['Autopilot',   stats.AutopilotPct  != null ? stats.AutopilotPct.toFixed(0) + '%' : '—'],
+    ['Pax Comfort', `<span style="color:${comfort.color}">${comfort.label}</span> <span style="color:var(--text3);font-size:11px;">${comfort.score}/100</span>`],
   ].map(([label, val]) =>
     `<div class="cr-stat"><span class="cr-stat-label">${label}</span><span class="cr-stat-val">${val}</span></div>`
   ).join('');
+
+  // Weather strip — condition samples recorded by the client every 5 minutes
+  const wxEl = document.getElementById('cr-modal-weather');
+  if (wxEl) wxEl.innerHTML = buildWeatherStrip(r.conditions);
+}
+
+// Shared renderer for the conditions samples (dep → arr weather summary)
+function buildWeatherStrip(conditions) {
+  const c = conditions || [];
+  if (!c.length) return '';
+  const fmtT = s => { const m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); };
+  const rows = c.map(s => {
+    const visSm = s.VisibilityM > 0 ? (s.VisibilityM / 1609.34) : null;
+    const cloud = s.CloudCoverage >= 0.75 ? 'OVC' : s.CloudCoverage >= 0.5 ? 'BKN' : s.CloudCoverage >= 0.25 ? 'SCT' : s.CloudCoverage > 0.05 ? 'FEW' : 'CLR';
+    return `<div class="cr-wx-row">
+      <span class="cr-wx-t">${fmtT(s.T || 0)}</span>
+      <span class="cr-wx-cell">${s.IsNight ? '🌙' : '☀️'}</span>
+      <span class="cr-wx-cell">${Math.round(s.WindSpeedKt)} kt @ ${Math.round(s.WindDirectionDeg)}°</span>
+      <span class="cr-wx-cell">${visSm != null ? (visSm >= 10 ? '10+' : visSm.toFixed(1)) + ' SM' : '—'}</span>
+      <span class="cr-wx-cell">${cloud}${s.CloudBaseAglFt > 0 && cloud !== 'CLR' ? ' ' + Math.round(s.CloudBaseAglFt / 100).toString().padStart(3, '0') : ''}</span>
+      <span class="cr-wx-cell">${s.OatC != null ? Math.round(s.OatC) + '°C' : '—'}</span>
+    </div>`;
+  }).join('');
+  return `<div class="cr-events-label" style="margin-top:10px;">Weather</div>
+    <div class="cr-wx-strip">
+      <div class="cr-wx-row cr-wx-head"><span class="cr-wx-t">TIME</span><span class="cr-wx-cell"></span><span class="cr-wx-cell">WIND</span><span class="cr-wx-cell">VIS</span><span class="cr-wx-cell">CLOUD</span><span class="cr-wx-cell">OAT</span></div>
+      ${rows}
+    </div>`;
 }
 
 function _renderCrModalEvents(r) {

@@ -76,6 +76,10 @@
 
     /* ── SECTION LABEL ── */
     .section-label { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+    .cr-wx-strip { border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-family: var(--mono); font-size: 11px; }
+    .cr-wx-row { display: grid; grid-template-columns: 52px 26px 1.4fr 0.8fr 1fr 0.6fr; gap: 8px; padding: 2px 0; color: var(--text2); }
+    .cr-wx-head { color: var(--text3); font-size: 9px; letter-spacing: 1px; border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 2px; }
+    .cr-wx-t { color: var(--text3); }
 
     /* ── MAP + CHART ── */
     #cr-modal-map { height: 380px; border-radius: 4px 4px 0 0; border: 1px solid var(--border); border-bottom: none; overflow: hidden; }
@@ -419,7 +423,7 @@ async function loadReport() {
 
   const [crRes, flightRes] = await Promise.all([
     _sb.from('checkride_results')
-       .select('id,flight_id,score,grade,aircraft,sim,scoring_version,recorded_at,events,summary,stats,breakdown,track')
+       .select('id,flight_id,score,grade,aircraft,sim,scoring_version,recorded_at,events,summary,stats,breakdown,track,conditions')
        .eq('id', id)
        .single(),
     // Flight fetched after we know flight_id — done separately below
@@ -509,6 +513,11 @@ function renderReport(r, depId, arrId, depName, arrName) {
       </div>
     </div>
 
+    <div class="report-panel" id="cr-weather-panel" style="display:none;">
+      <div class="section-label">Weather</div>
+      <div id="cr-modal-weather"></div>
+    </div>
+
     <div class="report-panel">
       <div class="section-label">Event Log</div>
       <div id="cr-modal-events" class="cr-event-list"></div>
@@ -536,16 +545,52 @@ function renderStats(r) {
   document.getElementById('cr-modal-stats').innerHTML = [
     ['Landing',            `<span style="color:${landingColor}">${summary.LandingQuality || '—'}</span>`],
     ['Landing VS',         stats.LandingVsFpm   ? stats.LandingVsFpm + ' fpm'                   : '—'],
+    ['Crosswind',          stats.CrosswindAtLandingKt ? stats.CrosswindAtLandingKt.toFixed(0) + ' kt' : '—'],
     ['Max G',              stats.MaxGForceNormal ? stats.MaxGForceNormal.toFixed(2) + 'G'        : '—'],
     ['Max IAS',            stats.MaxIasKts       ? stats.MaxIasKts.toFixed(0) + ' kt'            : '—'],
+    ['Max Alt',            stats.MaxAltitudeMslFt ? Math.round(stats.MaxAltitudeMslFt).toLocaleString() + ' ft' : '—'],
     ['Max Bank',           stats.MaxBankAngleDeg ? Math.abs(stats.MaxBankAngleDeg).toFixed(1) + '°' : '—'],
+    ['Avg Final VS',       stats.AvgFinalDescentRateFpm ? '-' + Math.abs(stats.AvgFinalDescentRateFpm).toFixed(0) + ' fpm' : '—'],
     ['Flight Time',        fmtTime(stats.FlightTimeSec)],
+    ['Day / Night',        stats.NightFlightPct != null && stats.FlightTimeSec
+                             ? `${(100 - stats.NightFlightPct).toFixed(0)}% / ${stats.NightFlightPct.toFixed(0)}%${stats.NightFlightPct > 0 ? ` <span style="color:var(--text3);font-size:11px;">(${fmtTime(Math.round(stats.FlightTimeSec * stats.NightFlightPct / 100))} night)</span>` : ''}`
+                             : '—'],
     ['Distance',           stats.DistanceNm      ? stats.DistanceNm.toFixed(1) + ' nm'           : '—'],
     ['Autopilot',          stats.AutopilotPct   != null ? stats.AutopilotPct.toFixed(0) + '%'    : '—'],
     ['Pax Comfort',        `<span style="color:${comfort.color}">${comfort.label}</span> <span style="color:var(--text3);font-size:11px;">(${comfort.score}/100)</span>`],
   ].map(([label, val]) =>
     `<div class="cr-stat"><span class="cr-stat-label">${label}</span><span class="cr-stat-val">${val}</span></div>`
   ).join('');
+
+  // Weather strip — condition samples recorded by the client every 5 minutes
+  const wxEl    = document.getElementById('cr-modal-weather');
+  const wxPanel = document.getElementById('cr-weather-panel');
+  const wxHtml  = buildWeatherStrip(r.conditions);
+  if (wxEl) wxEl.innerHTML = wxHtml;
+  if (wxPanel) wxPanel.style.display = wxHtml ? '' : 'none';
+}
+
+// Conditions samples table (dep → arr weather summary)
+function buildWeatherStrip(conditions) {
+  const c = conditions || [];
+  if (!c.length) return '';
+  const fmtT = s => { const m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); };
+  const rows = c.map(s => {
+    const visSm = s.VisibilityM > 0 ? (s.VisibilityM / 1609.34) : null;
+    const cloud = s.CloudCoverage >= 0.75 ? 'OVC' : s.CloudCoverage >= 0.5 ? 'BKN' : s.CloudCoverage >= 0.25 ? 'SCT' : s.CloudCoverage > 0.05 ? 'FEW' : 'CLR';
+    return `<div class="cr-wx-row">
+      <span class="cr-wx-t">${fmtT(s.T || 0)}</span>
+      <span class="cr-wx-cell">${s.IsNight ? '🌙' : '☀️'}</span>
+      <span class="cr-wx-cell">${Math.round(s.WindSpeedKt)} kt @ ${Math.round(s.WindDirectionDeg)}°</span>
+      <span class="cr-wx-cell">${visSm != null ? (visSm >= 10 ? '10+' : visSm.toFixed(1)) + ' SM' : '—'}</span>
+      <span class="cr-wx-cell">${cloud}${s.CloudBaseAglFt > 0 && cloud !== 'CLR' ? ' ' + Math.round(s.CloudBaseAglFt / 100).toString().padStart(3, '0') : ''}</span>
+      <span class="cr-wx-cell">${s.OatC != null ? Math.round(s.OatC) + '°C' : '—'}</span>
+    </div>`;
+  }).join('');
+  return `<div class="cr-wx-strip">
+      <div class="cr-wx-row cr-wx-head"><span class="cr-wx-t">TIME</span><span class="cr-wx-cell"></span><span class="cr-wx-cell">WIND</span><span class="cr-wx-cell">VIS</span><span class="cr-wx-cell">CLOUD</span><span class="cr-wx-cell">OAT</span></div>
+      ${rows}
+    </div>`;
 }
 
 // ── EVENTS ──

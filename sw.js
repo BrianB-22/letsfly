@@ -1,4 +1,4 @@
-const CACHE = 'simletsfly-v83';
+const CACHE = 'simletsfly-v84';
 // Large, rarely-changing data files live in a separate cache that survives
 // app-shell version bumps (airports.json is ~19 MB — don't re-download per deploy)
 const DATA_CACHE = 'simletsfly-data-v1';
