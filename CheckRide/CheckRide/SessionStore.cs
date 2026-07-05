@@ -1,8 +1,12 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using CheckRide.Models;
 
 namespace CheckRide;
 
+// Session tokens are encrypted at rest with Windows DPAPI (per-user scope).
+// Load() transparently migrates plaintext files from older versions.
 internal static class SessionStore
 {
     private static string StorePath =>
@@ -15,7 +19,21 @@ internal static class SessionStore
         try
         {
             if (!File.Exists(StorePath)) return null;
-            return JsonSerializer.Deserialize<SupabaseSession>(File.ReadAllText(StorePath));
+            var raw = File.ReadAllBytes(StorePath);
+
+            string json;
+            try
+            {
+                var decrypted = ProtectedData.Unprotect(raw, null, DataProtectionScope.CurrentUser);
+                json = Encoding.UTF8.GetString(decrypted);
+            }
+            catch (CryptographicException)
+            {
+                // Plaintext file from an older version — migrate to encrypted on next Save
+                json = Encoding.UTF8.GetString(raw);
+            }
+
+            return JsonSerializer.Deserialize<SupabaseSession>(json);
         }
         catch { return null; }
     }
@@ -25,7 +43,9 @@ internal static class SessionStore
         try
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(StorePath)!);
-            File.WriteAllText(StorePath, JsonSerializer.Serialize(session));
+            var json      = JsonSerializer.Serialize(session);
+            var encrypted = ProtectedData.Protect(Encoding.UTF8.GetBytes(json), null, DataProtectionScope.CurrentUser);
+            File.WriteAllBytes(StorePath, encrypted);
         }
         catch { }
     }

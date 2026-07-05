@@ -92,7 +92,7 @@ public class FlightDataSnapshot
     public double VnoKts { get; init; }   // normal operating speed
     public double VneKts { get; init; }   // never exceed
     public double VfeKts { get; init; }   // max flaps extended
-    public double VleKts { get; init; }   // max gear extended
+    public double VsCleanKts { get; init; }  // clean-config stall speed (XP12 exposes no Vle)
 
     // Sim state
     public bool IsSimPaused { get; init; }

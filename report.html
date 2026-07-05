@@ -6,6 +6,12 @@
   <title>CheckRide Report — SimLetsFly</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="robots" content="noindex">
+  <meta property="og:title" content="CheckRide Flight Report — SimLetsFly">
+  <meta property="og:description" content="Graded flight report from CheckRide: score, landing quality, flight track, and event timeline.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://simletsfly.com/icon-512.svg">
+  <meta property="og:site_name" content="SimLetsFly">
+  <meta name="twitter:card" content="summary">
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-TMZ18XB2ZM"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-TMZ18XB2ZM');</script>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
@@ -399,6 +405,12 @@ async function loadReport() {
     } catch(e) { /* fall through to network fetch */ }
   }
 
+  // Saved-to-disk copy from before self-contained export: no embedded data, no network context
+  if (window.location.protocol === 'file:') {
+    showError('This file was saved with an older version of Save HTML. Open the report on simletsfly.com and use Save HTML again to get an offline copy.');
+    return;
+  }
+
   const id = new URLSearchParams(window.location.search).get('id');
   if (!id) {
     showError('No report ID specified. Use the ↗ link in the CheckRide app.');
@@ -563,9 +575,14 @@ function buildScoreBreakdown(r) {
     const cnt  = row.Count > 1 ? '×' + row.Count : '';
     return `<div class="cr-score-row"><span class="cr-score-label">${escapeHtml(row.Label)}</span><span class="cr-score-count">${cnt}</span><span class="cr-score-pts ${cls}">${sign}${row.Pts}</span></div>`;
   }).join('');
+  // Score is clamped 0-100 server-side; show the adjustment when raw sum differs
+  const rawSum = 100 + bd.reduce((s, row) => s + (row.Pts || 0), 0);
+  const capRow = (score != null && rawSum !== score)
+    ? `<div class="cr-score-row"><span class="cr-score-label" style="color:var(--text3);font-style:italic;">Score capped (0–100)</span><span class="cr-score-count"></span><span class="cr-score-pts zero">${score - rawSum > 0 ? '+' : ''}${score - rawSum}</span></div>`
+    : '';
   const scoreCls = score >= 90 ? 'pos' : score >= 70 ? 'zero' : 'neg';
   return `<div class="cr-score-row"><span class="cr-score-label cr-score-base">Base score</span><span class="cr-score-count"></span><span class="cr-score-pts pos">+100</span></div>
-${rowHtml}
+${rowHtml}${capRow}
 <div class="cr-score-row cr-score-total"><span class="cr-score-label">Final Score</span><span class="cr-score-count"></span><span class="cr-score-pts ${scoreCls}">${score} pts</span></div>`;
 }
 

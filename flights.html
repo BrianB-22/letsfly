@@ -707,7 +707,7 @@ async function loadFlights() {
   loadThemePref();
   const [flightsRes, crRes] = await Promise.all([
     _sb.from('saved_flights').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
-    _sb.from('checkride_results').select('flight_id'),
+    _sb.from('checkride_results').select('flight_id').eq('user_id', currentUser.id),
   ]);
 
   if (flightsRes.error) {
@@ -1618,6 +1618,7 @@ async function loadCheckRides(flightId) {
     .from('checkride_results')
     .select('id, score, grade, aircraft, sim, scoring_version, recorded_at, events, summary, stats, breakdown, track')
     .eq('flight_id', flightId)
+    .eq('user_id', currentUser.id)
     .order('recorded_at', { ascending: false });
 
   if (error || !data) { list.innerHTML = '<div class="cr-no-runs">Could not load CheckRide results.</div>'; return; }
@@ -1664,7 +1665,8 @@ function _renderCheckRides(flightId, runs) {
     }
     if (needsSave) {
       _sb.from('saved_flights').update({ completed: f.completed, flight_date: f.flight_date })
-        .eq('id', flightId).eq('user_id', currentUser.id).then(() => {});
+        .eq('id', flightId).eq('user_id', currentUser.id)
+        .then(({ error }) => { if (error) console.error('Auto-complete update failed:', error.message); });
     }
   }
 
@@ -1674,8 +1676,8 @@ function _renderCheckRides(flightId, runs) {
                                       : r.score < prev.score ? '<span class="cr-trend cr-trend-dn">↓</span>'
                                       : '<span class="cr-trend cr-trend-eq">→</span>';
     const date     = new Date(r.recorded_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-    const aircraft = r.aircraft || '—';
-    const sim      = r.sim === 'xplane12' ? 'X-Plane 12' : r.sim === 'xplane11' ? 'X-Plane 11' : r.sim || '—';
+    const aircraft = escapeHtml(r.aircraft || '—');
+    const sim      = r.sim === 'xplane12' ? 'X-Plane 12' : r.sim === 'xplane11' ? 'X-Plane 11' : escapeHtml(r.sim || '—');
     return `
     <div class="cr-run" id="crrun-${r.id}">
       <div class="cr-run-summary" onclick="toggleCrRun('${r.id}', '${flightId}')">
@@ -1713,7 +1715,7 @@ function _renderCrRunBody(r) {
     ? events.map(e => {
         const cls = BAD_EVENTS.has(e.Type) ? 'is-bad' : OK_EVENTS.has(e.Type) ? 'is-ok' : WARN_EVENTS.has(e.Type) ? 'is-warn' : INFO_EVENTS.has(e.Type) ? 'is-info' : 'is-info';
         const t   = e.TimestampSec != null ? fmtTime(e.TimestampSec) : '';
-        return `<div class="cr-event ${cls}"><span class="cr-event-time">${t}</span><div class="cr-dot"></div><span class="cr-event-desc">${e.Description || e.Type}</span></div>`;
+        return `<div class="cr-event ${cls}"><span class="cr-event-time">${t}</span><div class="cr-dot"></div><span class="cr-event-desc">${escapeHtml(e.Description || e.Type)}</span></div>`;
       }).join('')
     : '<div class="cr-empty">No events recorded.</div>';
 
@@ -1824,15 +1826,21 @@ function _buildScoreBreakdown(r) {
     const sign = row.Pts > 0 ? '+' : '';
     const cnt  = row.Count > 1 ? '×' + row.Count : '';
     return `<div class="cr-score-row">
-      <span class="cr-score-label">${row.Label}</span>
+      <span class="cr-score-label">${escapeHtml(row.Label)}</span>
       <span class="cr-score-count">${cnt}</span>
       <span class="cr-score-pts ${cls}">${sign}${row.Pts}</span>
     </div>`;
   }).join('');
 
+  // Score is clamped 0-100 server-side; show the adjustment when raw sum differs
+  const rawSum = 100 + bd.reduce((s, row) => s + (row.Pts || 0), 0);
+  const capRow = (score != null && rawSum !== score)
+    ? `<div class="cr-score-row"><span class="cr-score-label" style="color:var(--text3);font-style:italic;">Score capped (0–100)</span><span class="cr-score-count"></span><span class="cr-score-pts zero">${score - rawSum > 0 ? '+' : ''}${score - rawSum}</span></div>`
+    : '';
+
   const scoreCls = score >= 90 ? 'pos' : score >= 70 ? 'zero' : 'neg';
   return `<div class="cr-score-row"><span class="cr-score-label cr-score-base">Base score</span><span class="cr-score-count"></span><span class="cr-score-pts pos">+100</span></div>
-${rowHtml}
+${rowHtml}${capRow}
 <div class="cr-score-row cr-score-total"><span class="cr-score-label">Final Score</span><span class="cr-score-count"></span><span class="cr-score-pts ${scoreCls}">${score} pts</span></div>`;
 }
 
@@ -1867,7 +1875,7 @@ function _renderCrModalEvents(r) {
   document.getElementById('cr-modal-events').innerHTML = events.length
     ? events.map(e => {
         const cls = BAD.has(e.Type) ? 'is-bad' : OK.has(e.Type) ? 'is-ok' : WARN.has(e.Type) ? 'is-warn' : INFO.has(e.Type) ? 'is-info' : 'is-info';
-        return `<div class="cr-event ${cls}"><span class="cr-event-time">${fmtTime(e.TimestampSec)}</span><div class="cr-dot"></div><span class="cr-event-desc">${e.Description || e.Type}</span></div>`;
+        return `<div class="cr-event ${cls}"><span class="cr-event-time">${fmtTime(e.TimestampSec)}</span><div class="cr-dot"></div><span class="cr-event-desc">${escapeHtml(e.Description || e.Type)}</span></div>`;
       }).join('')
     : '<div class="cr-empty">No events recorded.</div>';
 }
@@ -1901,7 +1909,7 @@ function _renderCrModalMap(track, events, depIcao, arrIcao) {
     const color = BAD.has(e.Type) ? '#ff4444' : '#f4d03f';
     L.divIcon({ className: '' });
     const icon = L.divIcon({ className:'', html:`<div style="width:9px;height:9px;border-radius:50%;background:${color};border:1.5px solid rgba(255,255,255,0.8);box-shadow:0 0 4px ${color};"></div>`, iconSize:[9,9], iconAnchor:[4,4] });
-    L.marker([pt.Lat, pt.Lon], { icon }).bindTooltip(e.Description || e.Type, { direction:'top' }).addTo(_crModalMap);
+    L.marker([pt.Lat, pt.Lon], { icon }).bindTooltip(escapeHtml(e.Description || e.Type), { direction:'top' }).addTo(_crModalMap);
   });
 
   // ICAO labels at departure and arrival (yellow, FlightAware style)

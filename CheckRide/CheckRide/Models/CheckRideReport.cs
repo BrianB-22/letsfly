@@ -85,7 +85,7 @@ public class FlightStats
     public double VnoKts { get; set; }
     public double VneKts { get; set; }
     public double VfeKts { get; set; }
-    public double VleKts { get; set; }
+    public double VsCleanKts { get; set; }  // clean-config stall speed (XP12 exposes no Vle)
 }
 
 public class ScoreLineItem
@@ -97,7 +97,7 @@ public class ScoreLineItem
 
 public class CheckRideReport
 {
-    public const string ScoringVersionConst = "xp12-1.3";
+    public const string ScoringVersionConst = "xp12-1.4";
 
     public string Sim { get; init; } = "xplane12";
     public string ScoringVersion { get; init; } = ScoringVersionConst;

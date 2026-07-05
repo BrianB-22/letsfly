@@ -375,7 +375,7 @@ public class XP12Connector
         var vnoTask   = D("sim/aircraft/view/acf_Vno", ct);
         var vneTask   = D("sim/aircraft/view/acf_Vne", ct);
         var vfeTask   = D("sim/aircraft/view/acf_Vfe", ct);
-        var vleTask   = D("sim/aircraft/view/acf_Vs",  ct); // Vle not found; using Vs (clean stall) as fallback
+        var vsTask2   = D("sim/aircraft/view/acf_Vs",  ct); // clean-config stall speed (XP12 has no Vle dataref)
         // Aircraft name
         var acfTask    = S("sim/aircraft/view/acf_ui_name", ct);
         // Sim state
@@ -403,7 +403,7 @@ public class XP12Connector
             iceTask, overGTask, oatTask,
             gsDevTask, locDevTask,
             windSpdTask, windDirTask,
-            vsoTask, vnoTask, vneTask, vfeTask, vleTask,
+            vsoTask, vnoTask, vneTask, vfeTask, vsTask2,
             acfTask, pausedTask,
             localTimeTask, sunPitchTask, visTask, cloudBaseTask, cloudCovTask, rainTask);
 
@@ -473,7 +473,7 @@ public class XP12Connector
             VnoKts               = vnoTask.Result,
             VneKts               = vneTask.Result,
             VfeKts               = vfeTask.Result,
-            VleKts               = vleTask.Result,
+            VsCleanKts           = vsTask2.Result,
             AircraftName         = acfTask.Result,
             IsSimPaused          = pausedTask.Result != 0,
             LocalTimeSec         = localTimeTask.Result,

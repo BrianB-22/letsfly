@@ -720,8 +720,15 @@ internal class FlightListForm : Form
             string? logPath = _chkLog.Checked ? _sessionLogPath : null;
             _pendingUpload = (_activeFlight!.Id, report, logPath);
 
-            await UploadPendingAsync();
-            PlaySound(Path.Combine("system_notices", "upload_success.wav"));
+            var uploaded = await UploadPendingAsync();
+            if (uploaded)
+            {
+                PlaySound(Path.Combine("system_notices", "upload_success.wav"));
+            }
+            else
+            {
+                PlaySound(Path.Combine("system_notices", "upload_failed.wav"));
+            }
 
             // Debrief plays after parking brake — crashes end the flight immediately so no debrief
             if (!report.Summary.Crashed)
@@ -750,12 +757,14 @@ internal class FlightListForm : Form
         if (_pendingUpload is null) return;
         _btnRetry.Visible = false;
         SetState(AppState.Uploading);
-        await UploadPendingAsync();
+        var uploaded = await UploadPendingAsync();
+        PlaySound(Path.Combine("system_notices", uploaded ? "upload_success.wav" : "upload_failed.wav"));
     }
 
-    private async Task UploadPendingAsync()
+    // Returns true when the upload succeeded (callers gate success sounds on this)
+    private async Task<bool> UploadPendingAsync()
     {
-        if (_pendingUpload is null) return;
+        if (_pendingUpload is null) return false;
         var (flightId, report, logPath) = _pendingUpload.Value;
         try
         {
@@ -766,6 +775,7 @@ internal class FlightListForm : Form
             SetState(AppState.Idle);
             _lblStatus.Text      = $"CheckRide successfully uploaded  ·  Score: {report.Score}  Grade: {report.Grade}";
             _lblStatus.ForeColor = _green;
+            return true;
         }
         catch
         {
@@ -773,6 +783,7 @@ internal class FlightListForm : Form
             _lblStatus.Text      = "Upload failed — flight saved locally. Click Retry when online.";
             _lblStatus.ForeColor = _red;
             _btnRetry.Visible    = true;
+            return false;
         }
     }
 

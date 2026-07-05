@@ -62,25 +62,41 @@ internal class SupabaseClient
         SessionStore.Clear();
     }
 
+    // Serialize refreshes: Supabase rotates refresh tokens, so two concurrent
+    // callers (e.g. GetFlightsAsync + GetLastScoresAsync via Task.WhenAll) firing
+    // the same refresh token would invalidate the session for the loser.
+    private readonly SemaphoreSlim _refreshLock = new(1, 1);
+
     private async Task EnsureTokenAsync()
     {
         if (!_session.IsExpired) return;
 
-        var req = new HttpRequestMessage(HttpMethod.Post,
-            $"{Config.SupabaseUrl}/auth/v1/token?grant_type=refresh_token");
-        req.Headers.Add("apikey", Config.SupabaseAnonKey);
-        req.Content = JsonContent.Create(new { refresh_token = _session.RefreshToken });
+        await _refreshLock.WaitAsync();
+        try
+        {
+            // Another caller may have refreshed while we waited
+            if (!_session.IsExpired) return;
 
-        var resp = await _http.SendAsync(req);
-        if (!resp.IsSuccessStatusCode)
-            throw new Exception("Session expired — please sign in again.");
+            var req = new HttpRequestMessage(HttpMethod.Post,
+                $"{Config.SupabaseUrl}/auth/v1/token?grant_type=refresh_token");
+            req.Headers.Add("apikey", Config.SupabaseAnonKey);
+            req.Content = JsonContent.Create(new { refresh_token = _session.RefreshToken });
 
-        var body = await resp.Content.ReadAsStringAsync();
-        var data = JsonSerializer.Deserialize<AuthResponse>(body, _readOpts)!;
-        _session.AccessToken  = data.AccessToken;
-        _session.RefreshToken = data.RefreshToken;
-        _session.ExpiresAt    = DateTime.UtcNow.AddSeconds(data.ExpiresIn);
-        SessionStore.Save(_session);
+            var resp = await _http.SendAsync(req);
+            if (!resp.IsSuccessStatusCode)
+                throw new Exception("Session expired — please sign in again.");
+
+            var body = await resp.Content.ReadAsStringAsync();
+            var data = JsonSerializer.Deserialize<AuthResponse>(body, _readOpts)!;
+            _session.AccessToken  = data.AccessToken;
+            _session.RefreshToken = data.RefreshToken;
+            _session.ExpiresAt    = DateTime.UtcNow.AddSeconds(data.ExpiresIn);
+            SessionStore.Save(_session);
+        }
+        finally
+        {
+            _refreshLock.Release();
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

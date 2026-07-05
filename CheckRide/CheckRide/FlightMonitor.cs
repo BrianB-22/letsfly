@@ -51,6 +51,9 @@ internal static class ScoringConfig
     public const double TakeoffHdgDevDeg      = 20.0;  // heading deviation from departure below 500ft AGL
     public const double TakeoffSideloadG      = 0.40;  // lateral G during initial climb (below 200ft AGL)
 
+    // Wrong airport detection
+    public const double WrongAirportDistNm    = 3.0;   // distance from expected dep/arr to flag wrong airport
+
     // --- Scoring penalties (negative) ---
     public const int PenaltyOverspeed          = -5;   // per occurrence
     public const int PenaltySpeedLimit         = -10;  // 250kt below 10,000ft
@@ -121,7 +124,7 @@ public class FlightMonitor
     private double _vnoKts;
     private double _vneKts;
     private double _vfeKts;
-    private double _vleKts;
+    private double _vsCleanKts;
     private double _vrefKts;        // 1.3 × Vso
     private bool _flapOverspeedFlagged;
 
@@ -249,6 +252,12 @@ public class FlightMonitor
     private bool _iceDamageFlagged;
     private bool _engOverspeedFlagged;
 
+    // Sim pause tracking — paused samples are ignored and paused wall time is
+    // subtracted from flight time so a dinner break doesn't inflate the stats
+    private bool _wasPaused;
+    private DateTime _pauseStart;
+    private TimeSpan _pausedTotal;
+
     // Stable-conditions counter for Airborne → Cruise transition
     private int _stableCount;
     private const int StableRequired = 30; // ~30 consecutive 1-second polls
@@ -268,6 +277,26 @@ public class FlightMonitor
 
     public void OnSnapshot(FlightDataSnapshot snap, EventLogger logger)
     {
+        // Ignore paused samples entirely — no stats, no events, no phase changes.
+        // Track paused wall time (only after takeoff) so flight time can exclude it.
+        if (snap.IsSimPaused)
+        {
+            if (!_wasPaused)
+            {
+                _wasPaused  = true;
+                _pauseStart = snap.Timestamp;
+                logger.Log("Sim paused — suspending monitoring");
+            }
+            return;
+        }
+        if (_wasPaused)
+        {
+            _wasPaused = false;
+            if (_airborneTime != default)
+                _pausedTotal += snap.Timestamp - _pauseStart;
+            logger.Log($"Sim resumed — paused {(snap.Timestamp - _pauseStart).TotalSeconds:F0}s");
+        }
+
         if (_startTime == default) _startTime = snap.Timestamp;
         _elapsedSec = (int)(snap.Timestamp - _startTime).TotalSeconds;
 
@@ -286,11 +315,11 @@ public class FlightMonitor
             _vnoKts = snap.VnoKts;
             _vneKts = snap.VneKts > snap.VnoKts * 2 ? snap.VnoKts * 1.4 : snap.VneKts;
             _vfeKts = snap.VfeKts;
-            _vleKts = snap.VleKts;
+            _vsCleanKts = snap.VsCleanKts;
             _vrefKts = snap.VsoKts * 1.3;
             _limitsCaptured = true;
             logger.Log($"Aircraft limits — Vso={_vsoKts:F0}kt Vno={_vnoKts:F0}kt Vne={_vneKts:F0}kt " +
-                       $"Vfe={_vfeKts:F0}kt Vle={_vleKts:F0}kt → Vref={_vrefKts:F0}kt");
+                       $"Vfe={_vfeKts:F0}kt Vs={_vsCleanKts:F0}kt → Vref={_vrefKts:F0}kt");
         }
 
         if (_phase is >= FlightPhase.Airborne and <= FlightPhase.Approach)
@@ -370,7 +399,7 @@ public class FlightMonitor
                     {
                         var distNm = HaversineNm(_expectedDepLat, _expectedDepLon, snap.Latitude, snap.Longitude);
                         logger.Log($"Departure check — {distNm:F1}nm from {_expectedDepId}");
-                        if (distNm > 3.0)
+                        if (distNm > ScoringConfig.WrongAirportDistNm)
                         {
                             LogEvent(FlightEventType.WrongDepartureAirport, snap.Timestamp,
                                 $"Wrong departure airport — {distNm:F0}nm from {_expectedDepId}");
@@ -511,7 +540,7 @@ public class FlightMonitor
         {
             var arrDistNm = HaversineNm(_expectedArrLat, _expectedArrLon, snap.Latitude, snap.Longitude);
             logger.Log($"Arrival check — {arrDistNm:F1}nm from {_expectedArrId}");
-            if (arrDistNm > 3.0)
+            if (arrDistNm > ScoringConfig.WrongAirportDistNm)
             {
                 LogEvent(FlightEventType.WrongArrivalAirport, snap.Timestamp,
                     $"Wrong arrival airport — {arrDistNm:F0}nm from {_expectedArrId}");
@@ -731,7 +760,10 @@ public class FlightMonitor
             _gearApproachFlagged = true;
         }
 
-        var onShortFinal = _phase == FlightPhase.Airborne && snap.AltitudeAglFt < 500
+        // Airborne clause needs a descent gate — otherwise the initial climb below
+        // 500ft AGL right after takeoff would false-flag "lights off on approach"
+        var onShortFinal = (_phase == FlightPhase.Airborne && snap.AltitudeAglFt < 500
+                            && snap.VerticalSpeedFpm < -100 && _peakAglFt > 500)
                         || _phase is FlightPhase.Approach or FlightPhase.Landed;
         if (onShortFinal && !snap.LandingLightsOn && !_landingLightsFlagged)
         {
@@ -1056,7 +1088,7 @@ public class FlightMonitor
     public CheckRideReport BuildReport()
     {
         var flightSec = _airborneTime != default
-            ? (int)((_parkedTime != default ? _parkedTime : DateTime.UtcNow) - _airborneTime).TotalSeconds
+            ? Math.Max(0, (int)(((_parkedTime != default ? _parkedTime : DateTime.UtcNow) - _airborneTime) - _pausedTotal).TotalSeconds)
             : 0;
 
         var report = new CheckRideReport
@@ -1092,7 +1124,7 @@ public class FlightMonitor
                 VnoKts                     = Math.Round(_vnoKts, 1),
                 VneKts                     = Math.Round(_vneKts, 1),
                 VfeKts                     = Math.Round(_vfeKts, 1),
-                VleKts                     = Math.Round(_vleKts, 1)
+                VsCleanKts                 = Math.Round(_vsCleanKts, 1)
             }
         };
 
