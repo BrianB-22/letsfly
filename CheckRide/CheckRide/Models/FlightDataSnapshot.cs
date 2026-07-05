@@ -105,6 +105,9 @@ public class FlightDataSnapshot
     public double CloudCoverage { get; init; }   // 0–1 fraction cloud cover
     public double OutsideAirTempC { get; init; } // OAT in °C; 0 to -20 + cloud = icing risk
 
+    // Fuel
+    public double FuelTotalKg { get; init; }   // total fuel on board, kg (m_fuel_total)
+
     // Meta
     public string AircraftName { get; init; } = "";
     public DateTime Timestamp { get; init; }

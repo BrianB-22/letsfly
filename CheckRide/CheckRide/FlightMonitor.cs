@@ -82,6 +82,11 @@ internal static class ScoringConfig
     public const int PenaltyWrongDepartureAirport   = -20;
     public const int PenaltyWrongArrivalAirport     = -30;
     public const double BankAtFlareMaxDeg           = 7.0;  // max bank in last 20ft — disqualifies Greaser
+    public const double LowFuelKg              = 50.0;   // < 50 kg airborne = critically low fuel
+    public const double FuelExhaustedKg        = 5.0;    // < 5 kg = essentially empty
+    public const int PenaltyLowFuel            = -10;
+    public const int PenaltyFuelExhausted      = -20;
+
     public const int PenaltyEngineFire         = -30;
     public const int PenaltyEngineOut          = -25;
     public const int PenaltyEngineOverspeed    = -20;
@@ -237,6 +242,12 @@ public class FlightMonitor
     private double _departureHdgDeg;
     private bool _hdgDeviationFlagged;
     private bool _takeoffSideloadFlagged;
+
+    // Fuel tracking
+    private double _fuelAtTakeoffKg;
+    private double _fuelAtLandingKg;
+    private bool _lowFuelFlagged;
+    private bool _fuelExhaustedFlagged;
 
     // Failure detection flags
     private bool _engineFireFlagged;
@@ -422,9 +433,10 @@ public class FlightMonitor
                 _departureHdgDeg = snap.MagHeadingDeg;
                 _hdgDeviationFlagged = false;
                 _takeoffSideloadFlagged = false;
+                _fuelAtTakeoffKg = snap.FuelTotalKg;
                 SampleTrack(snap, forced: true);
-                logger.Log($"Phase → Airborne  GPS=({snap.Latitude:F5},{snap.Longitude:F5})");
-                LogEvent(FlightEventType.Takeoff, snap.Timestamp, $"Takeoff — {snap.GroundspeedKts:F0} kt GS");
+                logger.Log($"Phase → Airborne  GPS=({snap.Latitude:F5},{snap.Longitude:F5})  Fuel={snap.FuelTotalKg:F1}kg");
+                LogEvent(FlightEventType.Takeoff, snap.Timestamp, $"Takeoff — {snap.GroundspeedKts:F0} kt GS, fuel {snap.FuelTotalKg:F0} kg");
                 AfterTakeoffCallout?.Invoke();
 
                 var liftoffN1 = Math.Max(snap.Eng1N1Pct, snap.Eng2N1Pct);
@@ -528,7 +540,8 @@ public class FlightMonitor
     private void RecordLanding(FlightDataSnapshot snap, EventLogger logger)
     {
         SampleTrack(snap, forced: true);
-        logger.Log($"Landing  GPS=({snap.Latitude:F5},{snap.Longitude:F5})  VS={snap.VerticalSpeedFpm:F0}fpm");
+        _fuelAtLandingKg = snap.FuelTotalKg;
+        logger.Log($"Landing  GPS=({snap.Latitude:F5},{snap.Longitude:F5})  VS={snap.VerticalSpeedFpm:F0}fpm  Fuel={snap.FuelTotalKg:F1}kg");
         _landingVsFpm       = snap.VerticalSpeedFpm;
         _landingLateralG    = snap.GForceLateral;
         _windSpeedAtLanding = snap.WindSpeedKt;
@@ -983,6 +996,27 @@ public class FlightMonitor
             logger.Log($"EVENT: Icing damage (frm_ice={snap.IceDamage:F3})");
             _iceDamageFlagged = true;
         }
+
+        // Fuel — only monitor while airborne and when fuel reading is plausible (> 0)
+        if (snap.FuelTotalKg > 0
+            && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach)
+        {
+            if (snap.FuelTotalKg < ScoringConfig.FuelExhaustedKg && !_fuelExhaustedFlagged)
+            {
+                LogEvent(FlightEventType.FuelExhausted, snap.Timestamp,
+                    $"Fuel exhausted in flight — {snap.FuelTotalKg:F1} kg remaining");
+                logger.Log($"EVENT: Fuel exhausted ({snap.FuelTotalKg:F1} kg)");
+                _fuelExhaustedFlagged = true;
+                _lowFuelFlagged = true; // prevent double-event
+            }
+            else if (snap.FuelTotalKg < ScoringConfig.LowFuelKg && !_lowFuelFlagged)
+            {
+                LogEvent(FlightEventType.LowFuel, snap.Timestamp,
+                    $"Low fuel in flight — {snap.FuelTotalKg:F1} kg remaining");
+                logger.Log($"EVENT: Low fuel ({snap.FuelTotalKg:F1} kg)");
+                _lowFuelFlagged = true;
+            }
+        }
     }
 
     private void DetectTaxiEvents(FlightDataSnapshot snap, EventLogger logger)
@@ -1124,7 +1158,12 @@ public class FlightMonitor
                 VnoKts                     = Math.Round(_vnoKts, 1),
                 VneKts                     = Math.Round(_vneKts, 1),
                 VfeKts                     = Math.Round(_vfeKts, 1),
-                VsCleanKts                 = Math.Round(_vsCleanKts, 1)
+                VsCleanKts                 = Math.Round(_vsCleanKts, 1),
+                FuelAtTakeoffKg            = Math.Round(_fuelAtTakeoffKg, 1),
+                FuelAtLandingKg            = Math.Round(_fuelAtLandingKg, 1),
+                FuelBurnedKg               = _fuelAtTakeoffKg > 0
+                                               ? Math.Round(Math.Max(0, _fuelAtTakeoffKg - _fuelAtLandingKg), 1)
+                                               : 0
             }
         };
 
@@ -1287,6 +1326,10 @@ public class FlightMonitor
         Once("Takeoff Directional Control",    r.Events.Any(e => e.Type == FlightEventType.TakeoffDirectionalControl), ScoringConfig.PenaltyTakeoffSideload);
         Once("Wrong Departure Airport",        r.Events.Any(e => e.Type == FlightEventType.WrongDepartureAirport), ScoringConfig.PenaltyWrongDepartureAirport);
         Once("Wrong Arrival Airport",          r.Events.Any(e => e.Type == FlightEventType.WrongArrivalAirport),   ScoringConfig.PenaltyWrongArrivalAirport);
+
+        // Fuel
+        Once("Low Fuel in Flight",             r.Events.Any(e => e.Type == FlightEventType.LowFuel),             ScoringConfig.PenaltyLowFuel);
+        Once("Fuel Exhausted in Flight",       r.Events.Any(e => e.Type == FlightEventType.FuelExhausted),       ScoringConfig.PenaltyFuelExhausted);
 
         // Aircraft failures
         Once("Engine Fire",                    r.Events.Any(e => e.Type == FlightEventType.FailureEngineFire),    ScoringConfig.PenaltyEngineFire);

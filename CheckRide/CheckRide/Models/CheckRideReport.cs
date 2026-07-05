@@ -79,6 +79,11 @@ public class FlightStats
     // Night tracking
     public double NightFlightPct { get; set; }          // % of airborne time at night
 
+    // Fuel
+    public double FuelAtTakeoffKg { get; set; }
+    public double FuelAtLandingKg { get; set; }
+    public double FuelBurnedKg    { get; set; }
+
     // Aircraft limits used for scoring (kias)
     public double VsoKts { get; set; }
     public double VrefKts { get; set; }   // 1.3 × Vso

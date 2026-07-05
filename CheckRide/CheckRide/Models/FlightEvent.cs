@@ -72,6 +72,10 @@ public enum FlightEventType
     Touchdown,
     ParkingBrakeSet,
 
+    // Fuel
+    LowFuel,
+    FuelExhausted,
+
     // Aircraft failures
     FailureEngineFire,
     FailureEngineOut,
