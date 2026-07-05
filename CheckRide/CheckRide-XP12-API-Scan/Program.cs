@@ -307,7 +307,10 @@ void WriteDiff(List<ScanResult> idle, List<ScanResult> eng, StringBuilder log)
                 System.Globalization.CultureInfo.InvariantCulture, out var vi) &&
             double.TryParse(er.Value, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var ve))
-            delta = $"  (Δ {ve - vi:+G4;-G4;0})";
+        {
+            var d = ve - vi;
+            delta = $"  (Δ {(d >= 0 ? "+" : "")}{d:G4})";
+        }
 
         log.AppendLine($"  {Key(ir.Name, ir.Idx)}");
         log.AppendLine($"    IDLE:    {ir.Value}");
