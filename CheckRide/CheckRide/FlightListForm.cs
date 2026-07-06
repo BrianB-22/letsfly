@@ -57,7 +57,9 @@ internal class FlightListForm : Form
     {
         _client = client;
 
-        Text            = "CheckRide for SimLetsFly";
+        var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        var verStr = ver is null ? "" : $" v{ver.Major}.{ver.Minor}.{ver.Build}";
+        Text            = $"CheckRide for SimLetsFly{verStr}";
         var icoPath = Path.Combine(EmbeddedAssets.Dir, "images", "icon_256x256.ico");
         if (File.Exists(icoPath)) try { Icon = new Icon(icoPath); } catch { }
         ClientSize      = new Size(880, 560);
