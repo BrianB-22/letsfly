@@ -324,9 +324,10 @@ public class XP12Connector
         var pitRTask  = D("sim/flightmodel/position/Q", ct);
         var yawRTask  = D("sim/flightmodel/position/R", ct);
         // Gear / ground
-        var ogTask    = D("sim/flightmodel2/gear/on_ground", ct, index: 0);
-        var gearTask  = D("sim/flightmodel2/gear/deploy_ratio", ct, index: 0);
-        var sinkTask  = D("sim/flightmodel2/gear/tire_vertical_deflection_mtr", ct, index: 1);
+        var ogTask     = D("sim/flightmodel2/gear/on_ground", ct, index: 0);  // nose gear
+        var ogMainTask = D("sim/flightmodel2/gear/on_ground", ct, index: 1);  // L-main gear
+        var gearTask   = D("sim/flightmodel2/gear/deploy_ratio", ct, index: 0);
+        var sinkTask   = D("sim/flightmodel2/gear/tire_vertical_deflection_mtr", ct, index: 1);
         // Controls
         var pbTask    = D("sim/flightmodel/controls/parkbrake", ct);
         var flapTask  = D("sim/flightmodel/controls/flaprat", ct);
@@ -396,7 +397,7 @@ public class XP12Connector
             aoaTask, bankTask, pitchTask, hdgTask, trkTask,
             gnTask, glTask, gaTask,
             rollRTask, pitRTask, yawRTask,
-            ogTask, gearTask, sinkTask,
+            ogTask, ogMainTask, gearTask, sinkTask,
             pbTask, flapTask, sbrakeTask, thrTask,
             stallTask, crashTask, ovTask,
             pitotTask, llTask, beacTask, strbTask, xpdrTask, apTask,
@@ -433,6 +434,7 @@ public class XP12Connector
             PitchRateDegSec      = pitRTask.Result,
             YawRateDegSec        = yawRTask.Result,
             OnGround             = ogTask.Result > 0.5,
+            MainGearOnGround     = ogMainTask.Result > 0.5,
             GearDeployRatio      = gearTask.Result,
             TireSinkDepthM       = sinkTask.Result,
             ParkingBrakeSet      = pbTask.Result > 0.5,

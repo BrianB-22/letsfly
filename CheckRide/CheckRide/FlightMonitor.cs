@@ -87,6 +87,14 @@ internal static class ScoringConfig
     public const int PenaltyLowFuel            = -10;
     public const int PenaltyFuelExhausted      = -20;
 
+    // New detection thresholds
+    public const double SlowApproachFactor     = 0.85;  // Vref × this = too-slow threshold below 1,000ft AGL
+    public const double NoFlapLandingRatio     = 0.15;  // flap ratio below this = no-flap landing
+    public const int PenaltyApproachTooSlow    = -10;
+    public const int PenaltyNoseWheelFirst     = -10;
+    public const int PenaltyNoFlapLanding      = -10;
+    public const int PenaltyTakeoffParkingBrake = -5;
+
     public const int PenaltyEngineFire         = -30;
     public const int PenaltyEngineOut          = -25;
     public const int PenaltyEngineOverspeed    = -20;
@@ -248,6 +256,11 @@ public class FlightMonitor
     private double _fuelAtLandingKg;
     private bool _lowFuelFlagged;
     private bool _fuelExhaustedFlagged;
+
+    // New detection flags
+    private bool _approachTooSlowFlagged;
+    private bool _eng1StartLogged;
+    private bool _eng2StartLogged;
 
     // Failure detection flags
     private bool _engineFireFlagged;
@@ -439,6 +452,12 @@ public class FlightMonitor
                 LogEvent(FlightEventType.Takeoff, snap.Timestamp, $"Takeoff — {snap.GroundspeedKts:F0} kt GS, fuel {snap.FuelTotalKg:F0} kg");
                 AfterTakeoffCallout?.Invoke();
 
+                if (snap.ParkingBrakeSet)
+                {
+                    LogEvent(FlightEventType.TakeoffParkingBrake, snap.Timestamp, "Takeoff with parking brake set");
+                    logger.Log("EVENT: Parking brake set at liftoff");
+                }
+
                 var liftoffN1 = Math.Max(snap.Eng1N1Pct, snap.Eng2N1Pct);
                 if (liftoffN1 < ScoringConfig.TakeoffMinN1Pct)
                 {
@@ -613,6 +632,22 @@ public class FlightMonitor
                 quality = "good";
                 logger.Log($"Cocked landing — max bank {_flareMaxBankDeg:F1}° in flare, downgraded from Greaser");
             }
+        }
+
+        // Nose-wheel-first: nose gear (OnGround) is true but main gear is not — nose touched first
+        if (snap.OnGround && !snap.MainGearOnGround)
+        {
+            LogEvent(FlightEventType.NoseWheelFirst, snap.Timestamp, "Nose-wheel-first landing");
+            logger.Log("EVENT: Nose-wheel-first landing");
+            quality = "poor";
+        }
+
+        // No-flap landing: flap ratio below threshold when aircraft is flap-capable
+        if (_vfeKts > 0 && snap.FlapRatio < ScoringConfig.NoFlapLandingRatio)
+        {
+            LogEvent(FlightEventType.NoFlapLanding, snap.Timestamp,
+                $"Landing with insufficient flaps — flap ratio {snap.FlapRatio:F2}");
+            logger.Log($"EVENT: No-flap landing (flap ratio={snap.FlapRatio:F2})");
         }
 
         logger.Log($"Touchdown quality: {quality}");
@@ -951,6 +986,22 @@ public class FlightMonitor
             logger.Log("EVENT: Engine 2 out in flight");
             _eng2OutFlagged = true;
         }
+        // Engine start milestone — rising edge while still on ground
+        if (!_eng1StartLogged && snap.Engine1Running && !_prevEng1Running
+            && _phase is FlightPhase.Idle or FlightPhase.Taxiing)
+        {
+            LogEvent(FlightEventType.EngineStart, snap.Timestamp, "Engine 1 started");
+            logger.Log("Milestone: Engine 1 started");
+            _eng1StartLogged = true;
+        }
+        if (!_eng2StartLogged && snap.Engine2Running && !_prevEng2Running
+            && _phase is FlightPhase.Idle or FlightPhase.Taxiing)
+        {
+            LogEvent(FlightEventType.EngineStart, snap.Timestamp, "Engine 2 started");
+            logger.Log("Milestone: Engine 2 started");
+            _eng2StartLogged = true;
+        }
+
         _prevEng1Running = snap.Engine1Running;
         _prevEng2Running = snap.Engine2Running;
 
@@ -1093,6 +1144,18 @@ public class FlightMonitor
                 $"Excessive approach speed — {snap.IndicatedAirspeedKts:F0}kt below 1,000ft AGL (Vref={_vrefKts:F0}kt)");
             logger.Log($"EVENT: Excessive approach speed ({snap.IndicatedAirspeedKts:F0}kt, Vref={_vrefKts:F0}kt)");
             _approachSpeedFlagged = true;
+        }
+
+        // Approach too slow — below Vref × 0.85 between 50ft and 1,000ft AGL
+        var slowSpeedThreshold = _vrefKts > 0 ? _vrefKts * ScoringConfig.SlowApproachFactor : 0;
+        if (slowSpeedThreshold > 0 && snap.AltitudeAglFt < 1000 && snap.AltitudeAglFt > 50
+            && snap.IndicatedAirspeedKts > 30 && snap.IndicatedAirspeedKts < slowSpeedThreshold
+            && !_approachTooSlowFlagged)
+        {
+            LogEvent(FlightEventType.ApproachTooSlow, snap.Timestamp,
+                $"Approach too slow — {snap.IndicatedAirspeedKts:F0}kt below 1,000ft AGL (Vref={_vrefKts:F0}kt, threshold={slowSpeedThreshold:F0}kt)");
+            logger.Log($"EVENT: Approach too slow ({snap.IndicatedAirspeedKts:F0}kt, threshold={slowSpeedThreshold:F0}kt)");
+            _approachTooSlowFlagged = true;
         }
 
         // Unstable below 500ft — Vref×1.3 speed or -1000fpm VS; fallback 150kt
@@ -1303,6 +1366,7 @@ public class FlightMonitor
 
         // Approach
         Once("Excessive Approach Speed",       r.Events.Any(e => e.Type == FlightEventType.ExcessiveApproachSpeed), ScoringConfig.PenaltyExcessApproachSpd);
+        Once("Approach Too Slow",              r.Events.Any(e => e.Type == FlightEventType.ApproachTooSlow),       ScoringConfig.PenaltyApproachTooSlow);
         Once("Unstable Approach",              r.Events.Any(e => e.Type == FlightEventType.UnstableApproach),     ScoringConfig.PenaltyUnstableApproach);
         Once("Flap Overspeed",                 r.Events.Any(e => e.Type == FlightEventType.FlapOverspeed),        ScoringConfig.PenaltyFlapOverspeed);
 
@@ -1312,6 +1376,8 @@ public class FlightMonitor
         Once("Firm Landing",                   r.Events.Any(e => e.Type == FlightEventType.FirmLanding),          ScoringConfig.PenaltyFirmLanding);
         Once("Gear Up Landing",                r.Events.Any(e => e.Type == FlightEventType.GearUpLanding),        ScoringConfig.PenaltyGearUpLanding);
         Once("Sideload Landing",               r.Events.Any(e => e.Type == FlightEventType.SideloadLanding),      ScoringConfig.PenaltySideloadLanding);
+        Once("Nose-Wheel-First Landing",       r.Events.Any(e => e.Type == FlightEventType.NoseWheelFirst),       ScoringConfig.PenaltyNoseWheelFirst);
+        Once("No-Flap Landing",                r.Events.Any(e => e.Type == FlightEventType.NoFlapLanding),        ScoringConfig.PenaltyNoFlapLanding);
 
         // Systems
         PerOccurrence("System Check Failures", r.Summary.SystemFlags,                                             ScoringConfig.PenaltySystemFlag);
@@ -1324,6 +1390,7 @@ public class FlightMonitor
         Once("Takeoff Low Power",              r.Events.Any(e => e.Type == FlightEventType.TakeoffLowPower),      ScoringConfig.PenaltyTakeoffLowPower);
         Once("Takeoff Hdg Deviation",          r.Events.Any(e => e.Type == FlightEventType.TakeoffHeadingDeviation), ScoringConfig.PenaltyTakeoffHdgDev);
         Once("Takeoff Directional Control",    r.Events.Any(e => e.Type == FlightEventType.TakeoffDirectionalControl), ScoringConfig.PenaltyTakeoffSideload);
+        Once("Takeoff with Parking Brake",     r.Events.Any(e => e.Type == FlightEventType.TakeoffParkingBrake),  ScoringConfig.PenaltyTakeoffParkingBrake);
         Once("Wrong Departure Airport",        r.Events.Any(e => e.Type == FlightEventType.WrongDepartureAirport), ScoringConfig.PenaltyWrongDepartureAirport);
         Once("Wrong Arrival Airport",          r.Events.Any(e => e.Type == FlightEventType.WrongArrivalAirport),   ScoringConfig.PenaltyWrongArrivalAirport);
 

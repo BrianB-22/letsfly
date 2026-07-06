@@ -26,6 +26,7 @@ public enum FlightEventType
     // Approach
     HighDescentRate,
     ExcessiveApproachSpeed,
+    ApproachTooSlow,
     UnstableApproach,
 
     // Gear
@@ -37,6 +38,8 @@ public enum FlightEventType
 
     // Landing
     FastLanding,            // high IAS at touchdown
+    NoseWheelFirst,         // nose gear touched before main gear
+    NoFlapLanding,          // flap ratio < threshold at touchdown
 
     // Systems
     SystemPitotHeat,
@@ -59,6 +62,7 @@ public enum FlightEventType
     TakeoffLowPower,
     TakeoffHeadingDeviation,
     TakeoffDirectionalControl,
+    TakeoffParkingBrake,    // parking brake set at moment of liftoff
     WrongDepartureAirport,
     WrongArrivalAirport,
 

@@ -31,7 +31,8 @@ public class FlightDataSnapshot
     public double YawRateDegSec { get; init; }
 
     // Gear / ground
-    public bool OnGround { get; init; }
+    public bool OnGround { get; init; }            // nose gear on_ground[0]
+    public bool MainGearOnGround { get; init; }    // L-main gear on_ground[1] (true = main gear down)
     public double GearDeployRatio { get; init; }
     public double TireSinkDepthM { get; init; }     // main gear sink into surface, m; >0.05 = off pavement
 
