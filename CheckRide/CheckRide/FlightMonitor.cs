@@ -48,7 +48,7 @@ internal static class ScoringConfig
 
     // Takeoff detection
     public const double TakeoffMinN1Pct       = 90.0;  // N1% below this at liftoff = low power takeoff
-    public const double TakeoffHdgDevDeg      = 20.0;  // heading deviation from departure below 500ft AGL
+    public const double TakeoffHdgDevDeg      = 30.0;  // heading deviation from departure below 500ft AGL
     public const double TakeoffSideloadG      = 0.40;  // lateral G during initial climb (below 200ft AGL)
 
     // Wrong airport detection
@@ -1094,7 +1094,7 @@ public class FlightMonitor
 
     private void DetectTakeoffClimbEvents(FlightDataSnapshot snap, EventLogger logger)
     {
-        if (!_hdgDeviationFlagged && _departureHdgDeg > 0)
+        if (!_hdgDeviationFlagged && _departureHdgDeg > 0 && snap.AltitudeAglFt < 500)
         {
             var delta = snap.MagHeadingDeg - _departureHdgDeg;
             if (delta > 180) delta -= 360;
