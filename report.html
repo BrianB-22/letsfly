@@ -178,6 +178,13 @@
       .report { padding: 12px 0; gap: 14px; }
       .report-cols { grid-template-columns: 1fr 1fr; }
     }
+    .cr-ai-badge { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; background: var(--accent); color: #000; padding: 1px 5px; border-radius: 3px; vertical-align: middle; margin-left: 6px; opacity: 0.6; }
+    .cr-debrief-body p { margin: 0 0 10px; line-height: 1.65; color: var(--text2); font-size: 14px; }
+    .cr-debrief-body p:last-child { margin-bottom: 0; }
+    .cr-debrief-loading { display: flex; align-items: center; gap: 10px; color: var(--text3); font-size: 13px; padding: 4px 0; }
+    .cr-debrief-spinner { width: 13px; height: 13px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: cr-spin 0.8s linear infinite; flex-shrink: 0; }
+    @keyframes cr-spin { to { transform: rotate(360deg); } }
+    .cr-debrief-error { color: var(--text3); font-size: 13px; }
   </style>
 </head>
 <body>
@@ -423,7 +430,7 @@ async function loadReport() {
 
   const [crRes, flightRes] = await Promise.all([
     _sb.from('checkride_results')
-       .select('id,flight_id,score,grade,aircraft,sim,scoring_version,recorded_at,events,summary,stats,breakdown,track,conditions')
+       .select('id,flight_id,user_id,score,grade,aircraft,sim,scoring_version,recorded_at,events,summary,stats,breakdown,track,conditions,debrief')
        .eq('id', id)
        .single(),
     // Flight fetched after we know flight_id — done separately below
@@ -513,6 +520,11 @@ function renderReport(r, depId, arrId, depName, arrName) {
       </div>
     </div>
 
+    <div class="report-panel" id="cr-debrief-panel">
+      <div class="section-label">Flight Debrief <span class="cr-ai-badge">AI</span></div>
+      <div id="cr-debrief-body" class="cr-debrief-body"></div>
+    </div>
+
     <div class="report-panel" id="cr-weather-panel" style="display:none;">
       <div class="section-label">Weather</div>
       <div id="cr-modal-weather"></div>
@@ -527,12 +539,48 @@ function renderReport(r, depId, arrId, depName, arrName) {
   renderStats(r);
   renderEvents(r);
   document.getElementById('cr-modal-breakdown').innerHTML = buildScoreBreakdown(r);
+  maybeGenerateDebrief(r);
 
   setTimeout(() => {
     renderMap(r.track || [], r.events || [], depId, arrId);
     renderChart(r.track || [], r.events || []);
     initPlayback(r.track || [], r.events || []);
   }, 50);
+}
+
+// ── AI DEBRIEF ──
+async function maybeGenerateDebrief(r) {
+  const panel = document.getElementById('cr-debrief-panel');
+  const body  = document.getElementById('cr-debrief-body');
+  if (!panel || !body) return;
+
+  if (r.debrief) {
+    body.innerHTML = r.debrief.split('\n\n').map(p => `<p>${escapeHtml(p)}</p>`).join('');
+    return;
+  }
+
+  const { data: { session } } = await _sb.auth.getSession();
+  if (!session || session.user.id !== r.user_id) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  body.innerHTML = '<div class="cr-debrief-loading"><span class="cr-debrief-spinner"></span>Generating flight debrief…</div>';
+
+  try {
+    const resp = await fetch('https://blxugbnoitkxhdjgfkff.supabase.co/functions/v1/generate-debrief', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ run_id: r.id }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const { debrief, error } = await resp.json();
+    if (error) throw new Error(error);
+    r.debrief = debrief;
+    body.innerHTML = debrief.split('\n\n').map(p => `<p>${escapeHtml(p)}</p>`).join('');
+  } catch (e) {
+    body.innerHTML = '<div class="cr-debrief-error">Could not generate debrief. Try refreshing the page.</div>';
+  }
 }
 
 // ── STATS ──

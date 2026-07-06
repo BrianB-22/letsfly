@@ -51,6 +51,27 @@ internal class SupabaseClient
         };
     }
 
+    // Calls the verify-client edge function after login.
+    // Currently always passes — add subscription/version gating server-side without touching this code.
+    public static async Task VerifyClientAsync(string accessToken)
+    {
+        var clientVersion = System.Reflection.Assembly.GetExecutingAssembly()
+                                .GetName().Version?.ToString() ?? "unknown";
+
+        var req = new HttpRequestMessage(HttpMethod.Post,
+            $"{Config.SupabaseUrl}/functions/v1/verify-client");
+        req.Headers.Add("apikey",         Config.SupabaseAnonKey);
+        req.Headers.Add("Authorization",  $"Bearer {accessToken}");
+        req.Content = JsonContent.Create(new { client_version = clientVersion });
+
+        var resp = await _http.SendAsync(req);
+        var body = await resp.Content.ReadAsStringAsync();
+
+        var result = JsonSerializer.Deserialize<VerifyClientResponse>(body, _readOpts);
+        if (result is not null && !result.Allowed)
+            throw new Exception(result.Message ?? "Access denied. Please check your subscription at simletsfly.com.");
+    }
+
     public async Task SignOutAsync()
     {
         try
@@ -231,4 +252,8 @@ internal class SupabaseClient
         [property: JsonPropertyName("flight_id")] string FlightId,
         [property: JsonPropertyName("score")]     int    Score,
         [property: JsonPropertyName("grade")]     string Grade);
+
+    private record VerifyClientResponse(
+        [property: JsonPropertyName("allowed")]  bool    Allowed,
+        [property: JsonPropertyName("message")]  string? Message);
 }

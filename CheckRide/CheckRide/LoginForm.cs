@@ -122,6 +122,7 @@ internal class LoginForm : Form
         try
         {
             var session = await SupabaseClient.LoginAsync(_txtEmail.Text.Trim(), _txtPassword.Text);
+            await SupabaseClient.VerifyClientAsync(session.AccessToken);
             SessionStore.Save(session);
             Session      = session;
             DialogResult = DialogResult.OK;
