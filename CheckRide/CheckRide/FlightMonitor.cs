@@ -651,7 +651,7 @@ public class FlightMonitor
         }
 
         logger.Log($"Touchdown quality: {quality}");
-        var qualityLabel = quality == "excellent" ? "Greaser" : quality == "good" ? "Smooth" : "Hard";
+        var qualityLabel = quality == "excellent" ? "Greaser" : quality == "good" ? "Smooth" : "Poor";
         LogEvent(FlightEventType.Touchdown, snap.Timestamp, $"Landing — {qualityLabel} ({(int)Math.Abs(_landingVsFpm)} fpm)");
         TouchdownCallout?.Invoke(quality);
     }
@@ -1320,7 +1320,8 @@ public class FlightMonitor
                 FlightEventType.FailureOverG or FlightEventType.FailureIcingDamage),
             Crashed        = r.Events.Any(e => e.Type == FlightEventType.Crash),
             RunwayExcursion = r.Events.Any(e => e.Type == FlightEventType.RunwayExcursion),
-            LandingQuality = absVs < 75 ? "Greaser"
+            LandingQuality = r.Events.Any(e => e.Type == FlightEventType.Crash) ? "Crash"
+                : absVs < 75  ? "Greaser"
                 : absVs < 150 ? "Smooth"
                 : absVs < 300 ? "Normal"
                 : absVs < 600 ? "Firm"
