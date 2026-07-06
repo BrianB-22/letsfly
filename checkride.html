@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheckRide — Know How You Really Fly · SimLetsFly</title>
+<meta name="description" content="CheckRide monitors your X-Plane 12 flights and grades your performance on speed discipline, landing quality, system checks, and airmanship. Free companion app for SimLetsFly.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta property="og:title" content="CheckRide — Know How You Really Fly">
+<meta property="og:description" content="A free Windows companion app that grades your X-Plane flights on speed, landing, systems, and airmanship — then writes you an AI debrief.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://simletsfly.com/icon-512.svg">
+<meta property="og:site_name" content="SimLetsFly">
+<meta name="twitter:card" content="summary">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-TMZ18XB2ZM"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-TMZ18XB2ZM');</script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg0: #0a0d10; --bg1: #0e1318; --bg2: #131920; --bg3: #1a2230;
+    --border: #1e2d3d; --border2: #243447;
+    --accent: #00b4d8; --accent2: #0077a8; --accent-glow: rgba(0,180,216,0.15);
+    --amber: #f4a261; --green: #52b788; --red: #e76f51;
+    --text: #c8d8e8; --text2: #7a92a8; --text3: #4a6070;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Barlow', sans-serif;
+    --cond: 'Barlow Condensed', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg0); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; min-height: 100vh; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── HERO ── */
+  .hero { text-align: center; padding: 64px 24px 52px; border-bottom: 1px solid var(--border); }
+  .hero-eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+  .hero-title { font-family: var(--cond); font-size: clamp(52px, 10vw, 96px); font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: var(--text); line-height: 1; margin-bottom: 18px; }
+  .hero-title span { color: var(--accent); }
+  .hero-tagline { font-family: var(--cond); font-size: clamp(18px, 3.5vw, 26px); font-weight: 400; letter-spacing: 3px; text-transform: uppercase; color: var(--text2); margin-bottom: 22px; }
+  .hero-sub { max-width: 600px; margin: 0 auto 36px; font-size: 16px; color: var(--text2); line-height: 1.75; font-weight: 300; }
+  .hero-ctas { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+  .btn-primary { font-family: var(--cond); font-size: 15px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 11px 30px; border-radius: 3px; cursor: pointer; background: var(--accent); border: none; color: #000; text-decoration: none; transition: opacity 0.15s; display: inline-block; }
+  .btn-primary:hover { opacity: 0.85; text-decoration: none; }
+  .btn-ghost { display: inline-block; font-family: var(--mono); font-size: 13px; letter-spacing: 2px; color: var(--accent); border: 1px solid rgba(0,180,216,0.35); padding: 9px 20px; border-radius: 3px; transition: background 0.15s; }
+  .btn-ghost:hover { background: var(--accent-glow); text-decoration: none; }
+  .hero-req { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 18px; letter-spacing: 1px; }
+
+  /* ── SECTION ── */
+  .section { max-width: 1060px; margin: 0 auto; padding: 56px 24px; }
+  .section-label { font-family: var(--mono); font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+  .section-title { font-family: var(--cond); font-size: clamp(22px, 4vw, 34px); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text); margin-bottom: 8px; }
+  .section-desc { color: var(--text2); font-size: 15px; line-height: 1.7; margin-bottom: 36px; max-width: 620px; font-weight: 300; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+  /* ── STEPS ── */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  @media (max-width: 680px) { .steps { grid-template-columns: 1fr; } }
+  .step { background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; padding: 26px 22px; }
+  .step-num { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: var(--accent); margin-bottom: 12px; }
+  .step h3 { font-family: var(--cond); font-size: 18px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text); margin-bottom: 8px; }
+  .step p { color: var(--text2); font-size: 13px; line-height: 1.65; font-weight: 300; }
+
+  /* ── SCREENSHOTS ── */
+  .screenshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 24px; }
+  @media (max-width: 560px) { .screenshots { grid-template-columns: 1fr; } }
+  .shot { border: 1px solid var(--border2); border-radius: 6px; overflow: hidden; background: var(--bg2); }
+  .shot img { width: 100%; display: block; }
+  .shot-caption { padding: 14px 16px; }
+  .shot-caption strong { font-family: var(--cond); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text); display: block; margin-bottom: 4px; }
+  .shot-caption span { font-size: 13px; color: var(--text2); }
+
+  /* ── SCORING ── */
+  .scoring-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { .scoring-grid { grid-template-columns: 1fr; } }
+  .scoring-item { background: var(--bg2); border: 1px solid var(--border2); border-radius: 4px; padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; }
+  .scoring-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .scoring-item h4 { font-family: var(--cond); font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text); margin-bottom: 4px; }
+  .scoring-item p { font-size: 13px; color: var(--text2); line-height: 1.55; font-weight: 300; }
+
+  /* ── GRADES ── */
+  .grades { display: flex; gap: 10px; flex-wrap: wrap; }
+  .grade-chip { background: var(--bg2); border: 1px solid var(--border2); border-radius: 4px; padding: 16px 18px; text-align: center; min-width: 86px; flex: 1; }
+  .grade-letter { font-family: var(--mono); font-size: 30px; font-weight: 700; line-height: 1; margin-bottom: 5px; }
+  .grade-range  { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-bottom: 3px; }
+  .grade-label  { font-size: 12px; color: var(--text2); font-weight: 300; }
+  .grade-S .grade-letter { color: #f4d03f; }
+  .grade-A .grade-letter { color: var(--green); }
+  .grade-B .grade-letter { color: var(--accent); }
+  .grade-C .grade-letter { color: var(--amber); }
+  .grade-D .grade-letter { color: var(--red); }
+  .grade-F .grade-letter { color: #c0392b; }
+
+  /* ── AI DEBRIEF DEMO ── */
+  .debrief-demo { background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; padding: 26px 30px; margin-top: 0; }
+  .debrief-header { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .ai-badge { font-size: 9px; font-weight: 700; background: var(--accent); color: #000; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.06em; opacity: 0.7; }
+  .debrief-demo p { color: var(--text2); font-size: 14px; line-height: 1.75; font-weight: 300; margin-bottom: 12px; }
+  .debrief-demo p:last-child { margin-bottom: 0; }
+  .debrief-demo em { color: var(--text3); font-style: normal; }
+
+  /* ── DOWNLOAD / BETA ── */
+  .beta-box {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px;
+    padding: 40px 36px; text-align: center; position: relative; overflow: hidden;
+  }
+  .beta-box::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0,180,216,0.06) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .beta-badge {
+    display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--amber); border: 1px solid rgba(244,162,97,0.4);
+    border-radius: 2px; padding: 3px 12px; margin-bottom: 20px;
+  }
+  .beta-box h3 { font-family: var(--cond); font-size: 28px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text); margin-bottom: 12px; }
+  .beta-box p { color: var(--text2); font-size: 15px; line-height: 1.7; max-width: 520px; margin: 0 auto 28px; font-weight: 300; }
+  .install-steps { text-align: left; max-width: 480px; margin: 0 auto 32px; display: flex; flex-direction: column; gap: 10px; }
+  .install-step { display: flex; gap: 14px; align-items: flex-start; }
+  .install-step-num { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 1px; min-width: 24px; margin-top: 2px; }
+  .install-step-text { font-size: 14px; color: var(--text2); line-height: 1.5; font-weight: 300; }
+  .install-step-text strong { color: var(--text); font-weight: 500; }
+  .coming-soon-btn {
+    display: inline-block; font-family: var(--cond); font-size: 15px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; padding: 12px 36px; border-radius: 3px;
+    background: rgba(0,180,216,0.08); border: 1px solid rgba(0,180,216,0.3); color: var(--text2);
+    cursor: default;
+  }
+  .coming-soon-note { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 14px; letter-spacing: 1px; }
+
+  /* ── FOOTER ── */
+  .footer { text-align: center; padding: 36px 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text3); }
+  .footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">SimLetsFly Add-On · X-Plane 12 · Windows</div>
+  <h1 class="hero-title">Check<span>Ride</span></h1>
+  <div class="hero-tagline">Know how you really fly.</div>
+  <p class="hero-sub">A free companion app that monitors your flight from departure to parking brake, then grades your performance on speed discipline, landing quality, airmanship, and system procedure — and writes you a debrief.</p>
+  <div class="hero-ctas">
+    <a href="#download" class="btn-primary">Download &amp; Install</a>
+    <a href="flights.html" class="btn-ghost">View My Reports</a>
+  </div>
+  <p class="hero-req">Requires SimLetsFly account &nbsp;·&nbsp; X-Plane 12 &nbsp;·&nbsp; Windows 10/11</p>
+</div>
+
+<!-- HOW IT WORKS -->
+<hr class="divider">
+<div class="section">
+  <div class="section-label">How It Works</div>
+  <div class="section-title">Three Steps to a Better Flight</div>
+  <p class="section-desc">CheckRide runs quietly in your system tray. No sim plugins, no config files — it talks directly to X-Plane 12's built-in REST API and uploads your graded report to SimLetsFly when you land.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">Step 01</div>
+      <h3>Install &amp; Sign In</h3>
+      <p>Download the Windows tray app, sign in with your SimLetsFly account, and pick your flight card. That's the only setup.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">Step 02</div>
+      <h3>Fly Normally</h3>
+      <p>Start recording from the tray menu before departure. CheckRide monitors speed, G-forces, bank angle, systems, and approach stability in the background — no interference with your sim.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">Step 03</div>
+      <h3>Get Your Grade</h3>
+      <p>Set the parking brake. CheckRide scores your flight and uploads the report automatically — score, breakdown, event log, flight track, and an AI-written debrief, all in your browser.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SCREENSHOTS -->
+<hr class="divider">
+<div class="section">
+  <div class="section-label">The Report</div>
+  <div class="section-title">Every Flight, Documented</div>
+  <p class="section-desc">Shareable public reports with interactive flight track, altitude and speed chart, full event log, and AI debrief. Fly the same route multiple times and watch your scores improve.</p>
+  <div class="screenshots">
+    <div class="shot">
+      <img src="marketing/checkride_image_1.png" alt="CheckRide report showing flight track, altitude chart, and score breakdown">
+      <div class="shot-caption">
+        <strong>Flight Report</strong>
+        <span>Interactive map, altitude and speed chart with event markers, and a complete point-by-point score breakdown. Hover any event dot to see what happened and when.</span>
+      </div>
+    </div>
+    <div class="shot">
+      <img src="marketing/checkride_image_2.png" alt="CheckRide score breakdown and event log detail">
+      <div class="shot-caption">
+        <strong>Event Log &amp; Score Breakdown</strong>
+        <span>Every scored event logged with a timestamp. See exactly when the gear should have been up, which approach was unstable, and what each penalty cost you.</span>
+      </div>
+    </div>
+    <div class="shot">
+      <img src="marketing/checkride_image_3.png" alt="SimLetsFly My Flights page showing CheckRide results">
+      <div class="shot-caption">
+        <strong>My Flights Integration</strong>
+        <span>CheckRide results attach directly to your SimLetsFly flight cards. Grade trends show whether you're improving or repeating the same mistakes run over run.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCORING -->
+<hr class="divider">
+<div class="section">
+  <div class="section-label">Scoring</div>
+  <div class="section-title">What CheckRide Measures</div>
+  <p class="section-desc">Starts at 100. Every deviation costs points. Bonus points for exceptional landings. The score reflects how the flight was flown — not just where you went.</p>
+  <div class="scoring-grid">
+    <div class="scoring-item">
+      <div class="scoring-icon">🛬</div>
+      <div>
+        <h4>Landing Quality</h4>
+        <p>Vertical speed at touchdown, crosswind component, side-load. Greasers are rewarded — hard landings cost you.</p>
+      </div>
+    </div>
+    <div class="scoring-item">
+      <div class="scoring-icon">⚡</div>
+      <div>
+        <h4>Speed Discipline</h4>
+        <p>Overspeed events, 250-knot restriction below 10,000 ft, excessive approach speed. Every infraction is logged with a timestamp.</p>
+      </div>
+    </div>
+    <div class="scoring-item">
+      <div class="scoring-icon">✈</div>
+      <div>
+        <h4>Airmanship</h4>
+        <p>G-forces, bank angles, descent rates, unstable approaches. Fly like a professional or the score will reflect it.</p>
+      </div>
+    </div>
+    <div class="scoring-item">
+      <div class="scoring-icon">⚙</div>
+      <div>
+        <h4>System Checks</h4>
+        <p>Gear position, flap config, landing lights, strobes, transponder, pitot heat — checked against the phase of flight, not a static checklist.</p>
+      </div>
+    </div>
+    <div class="scoring-item">
+      <div class="scoring-icon">🗺</div>
+      <div>
+        <h4>Flight Profile</h4>
+        <p>Autopilot reliance, max altitude, distance flown, day vs. night hours — a full picture of how the flight was conducted.</p>
+      </div>
+    </div>
+    <div class="scoring-item">
+      <div class="scoring-icon">🌤</div>
+      <div>
+        <h4>Weather Conditions</h4>
+        <p>Wind, visibility, cloud layers, and OAT sampled every five minutes and attached to your report for full context.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GRADES -->
+<hr class="divider">
+<div class="section">
+  <div class="section-label">Grading Scale</div>
+  <div class="section-title">What Does Your Grade Mean?</div>
+  <p class="section-desc">Scores run from 0 to 100. The grade reflects the full flight — speed, systems, airmanship, and landing. Not just the touchdown.</p>
+  <div class="grades">
+    <div class="grade-chip grade-S">
+      <div class="grade-letter">S</div>
+      <div class="grade-range">90–100</div>
+      <div class="grade-label">Exceptional</div>
+    </div>
+    <div class="grade-chip grade-A">
+      <div class="grade-letter">A</div>
+      <div class="grade-range">80–89</div>
+      <div class="grade-label">Proficient</div>
+    </div>
+    <div class="grade-chip grade-B">
+      <div class="grade-letter">B</div>
+      <div class="grade-range">70–79</div>
+      <div class="grade-label">Solid</div>
+    </div>
+    <div class="grade-chip grade-C">
+      <div class="grade-letter">C</div>
+      <div class="grade-range">55–69</div>
+      <div class="grade-label">Acceptable</div>
+    </div>
+    <div class="grade-chip grade-D">
+      <div class="grade-letter">D</div>
+      <div class="grade-range">40–54</div>
+      <div class="grade-label">Needs Work</div>
+    </div>
+    <div class="grade-chip grade-F">
+      <div class="grade-letter">F</div>
+      <div class="grade-range">0–39</div>
+      <div class="grade-label">Unsatisfactory</div>
+    </div>
+  </div>
+</div>
+
+<!-- AI DEBRIEF -->
+<hr class="divider">
+<div class="section">
+  <div class="section-label">AI Debrief</div>
+  <div class="section-title">A CFI in Your Browser</div>
+  <p class="section-desc">After each flight, CheckRide generates a written debrief specific to your penalties, your landing, and how you compared to your last run. No generic feedback — it references your actual events.</p>
+  <div class="debrief-demo">
+    <div class="debrief-header">
+      Flight Debrief <span class="ai-badge">AI</span>
+    </div>
+    <p>The landing itself was the bright spot — a greaser at 28 fpm with clean crosswind control shows solid stick-and-rudder fundamentals. Unfortunately, the three overspeed events in cruise and the 250-knot bust below 10,000 ft tell a different story about energy management. The engine overspeed alone cost 20 points, and it suggests you weren't actively monitoring the speed envelope during descent setup.</p>
+    <p>The six system check failures are equally concerning. Whether it's rushing through or simply skipping verification steps, those aren't optional in a professional operation. Commit to a flow before each phase transition and the score will reflect it. <em>Score improved 8 points over your previous run — the unstable approach from last time was clean this time, which is the right direction.</em></p>
+    <p>Next time: slow down your scan rate, brief every altitude restriction before you reach it, and commit to a stabilized approach gate by 500 feet AGL. The stick-and-rudder skills are there — nail the discipline and you'll be looking at a B.</p>
+  </div>
+</div>
+
+<!-- DOWNLOAD / INSTALL -->
+<hr class="divider">
+<div class="section" id="download">
+  <div class="section-label">Download &amp; Install</div>
+  <div class="section-title">Get CheckRide</div>
+  <div class="beta-box">
+    <div class="beta-badge">Beta Coming Soon</div>
+    <h3>Windows Client</h3>
+    <p>CheckRide is currently in private beta. The public release is coming soon — no install required beyond running the .exe and signing in with your SimLetsFly account.</p>
+    <div class="install-steps">
+      <div class="install-step">
+        <div class="install-step-num">01</div>
+        <div class="install-step-text"><strong>Download the installer</strong> — a single lightweight .exe, no admin rights required.</div>
+      </div>
+      <div class="install-step">
+        <div class="install-step-num">02</div>
+        <div class="install-step-text"><strong>Sign in</strong> with your existing SimLetsFly account — no separate registration.</div>
+      </div>
+      <div class="install-step">
+        <div class="install-step-num">03</div>
+        <div class="install-step-text"><strong>Launch X-Plane 12</strong>, pick your flight from the tray menu, and start recording before you taxi.</div>
+      </div>
+      <div class="install-step">
+        <div class="install-step-num">04</div>
+        <div class="install-step-text"><strong>Land and set the parking brake.</strong> Your graded report uploads automatically and appears in My Flights.</div>
+      </div>
+    </div>
+    <div class="coming-soon-btn">Download for Windows</div>
+    <p class="coming-soon-note">Free during beta &nbsp;·&nbsp; X-Plane 12 required &nbsp;·&nbsp; Windows 10/11 &nbsp;·&nbsp; Mac support planned</p>
+  </div>
+</div>
+
+<div class="footer">
+  <a href="/">← Back to SimLetsFly</a>
+  &nbsp;·&nbsp;
+  <a href="flights.html">My Flights</a>
+  &nbsp;·&nbsp;
+  <a href="help.html">Help</a>
+</div>
+
+</body>
+</html>
