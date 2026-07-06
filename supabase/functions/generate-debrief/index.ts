@@ -88,7 +88,7 @@ Autopilot: ${stats.AutopilotPct != null ? stats.AutopilotPct.toFixed(0) + '%' : 
 Penalties:${penaltyLines}
 Bonuses:${bonusLines}${badEventLine}${prevSection}
 
-Write a 2–3 paragraph flight debrief. Cover: overall assessment, what went well, what needs improvement (be specific about the penalty items).${prevRun ? ' Include a sentence comparing to the previous run.' : ''} Write in the style of a real CFI — professional but conversational. Prose only, no headers or bullet points.`;
+Write a 2–3 paragraph flight debrief. Cover: overall assessment, what went well, what needs improvement (be specific about the penalty items).${prevRun ? ' Include a sentence comparing to the previous run.' : ''} Write in the style of a real CFI — professional but conversational. Start directly with the first sentence of the debrief. No title, no headers, no bullet points — plain paragraphs only.`;
 }
 
 Deno.serve(async (req) => {
@@ -174,8 +174,11 @@ Deno.serve(async (req) => {
   }
 
   const ai = await anthropicResp.json();
-  const debrief = (ai.content?.[0]?.text as string | undefined)?.trim();
-  if (!debrief) return json({ error: 'Empty response from AI' }, 500);
+  const raw = (ai.content?.[0]?.text as string | undefined)?.trim();
+  if (!raw) return json({ error: 'Empty response from AI' }, 500);
+
+  // Strip any leading markdown header line the model occasionally adds
+  const debrief = raw.replace(/^#{1,3}\s+[^\n]*\n+/, '').trim();
 
   // Persist so every future load is free
   await sb.from('checkride_results').update({ debrief }).eq('id', run_id);
