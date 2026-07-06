@@ -17,22 +17,15 @@ and the extraction folder for embedded assets
 
 ## 1b. Update the minimum version gate (if old clients should be blocked)
 
-Edit `supabase/functions/verify-client/index.ts` and bump `MIN_VERSION`:
+No code change or redeploy needed — just run this SQL in the Supabase dashboard
+(SQL Editor) after the new exe is published:
 
-```ts
-const MIN_VERSION = [0, 2]; // major.minor — patch is ignored
+```sql
+UPDATE app_config SET min_client_version = '0.2' WHERE id = 1;
 ```
 
-Set this to the new release's major.minor. Any client below this version will be
-denied at login with a "please download the latest version" message.
-
-Deploy the updated edge function:
-
-```powershell
-supabase functions deploy verify-client
-```
-
-Or push to GitHub — the function deploys automatically if CI is wired up.
+Replace `0.2` with the new release's major.minor. Any client below this version
+will be denied at login with a "please download the latest version" message.
 
 ## 2. Publish the single-file exe
 

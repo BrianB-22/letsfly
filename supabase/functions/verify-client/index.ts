@@ -1,7 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const MIN_VERSION = [0, 3]; // major.minor — patch is ignored  *** TEMP TEST: revert to [0,2] after confirming block ***
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -12,6 +10,11 @@ function json(data: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+function parseVersion(v: string): [number, number] {
+  const parts = (v ?? '').split('.').map(Number);
+  return [parts[0] ?? 0, parts[1] ?? 0];
 }
 
 Deno.serve(async (req) => {
@@ -29,16 +32,28 @@ Deno.serve(async (req) => {
   const { data: { user }, error } = await sb.auth.getUser();
   if (error || !user) return json({ allowed: false, message: 'Not authenticated.' }, 401);
 
+  // Read minimum version from config table using service role (bypasses RLS)
+  const sbAdmin = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+  const { data: config } = await sbAdmin
+    .from('app_config')
+    .select('min_client_version')
+    .eq('id', 1)
+    .single();
+
+  const minVersion = parseVersion(config?.min_client_version ?? '0.0');
+
   let body: { client_version?: string } = {};
-  try { body = await req.json(); } catch { /* version is optional */ }
+  try { body = await req.json(); } catch { /* version field is optional */ }
 
-  const versionStr = body.client_version ?? '';
-  const parts = versionStr.split('.').map(Number);
-  const major = parts[0] ?? 0;
-  const minor = parts[1] ?? 0;
-  const allowed = major > MIN_VERSION[0] || (major === MIN_VERSION[0] && minor >= MIN_VERSION[1]);
+  const clientVersion = parseVersion(body.client_version ?? '');
+  const [cMaj, cMin] = clientVersion;
+  const [mMaj, mMin] = minVersion;
+  const allowed = cMaj > mMaj || (cMaj === mMaj && cMin >= mMin);
 
-  console.log(`verify-client: user=${user.id} version=${versionStr || 'unknown'} allowed=${allowed}`);
+  console.log(`verify-client: user=${user.id} client=${body.client_version ?? 'unknown'} min=${config?.min_client_version ?? '?'} allowed=${allowed}`);
 
   if (!allowed) {
     return json({
