@@ -97,6 +97,9 @@
     .cr-speed-btn:hover { border-color: var(--accent); color: var(--accent); }
     .cr-speed-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,180,216,0.1); }
 
+    #cr-chart-tip { position: fixed; background: rgba(11,26,44,0.96); border: 1px solid var(--border2); border-radius: 4px; padding: 6px 11px; font-family: var(--mono); font-size: 12px; color: var(--text); pointer-events: none; z-index: 200; display: none; max-width: 260px; line-height: 1.4; }
+    #cr-chart-tip .tip-time { color: var(--text3); font-size: 11px; margin-bottom: 2px; }
+
     /* ── TWO-COL GRID ── */
     .report-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     @media (max-width: 600px) { .report-cols { grid-template-columns: 1fr; } }
@@ -545,6 +548,7 @@ function renderReport(r, depId, arrId, depName, arrName) {
     renderMap(r.track || [], r.events || [], depId, arrId);
     renderChart(r.track || [], r.events || []);
     initPlayback(r.track || [], r.events || []);
+    initChartHover();
   }, 50);
 }
 
@@ -742,6 +746,8 @@ function renderMap(track, events, depIcao, arrIcao) {
   _reportMap.fitBounds(L.latLngBounds(pts.map(p => [p.Lat, p.Lon])), { padding: [40, 40] });
 }
 
+let _chartDots = []; // { x, y, label, time, isBad } — populated by renderChart for hover
+
 // ── PRINT HOOKS ──
 let _printTrack = [], _printEvents = [];
 const TILE_DARK  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -839,11 +845,15 @@ function renderChart(track, events, printMode = false) {
   }
 
   const BAD = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
+  if (!printMode) _chartDots = [];
   events.forEach(e => {
     const pt = pts.find(p => p.T >= e.TimestampSec) || pts[pts.length-1];
     if (!pt) return;
-    ctx.beginPath(); ctx.arc(xOf(pt), yAlt(pt), 4, 0, Math.PI*2);
-    ctx.fillStyle = BAD.has(e.Type) ? DOT_BAD : DOT_WARN; ctx.fill();
+    const x = xOf(pt), y = yAlt(pt);
+    const isBad = BAD.has(e.Type);
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2);
+    ctx.fillStyle = isBad ? DOT_BAD : DOT_WARN; ctx.fill();
+    if (!printMode) _chartDots.push({ x, y, label: e.Description || e.Type, time: e.TimestampSec, isBad });
   });
 
   ctx.fillStyle = ALT_LINE; ctx.font = '10px monospace'; ctx.textAlign = 'right';
@@ -872,6 +882,47 @@ function renderChart(track, events, printMode = false) {
   _pb._chartImg  = ctx.getImageData(0, 0, canvas.width, canvas.height);
   _pb._chartPad  = pad; _pb._chartW = W; _pb._chartH = H;
   _pb._chartCW   = cW; _pb._chartMaxT = tMax; _pb._chartDpr = dpr;
+}
+
+// ── CHART HOVER ──
+function initChartHover() {
+  const canvas = document.getElementById('cr-modal-chart');
+  if (!canvas || canvas._hoverAttached) return;
+  canvas._hoverAttached = true;
+
+  // Create tooltip once
+  let tip = document.getElementById('cr-chart-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'cr-chart-tip';
+    document.body.appendChild(tip);
+  }
+
+  const fmtT = s => { if (s == null) return ''; const m = Math.floor(s/60); return m + 'm ' + String(s%60).padStart(2,'0') + 's'; };
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const hit = _chartDots.find(d => Math.hypot(d.x - mx, d.y - my) < 10);
+    if (hit) {
+      tip.innerHTML = (hit.time != null ? `<div class="tip-time">${fmtT(hit.time)}</div>` : '') +
+                      `<div>${escapeHtml(hit.label)}</div>`;
+      tip.style.borderColor = hit.isBad ? '#ff4444' : '#f4d03f';
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top  = (e.clientY - 38) + 'px';
+      tip.style.display = 'block';
+      canvas.style.cursor = 'crosshair';
+    } else {
+      tip.style.display = 'none';
+      canvas.style.cursor = '';
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    tip.style.display = 'none';
+    canvas.style.cursor = '';
+  });
 }
 
 // ── PLAYBACK ──
