@@ -26,7 +26,7 @@ internal class LoginForm : Form
         Text            = "CheckRide for SimLetsFly — Sign In";
         var icoPath = Path.Combine(EmbeddedAssets.Dir, "images", "icon_256x256.ico");
         if (File.Exists(icoPath)) try { Icon = new Icon(icoPath); } catch { }
-        ClientSize      = new Size(420, 420);
+        ClientSize      = new Size(420, 434);
         BackColor       = _bg;
         ForeColor       = _text;
         Font            = new Font("Segoe UI", 9f);
@@ -80,17 +80,18 @@ internal class LoginForm : Form
         _btnLogin.Click    += OnLogin;
 
         // ── Error label ───────────────────────────────────────────────────────
-        _lblError.Bounds    = new Rectangle(40, 364, 340, 22);
+        _lblError.Bounds    = new Rectangle(40, 364, 340, 36);
         _lblError.ForeColor = _red;
-        _lblError.TextAlign = ContentAlignment.MiddleCenter;
+        _lblError.TextAlign = ContentAlignment.TopCenter;
         _lblError.Font      = new Font("Segoe UI", 8.5f);
+        _lblError.AutoSize  = false;
 
         // ── Account help link ─────────────────────────────────────────────────
         const string helpText = "To reset your password or create an account, visit simletsfly.com";
         var lnkHelp = new LinkLabel
         {
             Text      = helpText,
-            Bounds    = new Rectangle(40, 390, 340, 20),
+            Bounds    = new Rectangle(40, 404, 340, 20),
             TextAlign = ContentAlignment.MiddleCenter,
             Font      = new Font("Segoe UI", 8.5f),
             ForeColor = _text3,
