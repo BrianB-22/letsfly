@@ -20,8 +20,6 @@
   <ItemGroup>
     <EmbeddedResource Include="sounds\**\*.wav" />
     <EmbeddedResource Include="sounds\audio.txt" />
-    <EmbeddedResource Include="samples\*.json" />
-    <EmbeddedResource Include="samples\*.log" />
     <EmbeddedResource Include="images\*" />
     <EmbeddedResource Include="refdata\*" />
   </ItemGroup>

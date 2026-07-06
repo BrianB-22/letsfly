@@ -30,7 +30,7 @@ internal static class EmbeddedAssets
                 var rel = name[prefix.Length..];
 
                 if (!rel.StartsWith("sounds.") && !rel.StartsWith("images.") &&
-                    !rel.StartsWith("refdata.") && !rel.StartsWith("samples.")) continue;
+                    !rel.StartsWith("refdata.")) continue;
 
                 var relPath  = ResourceNameToPath(rel);
                 var fullPath = Path.Combine(root, relPath);
