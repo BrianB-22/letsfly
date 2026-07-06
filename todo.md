@@ -29,6 +29,12 @@
 - **Aircraft profiles** — save multiple aircraft (C172 @ 120kt, A320 @ 450kt) instead of one cruise speed. Quick switch before generating a flight.
 - **Full flight plan via SimBrief API** — [Navigraph/SimBrief API](https://developers.navigraph.com/docs/simbrief/using-the-api) auto-generates a complete OFP using dep/arr ICAO + aircraft type. User needs a free SimBrief account.
 
+### Security (from security-review.md)
+- **M-5: Lock down checkride_results bulk listing** — public SELECT policy lets anyone enumerate every run (tracks, timestamps, user UUIDs) via the anon REST API, not just view runs they have links to. Fix: make table SELECT owner-only + add a `get-report` edge function (service role, fetch single run by id) so report.html share links keep working. ~1 hour incl. report.html fetch update. Do before user count grows. Interim: mention in client UI that uploaded runs are publicly viewable.
+- **M-2: Rate-limit pull-route** — unauthenticated proxy spending FPD API quota.
+- **M-4: Meta CSP + index.html escaping audit** — 49 innerHTML uses, no escapeHtml helper there.
+- **L-6: Code signing** — Azure Trusted Signing (~$10/mo) before public/paid launch; SHA-256 hashes in release notes until then (see CheckRide/PUBLISH.md).
+
 ### Polish
 - **Multi-language** — international reach, big undertaking.
 
