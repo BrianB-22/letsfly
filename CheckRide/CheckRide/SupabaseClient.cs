@@ -70,6 +70,8 @@ internal class SupabaseClient
         var result = JsonSerializer.Deserialize<VerifyClientResponse>(body, _readOpts);
         if (result is not null && !result.Allowed)
             throw new Exception(result.Message ?? "Access denied. Please check your subscription at simletsfly.com.");
+
+        TrackEvent("checkride_login");
     }
 
     public async Task SignOutAsync()
@@ -219,6 +221,27 @@ internal class SupabaseClient
             var body = await resp.Content.ReadAsStringAsync();
             throw new Exception($"Upload failed: {body}");
         }
+
+        TrackEvent("checkride_upload");
+    }
+
+    // ── Analytics ────────────────────────────────────────────────────────────
+
+    // Fire-and-forget; mirrors the website's _sb.rpc('increment_page_view', { page_name })
+    public static void TrackEvent(string pageName)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var req = new HttpRequestMessage(HttpMethod.Post,
+                    $"{Config.SupabaseUrl}/rest/v1/rpc/increment_page_view");
+                req.Headers.Add("apikey", Config.SupabaseAnonKey);
+                req.Content = JsonContent.Create(new { page_name = pageName });
+                await _http.SendAsync(req);
+            }
+            catch { /* analytics must never crash the app */ }
+        });
     }
 
     // ── Error parsing ─────────────────────────────────────────────────────────
