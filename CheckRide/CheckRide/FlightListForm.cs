@@ -31,12 +31,12 @@ internal class FlightListForm : Form
     private readonly Button  _btnDebug        = new();
     private readonly Button  _btnOpenFlight   = new();
     private readonly Button  _btnRefresh      = new();
+    private readonly Button  _btnHelp         = new();
     private readonly Button  _btnSignOut      = new();
 
     // Held after a failed upload so the Retry button can re-attempt
     private (string FlightId, CheckRideReport Report, string? LogPath)? _pendingUpload;
     private bool _engineStartAnnounced;
-    private readonly CheckBox _chkLog         = new();
     private readonly Label   _lblStatus       = new();
     private readonly Label   _lblUser         = new();
     private readonly Label   _lblSimValue     = new();
@@ -174,20 +174,24 @@ internal class FlightListForm : Form
 
     private void BuildBottomBar()
     {
-        var bottom = new Panel { BackColor = _panel, Height = 76, Dock = DockStyle.Bottom };
+        var bottom = new Panel { BackColor = _panel, Height = 88, Dock = DockStyle.Bottom };
         bottom.Paint += (s, e) =>
         {
             using var pen = new Pen(_border);
             e.Graphics.DrawLine(pen, 0, 0, bottom.Width, 0);
         };
 
-        _chkLog.Text      = "Upload debug log";
-        _chkLog.ForeColor = _text3;
-        _chkLog.Font      = new Font("Segoe UI", 8.5f);
-        _chkLog.AutoSize  = true;
-        _chkLog.BackColor = Color.Transparent;
-        _chkLog.Location  = new Point(16, 14);
-        _chkLog.Checked   = false;
+        _btnHelp.Text             = "?";
+        _btnHelp.BackColor        = Color.Transparent;
+        _btnHelp.ForeColor        = _text3;
+        _btnHelp.FlatStyle        = FlatStyle.Flat;
+        _btnHelp.FlatAppearance.BorderColor = _border;
+        _btnHelp.FlatAppearance.BorderSize  = 1;
+        _btnHelp.Font             = new Font("Segoe UI", 11f, FontStyle.Bold);
+        _btnHelp.Size             = new Size(36, 36);
+        _btnHelp.Location         = new Point(16, 18);
+        _btnHelp.Cursor           = Cursors.Hand;
+        _btnHelp.Click           += (s, e) => ShowHelp();
 
         _btnDebug.Text             = "Simulate Upload";
         _btnDebug.BackColor        = Color.Transparent;
@@ -239,8 +243,9 @@ internal class FlightListForm : Form
 
         _lblStatus.ForeColor = _text3;
         _lblStatus.Font      = new Font("Segoe UI", 9f);
-        _lblStatus.AutoSize  = true;
-        _lblStatus.Location  = new Point(16, 50);
+        _lblStatus.AutoSize  = false;
+        _lblStatus.Location  = new Point(16, 58);
+        _lblStatus.Height    = 20;
         _lblStatus.Text      = "Select your flight for a CheckRide";
 
         _btnRefresh.Text             = "↻";
@@ -266,7 +271,7 @@ internal class FlightListForm : Form
         _btnOpenFlight.Cursor           = Cursors.Hand;
         _btnOpenFlight.Click           += OnOpenFlight;
 
-        bottom.Controls.AddRange(new Control[] { _chkLog, _btnRefresh, _btnDebug, _btnOpenFlight, _btnRetry, _btnCancel, _btnTake, _lblStatus });
+        bottom.Controls.AddRange(new Control[] { _btnHelp, _btnRefresh, _btnDebug, _btnOpenFlight, _btnRetry, _btnCancel, _btnTake, _lblStatus });
 
         bottom.Resize += (s, e) =>
         {
@@ -275,6 +280,7 @@ internal class FlightListForm : Form
             _btnRetry.Location      = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - 16, 18);
             _btnOpenFlight.Location = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnOpenFlight.Width - 24, 18);
             _btnRefresh.Location    = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnOpenFlight.Width - _btnRefresh.Width - 32, 18);
+            _lblStatus.Width        = Math.Max(120, _btnRefresh.Left - 32);
         };
 
         Controls.Add(bottom);
@@ -375,6 +381,13 @@ internal class FlightListForm : Form
         }
         catch (Exception ex)
         {
+            if (ex.Message.Contains("Session expired", StringComparison.OrdinalIgnoreCase))
+            {
+                await _client.SignOutAsync();
+                SessionStore.Clear();
+                Application.Restart();
+                return;
+            }
             _lblStatus.Text = $"Error loading flights: {ex.Message}"; _lblStatus.ForeColor = _red;
         }
     }
@@ -717,7 +730,7 @@ internal class FlightListForm : Form
             var jsonPath = Path.Combine(OutputDir(), $"checkride_{_activeFlight!.Id[..8]}_{_sessionTimestamp}.json");
             ReportWriter.Write(report, jsonPath);
 
-            string? logPath = _chkLog.Checked ? _sessionLogPath : null;
+            string? logPath = null;
             _pendingUpload = (_activeFlight!.Id, report, logPath);
 
             var uploaded = await UploadPendingAsync();
@@ -811,7 +824,6 @@ internal class FlightListForm : Form
         _btnCancel.Visible       = active;
         _grid.Enabled            = idle;
         _btnSignOut.Enabled      = idle;
-        _chkLog.Enabled          = idle || state == AppState.WaitingXP12;
 
         // Built-in status messages per state
         (string msg, Color col) = state switch
@@ -827,6 +839,118 @@ internal class FlightListForm : Form
         };
         _lblStatus.Text      = msg;
         _lblStatus.ForeColor = col;
+    }
+
+    // ── Help dialog ───────────────────────────────────────────────────────────
+
+    private void ShowHelp()
+    {
+        using var dlg = new Form
+        {
+            Text            = "CheckRide — How It Works",
+            ClientSize      = new Size(480, 460),
+            BackColor       = _bg,
+            ForeColor       = _text,
+            Font            = new Font("Segoe UI", 9.5f),
+            FormBorderStyle = FormBorderStyle.FixedSingle,
+            MaximizeBox     = false,
+            MinimizeBox     = false,
+            StartPosition   = FormStartPosition.CenterParent,
+        };
+        var icoPath = Path.Combine(EmbeddedAssets.Dir, "images", "icon_256x256.ico");
+        if (File.Exists(icoPath)) try { dlg.Icon = new Icon(icoPath); } catch { }
+
+        const string content =
+            "SCREEN COMPONENTS\r\n" +
+            "\r\n" +
+            "Flight list  —  Your upcoming SimLetsFly flights. Select one before clicking Take CheckRide.\r\n" +
+            "\r\n" +
+            "Grade / Score  —  Shown after a CheckRide is completed for that flight.\r\n" +
+            "\r\n" +
+            "↻ Refresh  —  Reloads your flight list from SimLetsFly.\r\n" +
+            "\r\n" +
+            "Open in SimLetsFly  —  Opens the selected flight's page in your browser.\r\n" +
+            "\r\n" +
+            "TAKE CHECKRIDE  —  Starts a live recording session for the selected flight.\r\n" +
+            "\r\n" +
+            "\r\n" +
+            "HOW IT WORKS\r\n" +
+            "\r\n" +
+            "1.  Select a flight from the list above.\r\n" +
+            "\r\n" +
+            "2.  Click TAKE CHECKRIDE — the app waits for X-Plane 12 to be running.\r\n" +
+            "\r\n" +
+            "3.  Open X-Plane 12 and load your aircraft for the route.\r\n" +
+            "\r\n" +
+            "4.  Fly the complete route. CheckRide monitors your performance in real time.\r\n" +
+            "\r\n" +
+            "5.  After landing, taxi clear of the runway and set the parking brake.\r\n" +
+            "\r\n" +
+            "6.  Your score uploads to SimLetsFly automatically.\r\n" +
+            "\r\n" +
+            "\r\n" +
+            "Questions or issues?  Email us at support@simletsfly.com";
+
+        var rtb = new RichTextBox
+        {
+            Text        = content,
+            ReadOnly    = true,
+            BackColor   = _bg,
+            ForeColor   = _text,
+            BorderStyle = BorderStyle.None,
+            Font        = new Font("Segoe UI", 9.5f),
+            Dock        = DockStyle.None,
+            ScrollBars  = RichTextBoxScrollBars.Vertical,
+            Bounds      = new Rectangle(28, 20, 424, 380),
+            TabStop     = false,
+        };
+
+        // Bold the two section headers
+        foreach (var header in new[] { "SCREEN COMPONENTS", "HOW IT WORKS" })
+        {
+            var idx = rtb.Text.IndexOf(header, StringComparison.Ordinal);
+            if (idx >= 0)
+            {
+                rtb.Select(idx, header.Length);
+                rtb.SelectionFont  = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                rtb.SelectionColor = _accent;
+            }
+        }
+        rtb.SelectionStart = 0;
+
+        var lnkMore = new LinkLabel
+        {
+            Text      = "More info at simletsfly.com/checkride",
+            Bounds    = new Rectangle(28, 404, 424, 20),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font      = new Font("Segoe UI", 8.5f),
+            ForeColor = _text3,
+        };
+        lnkMore.LinkColor        = _accent;
+        lnkMore.ActiveLinkColor  = Color.White;
+        lnkMore.VisitedLinkColor = _accent;
+        lnkMore.LinkArea         = new LinkArea(lnkMore.Text.IndexOf("simletsfly.com/checkride"), "simletsfly.com/checkride".Length);
+        lnkMore.LinkClicked     += (s, e) =>
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://simletsfly.com/checkride") { UseShellExecute = true }); } catch { }
+        };
+
+        var btnClose = new Button
+        {
+            Text      = "Close",
+            Bounds    = new Rectangle(190, 430, 100, 32),
+            BackColor = Color.Transparent,
+            ForeColor = _text3,
+            FlatStyle = FlatStyle.Flat,
+            Font      = new Font("Segoe UI", 9f),
+            Cursor    = Cursors.Hand,
+        };
+        btnClose.FlatAppearance.BorderColor = _border;
+        btnClose.Click += (s, e) => dlg.Close();
+
+        dlg.ClientSize = new Size(480, 474);
+        dlg.Controls.AddRange(new Control[] { rtb, lnkMore, btnClose });
+        dlg.ShowDialog(this);
     }
 
     // ── Misc ──────────────────────────────────────────────────────────────────

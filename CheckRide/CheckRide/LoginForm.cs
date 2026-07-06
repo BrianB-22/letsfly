@@ -26,7 +26,7 @@ internal class LoginForm : Form
         Text            = "CheckRide for SimLetsFly — Sign In";
         var icoPath = Path.Combine(EmbeddedAssets.Dir, "images", "icon_256x256.ico");
         if (File.Exists(icoPath)) try { Icon = new Icon(icoPath); } catch { }
-        ClientSize      = new Size(420, 310);
+        ClientSize      = new Size(420, 420);
         BackColor       = _bg;
         ForeColor       = _text;
         Font            = new Font("Segoe UI", 9f);
@@ -34,32 +34,23 @@ internal class LoginForm : Form
         MaximizeBox     = false;
         StartPosition   = FormStartPosition.CenterScreen;
 
-        // ── Title ────────────────────────────────────────────────────────────
-        var lblTitle = new Label
+        // ── Banner ────────────────────────────────────────────────────────────
+        var picBanner = new PictureBox
         {
-            Text      = "CHECKRIDE",
-            ForeColor = _accent,
-            Font      = new Font("Segoe UI", 22f, FontStyle.Bold),
-            TextAlign = ContentAlignment.MiddleCenter,
-            Bounds    = new Rectangle(0, 24, 420, 44),
+            Bounds    = new Rectangle(0, 0, 420, 180),
+            SizeMode  = PictureBoxSizeMode.Zoom,
+            BackColor = _bg,
         };
-
-        var lblSub = new Label
-        {
-            Text      = "SimLetsFly · Flight Training",
-            ForeColor = _text3,
-            Font      = new Font("Segoe UI", 9f),
-            TextAlign = ContentAlignment.MiddleCenter,
-            Bounds    = new Rectangle(0, 70, 420, 20),
-        };
+        var bannerPath = Path.Combine(EmbeddedAssets.Dir, "images", "banner.png");
+        if (File.Exists(bannerPath)) try { picBanner.Image = Image.FromFile(bannerPath); } catch { }
 
         // ── Divider ──────────────────────────────────────────────────────────
-        var divider = new Panel { BackColor = _border, Bounds = new Rectangle(40, 100, 340, 1) };
+        var divider = new Panel { BackColor = _border, Bounds = new Rectangle(40, 188, 340, 1) };
 
         // ── Email ─────────────────────────────────────────────────────────────
-        var lblEmail = MakeFieldLabel("EMAIL", 40, 114);
+        var lblEmail = MakeFieldLabel("EMAIL", 40, 202);
 
-        _txtEmail.Bounds        = new Rectangle(40, 132, 340, 28);
+        _txtEmail.Bounds        = new Rectangle(40, 220, 340, 28);
         _txtEmail.BackColor     = _panel;
         _txtEmail.ForeColor     = _text;
         _txtEmail.BorderStyle   = BorderStyle.FixedSingle;
@@ -67,9 +58,9 @@ internal class LoginForm : Form
         _txtEmail.KeyDown      += OnKeyDown;
 
         // ── Password ──────────────────────────────────────────────────────────
-        var lblPwd = MakeFieldLabel("PASSWORD", 40, 170);
+        var lblPwd = MakeFieldLabel("PASSWORD", 40, 258);
 
-        _txtPassword.Bounds       = new Rectangle(40, 188, 340, 28);
+        _txtPassword.Bounds       = new Rectangle(40, 276, 340, 28);
         _txtPassword.BackColor    = _panel;
         _txtPassword.ForeColor    = _text;
         _txtPassword.BorderStyle  = BorderStyle.FixedSingle;
@@ -79,7 +70,7 @@ internal class LoginForm : Form
 
         // ── Login button ──────────────────────────────────────────────────────
         _btnLogin.Text      = "SIGN IN";
-        _btnLogin.Bounds    = new Rectangle(130, 232, 160, 36);
+        _btnLogin.Bounds    = new Rectangle(130, 320, 160, 36);
         _btnLogin.BackColor = _accent;
         _btnLogin.ForeColor = Color.FromArgb(10, 13, 16);
         _btnLogin.FlatStyle = FlatStyle.Flat;
@@ -89,14 +80,33 @@ internal class LoginForm : Form
         _btnLogin.Click    += OnLogin;
 
         // ── Error label ───────────────────────────────────────────────────────
-        _lblError.Bounds    = new Rectangle(40, 276, 340, 22);
+        _lblError.Bounds    = new Rectangle(40, 364, 340, 22);
         _lblError.ForeColor = _red;
         _lblError.TextAlign = ContentAlignment.MiddleCenter;
         _lblError.Font      = new Font("Segoe UI", 8.5f);
 
+        // ── Account help link ─────────────────────────────────────────────────
+        const string helpText = "To reset your password or create an account, visit simletsfly.com";
+        var lnkHelp = new LinkLabel
+        {
+            Text      = helpText,
+            Bounds    = new Rectangle(40, 390, 340, 20),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font      = new Font("Segoe UI", 8.5f),
+            ForeColor = _text3,
+            LinkArea  = new LinkArea(helpText.IndexOf("simletsfly.com"), "simletsfly.com".Length),
+        };
+        lnkHelp.LinkColor        = _accent;
+        lnkHelp.ActiveLinkColor  = Color.White;
+        lnkHelp.VisitedLinkColor = _accent;
+        lnkHelp.LinkClicked     += (s, e) =>
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://simletsfly.com") { UseShellExecute = true }); } catch { }
+        };
+
         Controls.AddRange(new Control[] {
-            lblTitle, lblSub, divider, lblEmail, _txtEmail,
-            lblPwd, _txtPassword, _btnLogin, _lblError
+            picBanner, divider, lblEmail, _txtEmail,
+            lblPwd, _txtPassword, _btnLogin, _lblError, lnkHelp
         });
     }
 
