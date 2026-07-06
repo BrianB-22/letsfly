@@ -14,6 +14,14 @@ if (!isNew)
 Application.EnableVisualStyles();
 Application.SetCompatibleTextRenderingDefault(false);
 
+try { EmbeddedAssets.Extract(); }
+catch (Exception ex)
+{
+    MessageBox.Show($"Failed to initialize CheckRide:\n\n{ex.Message}",
+        "CheckRide — Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    return;
+}
+
 var session = SessionStore.Load();
 
 if (session is null)

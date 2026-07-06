@@ -24,7 +24,7 @@ internal class LoginForm : Form
     public LoginForm()
     {
         Text            = "CheckRide for SimLetsFly — Sign In";
-        var icoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", "icon_256x256.ico");
+        var icoPath = Path.Combine(EmbeddedAssets.Dir, "images", "icon_256x256.ico");
         if (File.Exists(icoPath)) try { Icon = new Icon(icoPath); } catch { }
         ClientSize      = new Size(420, 310);
         BackColor       = _bg;

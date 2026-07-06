@@ -58,7 +58,7 @@ internal class FlightListForm : Form
         _client = client;
 
         Text            = "CheckRide for SimLetsFly";
-        var icoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", "icon_256x256.ico");
+        var icoPath = Path.Combine(EmbeddedAssets.Dir, "images", "icon_256x256.ico");
         if (File.Exists(icoPath)) try { Icon = new Icon(icoPath); } catch { }
         ClientSize      = new Size(880, 560);
         BackColor       = _bg;
@@ -560,7 +560,7 @@ internal class FlightListForm : Form
 
     private static CheckRideReport? LoadBestSample()
     {
-        var samplesDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "samples");
+        var samplesDir = Path.Combine(EmbeddedAssets.Dir, "samples");
         if (!Directory.Exists(samplesDir)) return null;
 
         // Only load files that match the current schema (have ScoringVersion field)
@@ -841,7 +841,7 @@ internal class FlightListForm : Form
     {
         try
         {
-            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", file);
+            var path = Path.Combine(EmbeddedAssets.Dir, "sounds", file);
             if (File.Exists(path)) new SoundPlayer(path).Play();
         }
         catch { }
@@ -852,7 +852,7 @@ internal class FlightListForm : Form
     {
         try
         {
-            var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", folder);
+            var dir = Path.Combine(EmbeddedAssets.Dir, "sounds", folder);
             if (!Directory.Exists(dir)) return;
             var files = Directory.GetFiles(dir, "*.wav");
             if (files.Length == 0) return;

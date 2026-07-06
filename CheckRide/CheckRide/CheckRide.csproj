@@ -18,17 +18,11 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="sounds\**\*.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="samples\*.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="images\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="refdata\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <EmbeddedResource Include="sounds\**\*.wav" />
+    <EmbeddedResource Include="sounds\audio.txt" />
+    <EmbeddedResource Include="samples\*.json" />
+    <EmbeddedResource Include="samples\*.log" />
+    <EmbeddedResource Include="images\*" />
+    <EmbeddedResource Include="refdata\*" />
   </ItemGroup>
 </Project>
