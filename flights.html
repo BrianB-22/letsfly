@@ -1617,6 +1617,12 @@ const _crCache = {};   // flightId → array of runs
 async function loadCheckRides(flightId) {
   const list = document.getElementById('cr-list-' + flightId);
   if (!list) return;
+
+  // Auth may not have resolved yet on first page load — wait for the session rather than bailing immediately
+  if (!currentUser) {
+    const { data: { session } } = await _sb.auth.getSession();
+    currentUser = session?.user ?? null;
+  }
   if (!currentUser) { list.innerHTML = '<div class="cr-no-runs">Sign in to view CheckRide results.</div>'; return; }
 
   // track (the biggest blob) is fetched lazily when the modal opens — see openCrModal
