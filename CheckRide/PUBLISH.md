@@ -11,9 +11,28 @@ Edit `CheckRide\CheckRide.csproj` — update both:
 <FileVersion>0.2.0.0</FileVersion>
 ```
 
-The version drives two things: the `client_version` sent to `verify-client` at login
-(future version-gating), and the extraction folder for embedded assets
+The version drives two things: the `client_version` sent to `verify-client` at login,
+and the extraction folder for embedded assets
 (`%LOCALAPPDATA%\SimLetsFly\CheckRide\assets\{version}` — a new version re-extracts).
+
+## 1b. Update the minimum version gate (if old clients should be blocked)
+
+Edit `supabase/functions/verify-client/index.ts` and bump `MIN_VERSION`:
+
+```ts
+const MIN_VERSION = [0, 2]; // major.minor — patch is ignored
+```
+
+Set this to the new release's major.minor. Any client below this version will be
+denied at login with a "please download the latest version" message.
+
+Deploy the updated edge function:
+
+```powershell
+supabase functions deploy verify-client
+```
+
+Or push to GitHub — the function deploys automatically if CI is wired up.
 
 ## 2. Publish the single-file exe
 
