@@ -15,18 +15,6 @@ The version drives two things: the `client_version` sent to `verify-client` at l
 and the extraction folder for embedded assets
 (`%LOCALAPPDATA%\SimLetsFly\CheckRide\assets\{version}` — a new version re-extracts).
 
-## 1b. Update the minimum version gate (if old clients should be blocked)
-
-No code change or redeploy needed — just run this SQL in the Supabase dashboard
-(SQL Editor) after the new exe is published:
-
-```sql
-UPDATE app_config SET min_client_version = '0.2' WHERE id = 1;
-```
-
-Replace `0.2` with the new release's major.minor. Any client below this version
-will be denied at login with a "please download the latest version" message.
-
 ## 2. Publish the single-file exe
 
 ```powershell
@@ -76,6 +64,15 @@ Or to write it to a file that ships alongside the exe:
   ```
 
   and compare against the hash in the release notes.
+
+- **Update the version gate** in the Supabase SQL Editor to block older clients:
+
+  ```sql
+  UPDATE app_config SET min_client_version = '0.2' WHERE id = 1;
+  ```
+
+  Replace `0.2` with this release's major.minor. Do this after the new exe is
+  published so users aren't blocked before they can download it.
 
 ## Verifier note (what testers see)
 
