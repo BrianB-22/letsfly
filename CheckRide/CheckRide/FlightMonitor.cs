@@ -932,7 +932,11 @@ public class FlightMonitor
             }
 
             // Turbulence callout — 3 consecutive samples with G deviation > 0.15
-            if (!_turbulenceCalloutFired)
+            // Only after established in cruise/approach and above 2,000ft AGL to avoid
+            // takeoff/climbout G-forces (rotation, pitch-up) triggering a false callout
+            var establishedFlight = _phase is FlightPhase.Cruise or FlightPhase.Approach
+                                    && snap.AltitudeAglFt > 2000;
+            if (!_turbulenceCalloutFired && establishedFlight)
             {
                 if (Math.Abs(snap.BankAngleDeg) < 15.0 && Math.Abs(snap.GForceNormal - 1.0) > 0.15)
                     _turbulentSampleCount++;
