@@ -239,7 +239,6 @@ public class FlightMonitor
     private bool _rainCalloutFired;
     private bool _icingCalloutFired;
     private bool _turbulenceCalloutFired;
-    private int  _turbulentSampleCount;
 
     // Taxi detection
     private bool _fastTaxiFlagged;
@@ -931,24 +930,12 @@ public class FlightMonitor
                 logger.Log($"CALLOUT: Icing conditions (OAT {snap.OutsideAirTempC:F1}°C)");
             }
 
-            // Turbulence callout — 3 consecutive samples with G deviation > 0.15
-            // Only after established in cruise/approach and above 2,000ft AGL to avoid
-            // takeoff/climbout G-forces (rotation, pitch-up) triggering a false callout
-            var establishedFlight = _phase is FlightPhase.Cruise or FlightPhase.Approach
-                                    && snap.AltitudeAglFt > 2000;
-            if (!_turbulenceCalloutFired && establishedFlight)
+            // Turbulence callout — fire once when entering IMC (clouds = turbulence in practice)
+            if (!_turbulenceCalloutFired && inImc)
             {
-                if (Math.Abs(snap.BankAngleDeg) < 15.0 && Math.Abs(snap.GForceNormal - 1.0) > 0.15)
-                    _turbulentSampleCount++;
-                else
-                    _turbulentSampleCount = 0;
-
-                if (_turbulentSampleCount >= 3)
-                {
-                    _turbulenceCalloutFired = true;
-                    CalloutTurbulence?.Invoke();
-                    logger.Log($"CALLOUT: Turbulence (G={snap.GForceNormal:F2})");
-                }
+                _turbulenceCalloutFired = true;
+                CalloutTurbulence?.Invoke();
+                logger.Log("CALLOUT: Turbulence (entered IMC)");
             }
         }
     }
