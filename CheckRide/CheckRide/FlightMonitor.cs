@@ -1248,7 +1248,8 @@ public class FlightMonitor
             VisibilityM      = Math.Round(snap.VisibilityM, 0),
             CloudBaseAglFt   = Math.Round(snap.CloudBaseAglM * 3.28084, 0),
             CloudCoverage    = Math.Round(snap.CloudCoverage, 2),
-            OatC             = Math.Round(snap.OutsideAirTempC, 1)
+            OatC             = Math.Round(snap.OutsideAirTempC, 1),
+            AltMslFt         = (int)snap.AltitudeMslFt
         });
         _lastConditionSample = snap.Timestamp;
     }

@@ -11,6 +11,7 @@ public class FlightConditionSample
     public double CloudBaseAglFt { get; set; } // 0 if not available
     public double CloudCoverage { get; set; }  // 0–1 fraction, 0 if not available
     public double OatC { get; set; }           // outside air temp °C; 0 to -20 + cloud = icing risk
+    public int AltMslFt { get; set; }
 }
 
 public class FlightTrackPoint
