@@ -636,7 +636,7 @@ function buildWeatherStrip(conditions) {
   const fmtT = s => { const m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); };
   const rows = c.map(s => {
     const visSm = s.VisibilityM > 0 ? (s.VisibilityM / 1609.34) : null;
-    const cloud = s.CloudCoverage >= 0.75 ? 'OVC' : s.CloudCoverage >= 0.5 ? 'BKN' : s.CloudCoverage >= 0.25 ? 'SCT' : s.CloudCoverage > 0.05 ? 'FEW' : 'CLR';
+    const cloud = s.CloudCoverage >= 0.75 ? 'Overcast' : s.CloudCoverage >= 0.5 ? 'Broken' : s.CloudCoverage >= 0.25 ? 'Scattered' : s.CloudCoverage > 0.05 ? 'Few' : 'Clear';
     return `<div class="cr-wx-row">
       <span class="cr-wx-t">${fmtT(s.T || 0)}</span>
       <span class="cr-wx-cell">${s.IsNight ? '🌙' : '☀️'}</span>
