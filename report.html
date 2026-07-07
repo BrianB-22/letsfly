@@ -563,8 +563,14 @@ async function maybeGenerateDebrief(r) {
     return;
   }
 
+  const signinPrompt = '<div class="cr-debrief-error">Sign in to your SimLetsFly account to view the AI debrief. <a style="color:var(--accent);cursor:pointer;" onclick="showAuthModal(\'signin\')">Sign in →</a></div>';
+
   const { data: { session } } = await _sb.auth.getSession();
-  if (!session || session.user.id !== r.user_id) {
+  if (!session) {
+    body.innerHTML = signinPrompt;
+    return;
+  }
+  if (session.user.id !== r.user_id) {
     panel.style.display = 'none';
     return;
   }
@@ -577,6 +583,7 @@ async function maybeGenerateDebrief(r) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
       body: JSON.stringify({ run_id: r.id }),
     });
+    if (resp.status === 401 || resp.status === 403) { body.innerHTML = signinPrompt; return; }
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const { debrief, error } = await resp.json();
     if (error) throw new Error(error);

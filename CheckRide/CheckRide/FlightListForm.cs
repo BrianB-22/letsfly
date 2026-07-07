@@ -553,7 +553,7 @@ internal class FlightListForm : Form
         var rng   = new Random();
         var score = rng.Next(60, 97);
         report.Score    = score;
-        report.Grade    = score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : score >= 60 ? "D" : "F";
+        report.Grade    = score >= 90 ? "S" : score >= 80 ? "A" : score >= 70 ? "B" : score >= 55 ? "C" : score >= 40 ? "D" : "F";
         report.Aircraft = report.Aircraft.Length > 0 ? report.Aircraft + " [Simulated]" : "King Air 350 [Simulated]";
 
         SetState(AppState.Uploading);

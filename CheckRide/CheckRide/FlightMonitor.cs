@@ -1451,11 +1451,11 @@ public class FlightMonitor
         if (summary.Crashed || summary.RunwayExcursion) return "F";
         return score switch
         {
-            >= 95 => "S",
-            >= 85 => "A",
+            >= 90 => "S",
+            >= 80 => "A",
             >= 70 => "B",
-            >= 50 => "C",
-            >= 30 => "D",
+            >= 55 => "C",
+            >= 40 => "D",
             _     => "F"
         };
     }
