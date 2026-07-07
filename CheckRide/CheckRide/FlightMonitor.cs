@@ -811,7 +811,7 @@ public class FlightMonitor
         // 500ft AGL right after takeoff would false-flag "lights off on approach"
         var onShortFinal = (_phase == FlightPhase.Airborne && snap.AltitudeAglFt < 500
                             && snap.VerticalSpeedFpm < -100 && _peakAglFt > 500)
-                        || _phase is FlightPhase.Approach or FlightPhase.Landed;
+                        || ((_phase is FlightPhase.Approach or FlightPhase.Landed) && snap.AltitudeAglFt < 2500);
         if (onShortFinal && !snap.LandingLightsOn && !_landingLightsFlagged)
         {
             LogEvent(FlightEventType.SystemLandingLights, snap.Timestamp, "Landing lights off on approach");
