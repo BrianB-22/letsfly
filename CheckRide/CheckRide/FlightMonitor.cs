@@ -1075,6 +1075,7 @@ public class FlightMonitor
         var lateralG = Math.Abs(snap.GForceLateral);
 
         if (!_fastTaxiFlagged && snap.GroundspeedKts > ScoringConfig.FastTaxiGsKts
+            && snap.GroundspeedKts < 45.0   // ignore takeoff roll — anything above 45kt is not taxiing
             && (lateralG > ScoringConfig.FastTaxiLateralG || hdgRate > ScoringConfig.FastTaxiHdgRateDps))
         {
             LogEvent(FlightEventType.TaxiFastSpeed, snap.Timestamp,
