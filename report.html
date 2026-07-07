@@ -882,15 +882,17 @@ function renderChart(track, events, printMode = false) {
     'SystemLandingLights','SystemBeacon','SystemStrobes','SystemTransponder','SystemAntiIce','SystemBarometer',
   ]);
   if (!printMode) _chartDots = [];
-  events.forEach(e => {
+  const drawDot = (e, forceBad) => {
     const pt = pts.find(p => p.T >= e.TimestampSec) || pts[pts.length-1];
     if (!pt) return;
     const x = xOf(pt), y = yAlt(pt);
-    const isBad = BAD.has(e.Type);
+    const isBad = forceBad || BAD.has(e.Type);
     ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2);
     ctx.fillStyle = isBad ? DOT_BAD : DOT_WARN; ctx.fill();
     if (!printMode) _chartDots.push({ x, y, label: e.Description || e.Type, time: e.TimestampSec, isBad });
-  });
+  };
+  events.filter(e => !BAD.has(e.Type)).forEach(e => drawDot(e, false));
+  events.filter(e =>  BAD.has(e.Type)).forEach(e => drawDot(e, true));
 
   ctx.fillStyle = ALT_LINE; ctx.font = '10px monospace'; ctx.textAlign = 'right';
   [0, 0.5, 1].forEach(f => {
