@@ -642,12 +642,12 @@ function buildWeatherStrip(conditions) {
       <span class="cr-wx-cell">${s.IsNight ? '🌙' : '☀️'}</span>
       <span class="cr-wx-cell">${Math.round(s.WindSpeedKt)} kt @ ${Math.round(s.WindDirectionDeg)}°</span>
       <span class="cr-wx-cell">${visSm != null ? (visSm >= 10 ? '10+' : visSm.toFixed(1)) + ' SM' : '—'}</span>
-      <span class="cr-wx-cell">${cloud}${s.CloudBaseAglFt > 0 && cloud !== 'CLR' ? ' ' + Math.round(s.CloudBaseAglFt / 100).toString().padStart(3, '0') : ''}</span>
+      <span class="cr-wx-cell">${cloud !== 'CLR' && s.CloudBaseAglFt > 0 ? cloud + ' ' + Math.round(s.CloudBaseAglFt).toLocaleString() + ' ft' : cloud}</span>
       <span class="cr-wx-cell">${s.OatC != null ? Math.round(s.OatC) + '°C / ' + Math.round(s.OatC * 9/5 + 32) + '°F' : '—'}</span>
     </div>`;
   }).join('');
   return `<div class="cr-wx-strip">
-      <div class="cr-wx-row cr-wx-head"><span class="cr-wx-t">TIME</span><span class="cr-wx-cell"></span><span class="cr-wx-cell">WIND</span><span class="cr-wx-cell">VIS</span><span class="cr-wx-cell">CLOUD</span><span class="cr-wx-cell">OAT</span></div>
+      <div class="cr-wx-row cr-wx-head"><span class="cr-wx-t">TIME</span><span class="cr-wx-cell"></span><span class="cr-wx-cell">WIND</span><span class="cr-wx-cell">VIS</span><span class="cr-wx-cell">CLOUD AGL</span><span class="cr-wx-cell">OAT</span></div>
       ${rows}
     </div>`;
 }
