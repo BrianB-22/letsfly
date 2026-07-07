@@ -72,6 +72,7 @@ internal class FlightListForm : Form
 
         BuildGrid();
         BuildBottomBar();
+        BuildAircraftBar();
         BuildTopBar();
 
         _watchTimer.Tick += OnWatchTick;
@@ -372,14 +373,28 @@ internal class FlightListForm : Form
         _lblStatus.Text = "Loading your flights…"; _lblStatus.ForeColor = _text3;
         try
         {
-            var flightsTask = _client.GetFlightsAsync();
-            var scoresTask  = _client.GetLastScoresAsync();
-            await Task.WhenAll(flightsTask, scoresTask);
+            var flightsTask  = _client.GetFlightsAsync();
+            var scoresTask   = _client.GetLastScoresAsync();
+            var lastAcTask   = _selectedAircraft == null && !_aircraftIsGeneric
+                               ? _client.GetLastAircraftIcaoAsync()
+                               : Task.FromResult<string?>(null);
+            await Task.WhenAll(flightsTask, scoresTask, lastAcTask);
             _flights = flightsTask.Result;
             _scores  = scoresTask.Result;
             PopulateGrid();
+
+            var lastIcao = lastAcTask.Result;
+            if (lastIcao != null && _selectedAircraft == null && !_aircraftIsGeneric)
+            {
+                var match = lastIcao == "OTHER"
+                    ? AircraftType.Other
+                    : AircraftDb.Search(lastIcao)
+                        .FirstOrDefault(a => a.IcaoCode.Equals(lastIcao, StringComparison.OrdinalIgnoreCase));
+                if (match != null) SelectAircraft(match);
+            }
+
             if (_state == AppState.Idle)
-                SetState(AppState.Idle); // resets status to "Select your flight…"
+                SetState(AppState.Idle);
         }
         catch (Exception ex)
         {
@@ -447,7 +462,7 @@ internal class FlightListForm : Form
     private void OnGridSelectionChanged(object? sender, EventArgs e)
     {
         if (_state != AppState.Idle) return;
-        _btnTake.Enabled = _grid.SelectedRows.Count > 0;
+        UpdateTakeButton();
     }
 
     private SavedFlight? SelectedFlight =>
@@ -719,7 +734,8 @@ internal class FlightListForm : Form
             if (conn is not null) await conn.StopAsync();
 
             var report = _monitor!.BuildReport();
-            _logger!.Log($"Session ended — Score: {report.Score}  Grade: {report.Grade}");
+            report.AircraftIcao = _selectedAircraft?.IcaoCode ?? (_aircraftIsGeneric ? "OTHER" : "");
+            _logger!.Log($"Session ended — Score: {report.Score}  Grade: {report.Grade}  Aircraft: {report.AircraftIcao}");
             _logger.Close();
 
             if (report.Summary.Crashed)
@@ -817,20 +833,22 @@ internal class FlightListForm : Form
             AppState.Uploading   => "Uploading…",
             _                    => "TAKE CHECKRIDE"
         };
-        _btnTake.Enabled         = idle && _grid.SelectedRows.Count > 0;
+        bool hasAc = _selectedAircraft != null || _aircraftIsGeneric;
+        _btnTake.Enabled         = idle && _grid.SelectedRows.Count > 0 && hasAc;
         _btnTake.BackColor       = idle ? _accent : _border;
         _btnTake.ForeColor       = idle ? Color.FromArgb(10, 13, 16) : _text3;
-        _btnDebug.Enabled        = idle && _grid.SelectedRows.Count > 0;
+        _btnDebug.Enabled        = idle && _grid.SelectedRows.Count > 0 && hasAc;
         _btnOpenFlight.Enabled   = (idle && _grid.SelectedRows.Count > 0) || _activeFlight is not null;
         _btnRefresh.Enabled      = idle;
         _btnCancel.Visible       = active;
         _grid.Enabled            = idle;
         _btnSignOut.Enabled      = idle;
+        _txtAircraftSearch.Enabled = idle;
+        _btnAircraftClear.Enabled  = idle;
 
-        // Built-in status messages per state
+        // Status messages per state
         (string msg, Color col) = state switch
         {
-            AppState.Idle        => ("Select your flight for a CheckRide", _text3),
             AppState.WaitingXP12 => ("Waiting for XP12 to be available…", _amber),
             AppState.Recording   => ("Flight in Progress", _green),
             AppState.Uploading   => ("Flight Complete — uploading…", _accent),
@@ -839,8 +857,187 @@ internal class FlightListForm : Form
                                     : ("CheckRide successfully uploaded", _green),
             _                    => ("", _text3)
         };
-        _lblStatus.Text      = msg;
-        _lblStatus.ForeColor = col;
+        if (state == AppState.Idle) UpdateIdleStatus();
+        else { _lblStatus.Text = msg; _lblStatus.ForeColor = col; }
+    }
+
+    // ── Aircraft picker ───────────────────────────────────────────────────────
+
+    private void BuildAircraftBar()
+    {
+        var bar = new Panel { BackColor = _panel, Height = 60, Dock = DockStyle.Bottom };
+        bar.Paint += (s, e) =>
+        {
+            using var pen = new Pen(_border);
+            e.Graphics.DrawLine(pen, 0, 0, bar.Width, 0);
+        };
+
+        var lblType = new Label
+        {
+            Text      = "AIRCRAFT:",
+            Font      = new Font("Segoe UI", 8f, FontStyle.Bold),
+            ForeColor = _text3,
+            AutoSize  = true,
+            Location  = new Point(16, 14),
+        };
+
+        _txtAircraftSearch.PlaceholderText = "Search ICAO, manufacturer, or model…";
+        _txtAircraftSearch.BackColor       = _bg2;
+        _txtAircraftSearch.ForeColor       = _text;
+        _txtAircraftSearch.BorderStyle     = BorderStyle.FixedSingle;
+        _txtAircraftSearch.Font            = new Font("Segoe UI", 9f);
+        _txtAircraftSearch.Height          = 26;
+        _txtAircraftSearch.Location        = new Point(86, 10);
+        _txtAircraftSearch.TextChanged    += OnAircraftSearchChanged;
+        _txtAircraftSearch.GotFocus       += (s, e) =>
+        {
+            if (!_suppressDropdown && _selectedAircraft == null && !_aircraftIsGeneric)
+                UpdateAircraftList();
+        };
+        _txtAircraftSearch.Leave += (s, e) =>
+            BeginInvoke(() => { if (!_lstAircraft.Focused) _lstAircraft.Visible = false; });
+
+        _btnAircraftClear.Text             = "✕";
+        _btnAircraftClear.FlatStyle        = FlatStyle.Flat;
+        _btnAircraftClear.FlatAppearance.BorderSize = 0;
+        _btnAircraftClear.Font             = new Font("Segoe UI", 10f);
+        _btnAircraftClear.ForeColor        = _text3;
+        _btnAircraftClear.BackColor        = Color.Transparent;
+        _btnAircraftClear.Size             = new Size(26, 26);
+        _btnAircraftClear.Location         = new Point(0, 10); // x set in Resize
+        _btnAircraftClear.Cursor           = Cursors.Hand;
+        _btnAircraftClear.Visible          = false;
+        _btnAircraftClear.Click           += (s, e) => ClearAircraft();
+
+        _lblAircraftInfo.AutoSize  = false;
+        _lblAircraftInfo.Height    = 16;
+        _lblAircraftInfo.Font      = new Font("Segoe UI", 7.5f);
+        _lblAircraftInfo.ForeColor = _text3;
+        _lblAircraftInfo.Location  = new Point(86, 40);
+        _lblAircraftInfo.Visible   = false;
+
+        bar.Controls.AddRange(new Control[] { lblType, _txtAircraftSearch, _btnAircraftClear, _lblAircraftInfo });
+
+        bar.Resize += (s, e) =>
+        {
+            _txtAircraftSearch.Width   = bar.Width - 86 - 34 - 16;
+            _btnAircraftClear.Location = new Point(_txtAircraftSearch.Right + 4, 10);
+            _lblAircraftInfo.Width     = _txtAircraftSearch.Width;
+        };
+
+        // ListBox lives on the form for z-order overlay
+        _lstAircraft.BackColor   = _bg2;
+        _lstAircraft.ForeColor   = _text;
+        _lstAircraft.Font        = new Font("Segoe UI", 9f);
+        _lstAircraft.BorderStyle = BorderStyle.FixedSingle;
+        _lstAircraft.ItemHeight  = 20;
+        _lstAircraft.Visible     = false;
+        _lstAircraft.Click      += OnAircraftListClick;
+        _lstAircraft.Leave      += (s, e) => _lstAircraft.Visible = false;
+        _lstAircraft.KeyDown    += (s, e) =>
+        {
+            if (e.KeyCode == Keys.Escape) { _lstAircraft.Visible = false; _txtAircraftSearch.Focus(); }
+            if (e.KeyCode == Keys.Enter)  OnAircraftListClick(s, EventArgs.Empty);
+        };
+        Controls.Add(_lstAircraft);
+        Controls.Add(bar);
+    }
+
+    private void UpdateAircraftList()
+    {
+        var results = AircraftDb.Search(_txtAircraftSearch.Text).ToList();
+        _lstAircraft.Items.Clear();
+        foreach (var a in results) _lstAircraft.Items.Add(a);
+        _lstAircraft.Items.Add(AircraftType.Other);
+
+        var pt = _txtAircraftSearch.PointToScreen(Point.Empty);
+        var fp = PointToClient(pt);
+        int h  = Math.Min(_lstAircraft.Items.Count, 8) * _lstAircraft.ItemHeight + 4;
+        _lstAircraft.SetBounds(fp.X, fp.Y - h, _txtAircraftSearch.Width, h);
+        _lstAircraft.Visible = true;
+        _lstAircraft.BringToFront();
+    }
+
+    private void OnAircraftSearchChanged(object? sender, EventArgs e)
+    {
+        if (_suppressDropdown) return;
+        if (_selectedAircraft != null || _aircraftIsGeneric)
+        {
+            _selectedAircraft  = null;
+            _aircraftIsGeneric = false;
+            _lblAircraftInfo.Visible  = false;
+            _btnAircraftClear.Visible = false;
+            UpdateTakeButton();
+        }
+        UpdateAircraftList();
+    }
+
+    private void OnAircraftListClick(object? sender, EventArgs e)
+    {
+        if (_lstAircraft.SelectedItem is not AircraftType a) return;
+        SelectAircraft(a);
+        _lstAircraft.Visible = false;
+        _txtAircraftSearch.Focus();
+    }
+
+    private void SelectAircraft(AircraftType a)
+    {
+        _selectedAircraft  = a.IsOther ? null : a;
+        _aircraftIsGeneric = a.IsOther;
+
+        _suppressDropdown = true;
+        _txtAircraftSearch.Text      = a.ToString();
+        _txtAircraftSearch.ForeColor = a.IsOther ? _amber : _text;
+        _suppressDropdown = false;
+
+        _lblAircraftInfo.Text      = a.InfoLine;
+        _lblAircraftInfo.ForeColor = a.IsOther ? _amber : _text3;
+        _lblAircraftInfo.Visible   = true;
+
+        _btnAircraftClear.Visible = true;
+        UpdateTakeButton();
+    }
+
+    private void ClearAircraft()
+    {
+        _selectedAircraft  = null;
+        _aircraftIsGeneric = false;
+
+        _suppressDropdown = true;
+        _txtAircraftSearch.Text      = "";
+        _txtAircraftSearch.ForeColor = _text;
+        _suppressDropdown = false;
+
+        _lblAircraftInfo.Visible  = false;
+        _btnAircraftClear.Visible = false;
+        _lstAircraft.Visible      = false;
+        UpdateTakeButton();
+    }
+
+    private void UpdateTakeButton()
+    {
+        if (_state != AppState.Idle) return;
+        bool hasAc     = _selectedAircraft != null || _aircraftIsGeneric;
+        bool hasFlight = _grid.SelectedRows.Count > 0;
+        _btnTake.Enabled  = hasFlight && hasAc;
+        _btnDebug.Enabled = hasFlight && hasAc;
+        UpdateIdleStatus();
+    }
+
+    private void UpdateIdleStatus()
+    {
+        bool hasFlight   = _grid.SelectedRows.Count > 0;
+        bool hasAircraft = _selectedAircraft != null || _aircraftIsGeneric;
+
+        (_lblStatus.Text, _lblStatus.ForeColor) = (hasFlight, hasAircraft) switch
+        {
+            (false, false) => ("Select a flight and aircraft type to begin", _text3),
+            (true,  false) => ("Select your aircraft type to continue", _text3),
+            (false, true ) => ("Select a flight to begin", _text3),
+            (true,  true ) when _aircraftIsGeneric =>
+                ("⚠ Generic thresholds selected — results may be less accurate. Click Take CheckRide, then launch X-Plane 12.", _amber),
+            _ => ("Ready — click Take CheckRide, then launch X-Plane 12.", _green),
+        };
     }
 
     // ── Help dialog ───────────────────────────────────────────────────────────
@@ -961,6 +1158,15 @@ internal class FlightListForm : Form
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CheckRide");
 
     private static readonly Random _soundRng = new();
+
+    // Aircraft picker
+    private readonly TextBox  _txtAircraftSearch = new();
+    private readonly Button   _btnAircraftClear  = new();
+    private readonly Label    _lblAircraftInfo   = new();
+    private readonly ListBox  _lstAircraft       = new();
+    private AircraftType?     _selectedAircraft;
+    private bool              _aircraftIsGeneric;
+    private bool              _suppressDropdown;
 
     // Plays a single named file from the sounds\ root (start.wav, stop.wav, etc.)
     private static void PlaySound(string file)

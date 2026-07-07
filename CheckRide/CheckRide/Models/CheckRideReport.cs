@@ -108,6 +108,7 @@ public class CheckRideReport
     public string Sim { get; init; } = "xplane12";
     public string ScoringVersion { get; init; } = ScoringVersionConst;
     public string Aircraft { get; set; } = "";
+    public string AircraftIcao { get; set; } = "";
     public DateTime RecordedAt { get; init; } = DateTime.UtcNow;
     public int Score { get; set; }
     public string Grade { get; set; } = "";

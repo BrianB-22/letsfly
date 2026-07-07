@@ -22,6 +22,8 @@ catch (Exception ex)
     return;
 }
 
+AircraftDb.Load(Path.Combine(EmbeddedAssets.Dir, "refdata", "faa_aircraft_data.csv"));
+
 var session = SessionStore.Load();
 
 if (session is null)

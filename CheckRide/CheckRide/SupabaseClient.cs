@@ -175,6 +175,22 @@ internal class SupabaseClient
         return dict;
     }
 
+    public async Task<string?> GetLastAircraftIcaoAsync()
+    {
+        await EnsureTokenAsync();
+        var url = $"{Config.SupabaseUrl}/rest/v1/checkride_results" +
+                  "?select=aircraft_icao" +
+                  $"&user_id=eq.{_session.UserId}" +
+                  "&aircraft_icao=not.is.null" +
+                  "&order=recorded_at.desc" +
+                  "&limit=1";
+        var resp = await _http.SendAsync(AuthGet(url));
+        if (!resp.IsSuccessStatusCode) return null;
+        using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+        if (doc.RootElement.GetArrayLength() == 0) return null;
+        return doc.RootElement[0].GetProperty("aircraft_icao").GetString();
+    }
+
     public async Task UploadCheckRideAsync(string flightId, CheckRideReport report, string? logPath)
     {
         await EnsureTokenAsync();
@@ -192,6 +208,7 @@ internal class SupabaseClient
             ["score"]            = report.Score,
             ["grade"]            = report.Grade,
             ["aircraft"]         = report.Aircraft,
+            ["aircraft_icao"]    = string.IsNullOrEmpty(report.AircraftIcao) ? null : report.AircraftIcao,
             ["sim"]              = report.Sim,
             ["scoring_version"]  = report.ScoringVersion,
             ["recorded_at"]      = report.RecordedAt,
