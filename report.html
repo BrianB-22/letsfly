@@ -615,6 +615,9 @@ function renderStats(r) {
                              ? `${(100 - stats.NightFlightPct).toFixed(0)}% / ${stats.NightFlightPct.toFixed(0)}%${stats.NightFlightPct > 0 ? ` <span style="color:var(--text3);font-size:11px;">(${fmtTime(Math.round(stats.FlightTimeSec * stats.NightFlightPct / 100))} night)</span>` : ''}`
                              : '—'],
     ['Distance',           stats.DistanceNm      ? stats.DistanceNm.toFixed(1) + ' nm'           : '—'],
+    ['Fuel at Takeoff',    stats.FuelAtTakeoffKg ? Math.round(stats.FuelAtTakeoffKg) + ' kg / ' + Math.round(stats.FuelAtTakeoffKg * 2.20462) + ' lbs' : '—'],
+    ['Fuel at Landing',    stats.FuelAtLandingKg != null && stats.FuelAtLandingKg > 0 ? Math.round(stats.FuelAtLandingKg) + ' kg / ' + Math.round(stats.FuelAtLandingKg * 2.20462) + ' lbs' : '—'],
+    ['Fuel Burned',        stats.FuelBurnedKg    ? Math.round(stats.FuelBurnedKg) + ' kg / ' + Math.round(stats.FuelBurnedKg * 2.20462) + ' lbs' : '—'],
     ['Autopilot',          stats.AutopilotPct   != null ? stats.AutopilotPct.toFixed(0) + '%'    : '—'],
     ['Pax Comfort',        `<span style="color:${comfort.color}">${comfort.label}</span> <span style="color:var(--text3);font-size:11px;">(${comfort.score}/100)</span>`],
   ].map(([label, val]) =>
