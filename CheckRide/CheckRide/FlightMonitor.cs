@@ -1307,7 +1307,11 @@ public class FlightMonitor
                 FlightEventType.FailureOverG or FlightEventType.FailureIcingDamage),
             Crashed        = r.Events.Any(e => e.Type == FlightEventType.Crash),
             RunwayExcursion = r.Events.Any(e => e.Type == FlightEventType.RunwayExcursion),
-            LandingQuality = r.Events.Any(e => e.Type == FlightEventType.Crash) ? "Crash"
+            LandingQuality = r.Events.Any(e => e.Type == FlightEventType.Crash)         ? "Crash"
+                : r.Events.Any(e => e.Type == FlightEventType.NoseWheelFirst)           ? "Poor"
+                : r.Events.Any(e => e.Type == FlightEventType.HardLanding)              ? "Hard"
+                : r.Events.Any(e => e.Type == FlightEventType.SideloadLanding)          ? "Poor"
+                : r.Events.Any(e => e.Type == FlightEventType.GearUpLanding)            ? "Poor"
                 : absVs < 75  ? "Greaser"
                 : absVs < 150 ? "Smooth"
                 : absVs < 300 ? "Normal"
