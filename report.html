@@ -728,7 +728,21 @@ function renderMap(track, events, depIcao, arrIcao) {
 
   L.polyline(pts.map(p => [p.Lat, p.Lon]), { color: '#00e676', weight: 2.5, opacity: 0.95 }).addTo(_reportMap);
 
-  const BAD = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
+  const BAD = new Set([
+    'Crash','RunwayExcursion',
+    'Overspeed','SpeedLimitViolation','Stall',
+    'HighG','VeryHighG','HighBank','VeryHighBank','HighDescentRate',
+    'ExcessiveApproachSpeed','ApproachTooSlow','UnstableApproach','FlapOverspeed',
+    'HardLanding','FastLanding','FirmLanding','GearUpLanding','SideloadLanding','NoseWheelFirst','NoFlapLanding',
+    'TaxiFastSpeed','TaxiAggressiveTurn',
+    'TakeoffLowPower','TakeoffHeadingDeviation','TakeoffDirectionalControl','TakeoffParkingBrake',
+    'WrongDepartureAirport','WrongArrivalAirport',
+    'LowFuel','FuelExhausted',
+    'FailureEngineFire','FailureEngineOut','FailureEngineOverspeed','FailureOverG','FailureIcingDamage',
+    'FailureOilPressure','FailureFuelPressure','FailureHydraulic','FailureLowVoltage',
+    'SystemPitotHeat','SystemFlapsCruise','SystemGearCruise','SystemGearApproach',
+    'SystemLandingLights','SystemBeacon','SystemStrobes','SystemTransponder','SystemAntiIce','SystemBarometer',
+  ]);
   events.forEach(e => {
     const t  = e.TimestampSec;
     const pt = pts.find(p => p.T >= t) || pts[pts.length - 1];
@@ -852,7 +866,21 @@ function renderChart(track, events, printMode = false) {
     ctx.strokeStyle = SPD_LINE; ctx.lineWidth = 1.5; ctx.stroke();
   }
 
-  const BAD = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
+  const BAD = new Set([
+    'Crash','RunwayExcursion',
+    'Overspeed','SpeedLimitViolation','Stall',
+    'HighG','VeryHighG','HighBank','VeryHighBank','HighDescentRate',
+    'ExcessiveApproachSpeed','ApproachTooSlow','UnstableApproach','FlapOverspeed',
+    'HardLanding','FastLanding','FirmLanding','GearUpLanding','SideloadLanding','NoseWheelFirst','NoFlapLanding',
+    'TaxiFastSpeed','TaxiAggressiveTurn',
+    'TakeoffLowPower','TakeoffHeadingDeviation','TakeoffDirectionalControl','TakeoffParkingBrake',
+    'WrongDepartureAirport','WrongArrivalAirport',
+    'LowFuel','FuelExhausted',
+    'FailureEngineFire','FailureEngineOut','FailureEngineOverspeed','FailureOverG','FailureIcingDamage',
+    'FailureOilPressure','FailureFuelPressure','FailureHydraulic','FailureLowVoltage',
+    'SystemPitotHeat','SystemFlapsCruise','SystemGearCruise','SystemGearApproach',
+    'SystemLandingLights','SystemBeacon','SystemStrobes','SystemTransponder','SystemAntiIce','SystemBarometer',
+  ]);
   if (!printMode) _chartDots = [];
   events.forEach(e => {
     const pt = pts.find(p => p.T >= e.TimestampSec) || pts[pts.length-1];
