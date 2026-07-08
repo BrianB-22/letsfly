@@ -355,7 +355,8 @@ function calcPassengerComfort(r) {
     : score >= 75 ? 'Good'
     : score >= 55 ? 'Fair'
     : score >= 30 ? 'Poor'
-    : 'Uncomfortable';
+    : score > 0   ? 'Uncomfortable'
+    : 'Terrified';
 
   const color = score >= 90 ? 'var(--green)'
     : score >= 75 ? 'var(--accent)'
@@ -545,7 +546,9 @@ function renderReport(r, depId, arrId, depName, arrName) {
   maybeGenerateDebrief(r);
 
   setTimeout(() => {
-    renderMap(r.track || [], r.events || [], depId, arrId);
+    const endedShortOfDest = !!(r.summary?.Crashed || r.summary?.RunwayExcursion
+      || (r.events || []).some(e => e.Type === 'WrongArrivalAirport'));
+    renderMap(r.track || [], r.events || [], depId, arrId, endedShortOfDest);
     renderChart(r.track || [], r.events || []);
     initPlayback(r.track || [], r.events || []);
     initChartHover();
@@ -618,6 +621,7 @@ function renderStats(r) {
     ['Fuel at Takeoff',    stats.FuelAtTakeoffKg ? Math.round(stats.FuelAtTakeoffKg) + ' kg / ' + Math.round(stats.FuelAtTakeoffKg * 2.20462) + ' lbs' : '—'],
     ['Fuel at Landing',    stats.FuelAtLandingKg != null && stats.FuelAtLandingKg > 0 ? Math.round(stats.FuelAtLandingKg) + ' kg / ' + Math.round(stats.FuelAtLandingKg * 2.20462) + ' lbs' : '—'],
     ['Fuel Burned',        stats.FuelBurnedKg    ? Math.round(stats.FuelBurnedKg) + ' kg / ' + Math.round(stats.FuelBurnedKg * 2.20462) + ' lbs' : '—'],
+    ['Takeoff N1',         stats.TakeoffN1Pct    ? stats.TakeoffN1Pct.toFixed(0) + '%'           : '—'],
     ['Autopilot',          stats.AutopilotPct   != null ? stats.AutopilotPct.toFixed(0) + '%'    : '—'],
     ['Pax Comfort',        `<span style="color:${comfort.color}">${comfort.label}</span> <span style="color:var(--text3);font-size:11px;">(${comfort.score}/100)</span>`],
   ].map(([label, val]) =>
@@ -716,7 +720,7 @@ function renderTrackSvg(track) {
   </svg>`;
 }
 
-function renderMap(track, events, depIcao, arrIcao) {
+function renderMap(track, events, depIcao, arrIcao, endedShortOfDest) {
   const mapEl = document.getElementById('cr-modal-map');
   if (typeof L === 'undefined') { mapEl.innerHTML = renderTrackSvg(track); return; }
   if (_reportMap) { _reportMap.remove(); _reportMap = null; }
@@ -761,11 +765,15 @@ function renderMap(track, events, depIcao, arrIcao) {
     iconAnchor: [0, 0]
   });
   if (depIcao) L.marker([pts[0].Lat, pts[0].Lon], { icon: icaoIcon(depIcao) }).addTo(_reportMap);
-  if (arrIcao) L.marker([pts[pts.length-1].Lat, pts[pts.length-1].Lon], { icon: icaoIcon(arrIcao) }).addTo(_reportMap);
+  // Only label the last track point with the arrival airport if the flight actually got there —
+  // a crash/excursion ends the track wherever that happened, which is not the destination.
+  if (arrIcao && !endedShortOfDest) L.marker([pts[pts.length-1].Lat, pts[pts.length-1].Lon], { icon: icaoIcon(arrIcao) }).addTo(_reportMap);
 
   const startDot = L.divIcon({ className:'', html:`<div style="width:10px;height:10px;border-radius:50%;background:#00e676;border:2px solid #fff;box-shadow:0 0 6px #00e676;"></div>`, iconSize:[10,10], iconAnchor:[5,5] });
   L.marker([pts[0].Lat, pts[0].Lon], { icon: startDot }).addTo(_reportMap);
-  const endDot = L.divIcon({ className:'', html:`<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #00e676;box-shadow:0 0 6px rgba(0,230,118,0.6);"></div>`, iconSize:[10,10], iconAnchor:[5,5] });
+  const endDot = endedShortOfDest
+    ? L.divIcon({ className:'', html:`<div style="width:10px;height:10px;border-radius:50%;background:#ff4444;border:2px solid #fff;box-shadow:0 0 6px #ff4444;"></div>`, iconSize:[10,10], iconAnchor:[5,5] })
+    : L.divIcon({ className:'', html:`<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #00e676;box-shadow:0 0 6px rgba(0,230,118,0.6);"></div>`, iconSize:[10,10], iconAnchor:[5,5] });
   L.marker([pts[pts.length-1].Lat, pts[pts.length-1].Lon], { icon: endDot }).addTo(_reportMap);
 
   _reportMap.fitBounds(L.latLngBounds(pts.map(p => [p.Lat, p.Lon])), { padding: [40, 40] });
