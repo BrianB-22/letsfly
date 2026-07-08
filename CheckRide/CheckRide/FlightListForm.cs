@@ -17,6 +17,17 @@ internal class FlightListForm : Form
     private static readonly Color _amber   = Color.FromArgb(244, 162, 97);
     private static readonly Color _red     = Color.FromArgb(231, 111, 81);
 
+    // Shared font scale — reuse these instead of ad hoc `new Font(...)` sizes
+    private static readonly Font _fontTitle     = new("Segoe UI", 16f, FontStyle.Bold); // "CHECKRIDE" wordmark
+    private static readonly Font _fontBase      = new("Segoe UI", 10f);                 // body text (form default, status, inputs)
+    private static readonly Font _fontBaseBold  = new("Segoe UI", 10f, FontStyle.Bold);
+    private static readonly Font _fontLabel     = new("Segoe UI", 9f);                   // secondary labels/buttons
+    private static readonly Font _fontLabelBold = new("Segoe UI", 9f, FontStyle.Bold);
+    private static readonly Font _fontSmall     = new("Segoe UI", 8.5f);                 // tertiary/info text
+    private static readonly Font _fontSmallBold = new("Segoe UI", 8.5f, FontStyle.Bold);
+    private static readonly Font _fontIcon      = new("Segoe UI", 14f);                  // icon-only buttons (↻)
+    private static readonly Font _fontIconBold  = new("Segoe UI", 13f, FontStyle.Bold);  // icon-only buttons (?)
+
     private enum AppState { Idle, WaitingXP12, Recording, Uploading, Done }
 
     private readonly SupabaseClient _client;
@@ -65,14 +76,14 @@ internal class FlightListForm : Form
         ClientSize      = new Size(880, 560);
         BackColor       = _bg;
         ForeColor       = _text;
-        Font            = new Font("Segoe UI", 9f);
+        Font            = _fontBase;
         StartPosition   = FormStartPosition.CenterScreen;
         MinimumSize     = new Size(700, 480);
         ShowInTaskbar   = true;
 
         BuildGrid();
-        BuildBottomBar();
         BuildAircraftBar();
+        BuildBottomBar();
         BuildTopBar();
 
         _watchTimer.Tick += OnWatchTick;
@@ -101,7 +112,7 @@ internal class FlightListForm : Form
         {
             Text      = "CHECKRIDE",
             ForeColor = _accent,
-            Font      = new Font("Segoe UI", 14f, FontStyle.Bold),
+            Font      = _fontTitle,
             TextAlign = ContentAlignment.MiddleLeft,
             AutoSize  = true,
             Location  = new Point(16, 13),
@@ -112,13 +123,13 @@ internal class FlightListForm : Form
         {
             Text      = "Simulator:",
             ForeColor = _text3,
-            Font      = new Font("Segoe UI", 8.5f),
+            Font      = _fontLabel,
             AutoSize  = true,
             Location  = new Point(0, 0), // positioned below
         };
         _lblSimValue.Text      = "X-Plane 12";
         _lblSimValue.ForeColor = _accent;
-        _lblSimValue.Font      = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+        _lblSimValue.Font      = _fontLabelBold;
         _lblSimValue.AutoSize  = true;
 
         var simPanel = new FlowLayoutPanel
@@ -131,7 +142,7 @@ internal class FlightListForm : Form
         simPanel.Controls.Add(_lblSimValue);
 
         _lblUser.ForeColor = _text2;
-        _lblUser.Font      = new Font("Segoe UI", 8.5f);
+        _lblUser.Font      = _fontLabel;
         _lblUser.AutoSize  = true;
         _lblUser.Text      = _client.Session.Email;
 
@@ -141,7 +152,7 @@ internal class FlightListForm : Form
         _btnSignOut.FlatStyle        = FlatStyle.Flat;
         _btnSignOut.FlatAppearance.BorderColor = _border;
         _btnSignOut.FlatAppearance.BorderSize  = 1;
-        _btnSignOut.Font             = new Font("Segoe UI", 8f);
+        _btnSignOut.Font             = _fontLabel;
         _btnSignOut.AutoSize         = true;
         _btnSignOut.Cursor           = Cursors.Hand;
         _btnSignOut.Click           += OnSignOut;
@@ -152,7 +163,7 @@ internal class FlightListForm : Form
             ForeColor = _accent,
             BackColor = Color.Transparent,
             FlatStyle = FlatStyle.Flat,
-            Font      = new Font("Segoe UI", 8f),
+            Font      = _fontLabel,
             AutoSize  = true,
             Cursor    = Cursors.Hand,
         };
@@ -190,7 +201,7 @@ internal class FlightListForm : Form
         _btnHelp.FlatStyle        = FlatStyle.Flat;
         _btnHelp.FlatAppearance.BorderColor = _border;
         _btnHelp.FlatAppearance.BorderSize  = 1;
-        _btnHelp.Font             = new Font("Segoe UI", 11f, FontStyle.Bold);
+        _btnHelp.Font             = _fontIconBold;
         _btnHelp.Size             = new Size(36, 36);
         _btnHelp.Location         = new Point(16, 18);
         _btnHelp.Cursor           = Cursors.Hand;
@@ -202,8 +213,8 @@ internal class FlightListForm : Form
         _btnDebug.FlatStyle        = FlatStyle.Flat;
         _btnDebug.FlatAppearance.BorderColor = _amber;
         _btnDebug.FlatAppearance.BorderSize  = 1;
-        _btnDebug.Font             = new Font("Segoe UI", 8.5f);
-        _btnDebug.Size             = new Size(130, 36);
+        _btnDebug.Font             = _fontLabel;
+        _btnDebug.Size             = new Size(140, 36);
         _btnDebug.Enabled          = false;
         _btnDebug.Visible          = false;
         _btnDebug.Cursor           = Cursors.Hand;
@@ -215,8 +226,8 @@ internal class FlightListForm : Form
         _btnRetry.FlatStyle        = FlatStyle.Flat;
         _btnRetry.FlatAppearance.BorderColor = _amber;
         _btnRetry.FlatAppearance.BorderSize  = 1;
-        _btnRetry.Font             = new Font("Segoe UI", 9f);
-        _btnRetry.Size             = new Size(110, 36);
+        _btnRetry.Font             = _fontLabel;
+        _btnRetry.Size             = new Size(116, 36);
         _btnRetry.Visible          = false;
         _btnRetry.Cursor           = Cursors.Hand;
         _btnRetry.Click           += OnRetryUpload;
@@ -227,8 +238,8 @@ internal class FlightListForm : Form
         _btnCancel.FlatStyle        = FlatStyle.Flat;
         _btnCancel.FlatAppearance.BorderColor = _red;
         _btnCancel.FlatAppearance.BorderSize  = 1;
-        _btnCancel.Font             = new Font("Segoe UI", 9f);
-        _btnCancel.Size             = new Size(90, 36);
+        _btnCancel.Font             = _fontLabel;
+        _btnCancel.Size             = new Size(96, 36);
         _btnCancel.Visible          = false;
         _btnCancel.Cursor           = Cursors.Hand;
         _btnCancel.Click           += OnCancel;
@@ -238,17 +249,18 @@ internal class FlightListForm : Form
         _btnTake.ForeColor        = Color.FromArgb(10, 13, 16);
         _btnTake.FlatStyle        = FlatStyle.Flat;
         _btnTake.FlatAppearance.BorderSize = 0;
-        _btnTake.Font             = new Font("Segoe UI", 9f, FontStyle.Bold);
-        _btnTake.Size             = new Size(170, 36);
+        _btnTake.Font             = _fontBaseBold;
+        _btnTake.Size             = new Size(182, 36);
         _btnTake.Enabled          = false;
         _btnTake.Cursor           = Cursors.Hand;
         _btnTake.Click           += OnTakeCheckRide;
 
         _lblStatus.ForeColor = _text3;
-        _lblStatus.Font      = new Font("Segoe UI", 9f);
+        _lblStatus.Font      = _fontBase;
         _lblStatus.AutoSize  = false;
+        _lblStatus.AutoEllipsis = true;
         _lblStatus.Location  = new Point(16, 58);
-        _lblStatus.Height    = 20;
+        _lblStatus.Height    = 22;
         _lblStatus.Text      = "Select your flight for a CheckRide";
 
         _btnRefresh.Text             = "↻";
@@ -257,7 +269,7 @@ internal class FlightListForm : Form
         _btnRefresh.FlatStyle        = FlatStyle.Flat;
         _btnRefresh.FlatAppearance.BorderColor = _border;
         _btnRefresh.FlatAppearance.BorderSize  = 1;
-        _btnRefresh.Font             = new Font("Segoe UI", 12f);
+        _btnRefresh.Font             = _fontIcon;
         _btnRefresh.Size             = new Size(36, 36);
         _btnRefresh.Cursor           = Cursors.Hand;
         _btnRefresh.Click           += async (s, e) => await LoadDataAsync();
@@ -268,8 +280,8 @@ internal class FlightListForm : Form
         _btnOpenFlight.FlatStyle        = FlatStyle.Flat;
         _btnOpenFlight.FlatAppearance.BorderColor = _accent;
         _btnOpenFlight.FlatAppearance.BorderSize  = 1;
-        _btnOpenFlight.Font             = new Font("Segoe UI", 9f);
-        _btnOpenFlight.Size             = new Size(150, 36);
+        _btnOpenFlight.Font             = _fontLabel;
+        _btnOpenFlight.Size             = new Size(158, 36);
         _btnOpenFlight.Enabled          = false;
         _btnOpenFlight.Cursor           = Cursors.Hand;
         _btnOpenFlight.Click           += OnOpenFlight;
@@ -283,7 +295,7 @@ internal class FlightListForm : Form
             _btnRetry.Location      = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - 16, 18);
             _btnOpenFlight.Location = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnOpenFlight.Width - 24, 18);
             _btnRefresh.Location    = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnOpenFlight.Width - _btnRefresh.Width - 32, 18);
-            _lblStatus.Width        = Math.Max(120, _btnRefresh.Left - 32);
+            _lblStatus.Width        = bottom.Width - 32;
         };
 
         Controls.Add(bottom);
@@ -316,11 +328,11 @@ internal class FlightListForm : Form
         _grid.ColumnHeadersDefaultCellStyle.BackColor          = Color.FromArgb(8, 28, 45);
         _grid.ColumnHeadersDefaultCellStyle.ForeColor          = Color.FromArgb(160, 195, 220);
         _grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(8, 28, 45);
-        _grid.ColumnHeadersDefaultCellStyle.Font               = new Font("Segoe UI", 8f, FontStyle.Bold);
+        _grid.ColumnHeadersDefaultCellStyle.Font               = _fontLabelBold;
         _grid.ColumnHeadersBorderStyle                         = DataGridViewHeaderBorderStyle.Single;
-        _grid.ColumnHeadersHeight    = 30;
+        _grid.ColumnHeadersHeight    = 34;
         _grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-        _grid.RowTemplate.Height     = 36;
+        _grid.RowTemplate.Height     = 40;
 
         AddCol("Date",    90,  DataGridViewContentAlignment.MiddleLeft);
         AddCol("Route",   130, DataGridViewContentAlignment.MiddleLeft);
@@ -735,6 +747,15 @@ internal class FlightListForm : Form
 
             var report = _monitor!.BuildReport();
             report.AircraftIcao = _selectedAircraft?.IcaoCode ?? (_aircraftIsGeneric ? "OTHER" : "");
+            if (_selectedAircraft is { } ac)
+            {
+                report.AircraftManufacturer = ac.Manufacturer;
+                report.AircraftModel        = ac.Model;
+                report.AircraftEngineClass  = ac.EngineClass;
+                report.AircraftWeightClass  = ac.WeightClass;
+                report.AircraftWtc          = ac.WakeTurbulenceCategory;
+                report.AircraftVrefKt       = ac.EffectiveVrefKt;
+            }
             _logger!.Log($"Session ended — Score: {report.Score}  Grade: {report.Grade}  Aircraft: {report.AircraftIcao}");
             _logger.Close();
 
@@ -875,7 +896,7 @@ internal class FlightListForm : Form
         var lblType = new Label
         {
             Text      = "AIRCRAFT:",
-            Font      = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Font      = _fontLabelBold,
             ForeColor = _text3,
             AutoSize  = true,
             Location  = new Point(16, 14),
@@ -885,8 +906,8 @@ internal class FlightListForm : Form
         _txtAircraftSearch.BackColor       = _bg2;
         _txtAircraftSearch.ForeColor       = _text;
         _txtAircraftSearch.BorderStyle     = BorderStyle.FixedSingle;
-        _txtAircraftSearch.Font            = new Font("Segoe UI", 9f);
-        _txtAircraftSearch.Height          = 26;
+        _txtAircraftSearch.Font            = _fontBase;
+        _txtAircraftSearch.Height          = 28;
         _txtAircraftSearch.Location        = new Point(86, 10);
         _txtAircraftSearch.TextChanged    += OnAircraftSearchChanged;
         _txtAircraftSearch.GotFocus       += (s, e) =>
@@ -900,19 +921,19 @@ internal class FlightListForm : Form
         _btnAircraftClear.Text             = "✕";
         _btnAircraftClear.FlatStyle        = FlatStyle.Flat;
         _btnAircraftClear.FlatAppearance.BorderSize = 0;
-        _btnAircraftClear.Font             = new Font("Segoe UI", 10f);
+        _btnAircraftClear.Font             = _fontBase;
         _btnAircraftClear.ForeColor        = _text3;
         _btnAircraftClear.BackColor        = Color.Transparent;
-        _btnAircraftClear.Size             = new Size(26, 26);
+        _btnAircraftClear.Size             = new Size(28, 28);
         _btnAircraftClear.Location         = new Point(0, 10); // x set in Resize
         _btnAircraftClear.Cursor           = Cursors.Hand;
         _btnAircraftClear.Visible          = false;
         _btnAircraftClear.Click           += (s, e) => ClearAircraft();
 
         _lblAircraftInfo.AutoSize  = false;
-        _lblAircraftInfo.Height    = 16;
-        _lblAircraftInfo.Font      = new Font("Segoe UI", 7.5f);
-        _lblAircraftInfo.ForeColor = _text3;
+        _lblAircraftInfo.Height    = 18;
+        _lblAircraftInfo.Font      = _fontSmallBold;
+        _lblAircraftInfo.ForeColor = _text2;
         _lblAircraftInfo.Location  = new Point(86, 40);
         _lblAircraftInfo.Visible   = false;
 
@@ -928,9 +949,9 @@ internal class FlightListForm : Form
         // ListBox lives on the form for z-order overlay
         _lstAircraft.BackColor   = _bg2;
         _lstAircraft.ForeColor   = _text;
-        _lstAircraft.Font        = new Font("Segoe UI", 9f);
+        _lstAircraft.Font        = _fontBase;
         _lstAircraft.BorderStyle = BorderStyle.FixedSingle;
-        _lstAircraft.ItemHeight  = 20;
+        _lstAircraft.ItemHeight  = 22;
         _lstAircraft.Visible     = false;
         _lstAircraft.Click      += OnAircraftListClick;
         _lstAircraft.Leave      += (s, e) => _lstAircraft.Visible = false;
@@ -952,7 +973,9 @@ internal class FlightListForm : Form
 
         var pt = _txtAircraftSearch.PointToScreen(Point.Empty);
         var fp = PointToClient(pt);
-        int h  = Math.Min(_lstAircraft.Items.Count, 8) * _lstAircraft.ItemHeight + 4;
+        int maxRows = Math.Max(1, (fp.Y - 8) / _lstAircraft.ItemHeight);
+        int rows    = Math.Min(_lstAircraft.Items.Count, Math.Min(12, maxRows));
+        int h       = rows * _lstAircraft.ItemHeight + 4;
         _lstAircraft.SetBounds(fp.X, fp.Y - h, _txtAircraftSearch.Width, h);
         _lstAircraft.Visible = true;
         _lstAircraft.BringToFront();
@@ -991,7 +1014,7 @@ internal class FlightListForm : Form
         _suppressDropdown = false;
 
         _lblAircraftInfo.Text      = a.InfoLine;
-        _lblAircraftInfo.ForeColor = a.IsOther ? _amber : _text3;
+        _lblAircraftInfo.ForeColor = a.IsOther ? _amber : _text2;
         _lblAircraftInfo.Visible   = true;
 
         _btnAircraftClear.Visible = true;
@@ -1029,14 +1052,16 @@ internal class FlightListForm : Form
         bool hasFlight   = _grid.SelectedRows.Count > 0;
         bool hasAircraft = _selectedAircraft != null || _aircraftIsGeneric;
 
+        var acCount = AircraftDb.Count;
+
         (_lblStatus.Text, _lblStatus.ForeColor) = (hasFlight, hasAircraft) switch
         {
-            (false, false) => ("Select a flight and aircraft type to begin", _text3),
-            (true,  false) => ("Select your aircraft type to continue", _text3),
+            (false, false) => ($"Select a flight and aircraft type to begin ({acCount} aircraft available)", _text3),
+            (true,  false) => ($"Select your aircraft type to continue ({acCount} available)", _text3),
             (false, true ) => ("Select a flight to begin", _text3),
             (true,  true ) when _aircraftIsGeneric =>
-                ("⚠ Generic thresholds selected — results may be less accurate. Click Take CheckRide, then launch X-Plane 12.", _amber),
-            _ => ("Ready — click Take CheckRide, then launch X-Plane 12.", _green),
+                ("⚠ Generic thresholds — results may be less accurate", _amber),
+            _ => ("Ready — click Take CheckRide, then start X-Plane 12", _green),
         };
     }
 
@@ -1050,7 +1075,7 @@ internal class FlightListForm : Form
             ClientSize      = new Size(480, 460),
             BackColor       = _bg,
             ForeColor       = _text,
-            Font            = new Font("Segoe UI", 9.5f),
+            Font            = _fontBase,
             FormBorderStyle = FormBorderStyle.FixedSingle,
             MaximizeBox     = false,
             MinimizeBox     = false,
@@ -1097,7 +1122,7 @@ internal class FlightListForm : Form
             BackColor   = _bg,
             ForeColor   = _text,
             BorderStyle = BorderStyle.None,
-            Font        = new Font("Segoe UI", 9.5f),
+            Font        = _fontBase,
             Dock        = DockStyle.None,
             ScrollBars  = RichTextBoxScrollBars.Vertical,
             Bounds      = new Rectangle(28, 20, 424, 380),
@@ -1111,7 +1136,7 @@ internal class FlightListForm : Form
             if (idx >= 0)
             {
                 rtb.Select(idx, header.Length);
-                rtb.SelectionFont  = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                rtb.SelectionFont  = _fontBaseBold;
                 rtb.SelectionColor = _accent;
             }
         }
@@ -1122,7 +1147,7 @@ internal class FlightListForm : Form
             Text      = "More info at simletsfly.com/checkride",
             Bounds    = new Rectangle(28, 404, 424, 20),
             TextAlign = ContentAlignment.MiddleCenter,
-            Font      = new Font("Segoe UI", 8.5f),
+            Font      = _fontSmall,
             ForeColor = _text3,
         };
         lnkMore.LinkColor        = _accent;
@@ -1141,7 +1166,7 @@ internal class FlightListForm : Form
             BackColor = Color.Transparent,
             ForeColor = _text3,
             FlatStyle = FlatStyle.Flat,
-            Font      = new Font("Segoe UI", 9f),
+            Font      = _fontLabel,
             Cursor    = Cursors.Hand,
         };
         btnClose.FlatAppearance.BorderColor = _border;

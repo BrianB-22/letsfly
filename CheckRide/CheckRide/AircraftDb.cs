@@ -6,6 +6,8 @@ internal static class AircraftDb
 {
     private static List<AircraftType> _all = new();
 
+    public static int Count => _all.Count;
+
     public static void Load(string csvPath)
     {
         if (!File.Exists(csvPath)) return;
@@ -24,6 +26,9 @@ internal static class AircraftDb
         int vrefMinIdx = Col("Approach_Speed_minimum_knot");
         int vrefMaxIdx = Col("Approach_Speed_maximum_knot");
         int wtcIdx     = Col("ICAO_WTC");
+        int numEngIdx  = Col("Num_Engines");
+        int aacIdx     = Col("AAC");
+        int mtowIdx    = Col("MTOW_lb");
 
         var list = new List<AircraftType>(lines.Length);
         foreach (var line in lines.Skip(1))
@@ -39,6 +44,7 @@ internal static class AircraftDb
                 idx >= 0 && idx < cols.Length &&
                 double.TryParse(cols[idx].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
                 ? v : 0;
+            int I(int idx) => idx >= 0 && idx < cols.Length && int.TryParse(cols[idx].Trim(), out var i) ? i : 0;
 
             list.Add(new AircraftType(
                 IcaoCode:               icao,
@@ -49,22 +55,38 @@ internal static class AircraftDb
                 ApproachSpeedKt:        V(vrefIdx),
                 ApproachSpeedMinKt:     V(vrefMinIdx),
                 ApproachSpeedMaxKt:     V(vrefMaxIdx),
-                WakeTurbulenceCategory: S(wtcIdx)
+                WakeTurbulenceCategory: S(wtcIdx),
+                NumEngines:             I(numEngIdx),
+                ApproachCategory:       S(aacIdx),
+                MtowLb:                 V(mtowIdx)
             ));
         }
         _all = list;
     }
 
-    // Returns up to 30 matches; empty query returns first 50.
     public static IEnumerable<AircraftType> Search(string query)
     {
-        if (string.IsNullOrWhiteSpace(query)) return _all.Take(50);
+        if (string.IsNullOrWhiteSpace(query)) return _all;
+
         return _all
-            .Where(a =>
-                a.IcaoCode.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                a.Manufacturer.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                a.Model.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .Take(30);
+            .Select(a => (Aircraft: a, Rank: MatchRank(a, query)))
+            .Where(m => m.Rank < int.MaxValue)
+            .OrderBy(m => m.Rank)
+            .ThenBy(m => m.Aircraft.IcaoCode, StringComparer.OrdinalIgnoreCase)
+            .Select(m => m.Aircraft);
+    }
+
+    // Lower is more relevant: ICAO prefix match ranks above manufacturer/model
+    // prefix match, which ranks above a match anywhere in the string.
+    private static int MatchRank(AircraftType a, string query)
+    {
+        if (a.IcaoCode.StartsWith(query, StringComparison.OrdinalIgnoreCase)) return 0;
+        if (a.Manufacturer.StartsWith(query, StringComparison.OrdinalIgnoreCase) ||
+            a.Model.StartsWith(query, StringComparison.OrdinalIgnoreCase)) return 1;
+        if (a.IcaoCode.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            a.Manufacturer.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            a.Model.Contains(query, StringComparison.OrdinalIgnoreCase)) return 2;
+        return int.MaxValue;
     }
 
     // Attempts to match an X-Plane aircraft name string to a known ICAO type.
