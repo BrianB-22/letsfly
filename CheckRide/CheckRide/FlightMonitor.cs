@@ -45,9 +45,11 @@ internal static class ScoringConfig
     public const double FastTaxiLateralG      = 0.10;  // lateral G gate — excludes straight takeoff roll
     public const double FastTaxiHdgRateDps    = 5.0;   // heading change rate (°/s) gate
     public const double AggrTaxiLateralG      = 0.30;  // lateral G for aggressive turn at any speed
+    public const double TaxiMaxThrottleRatio  = 0.85;  // above this = takeoff/go-around power, not taxiing
 
     // Takeoff detection
     public const double TakeoffMinN1Pct       = 90.0;  // N1% below this at liftoff = low power takeoff
+    public const double TakeoffMinN1BufferPct = 2.0;   // grace buffer before flagging
     public const double TakeoffHdgDevDeg      = 30.0;  // heading deviation from departure below 500ft AGL
     public const double TakeoffSideloadG      = 0.40;  // lateral G during initial climb (below 200ft AGL)
 
@@ -249,12 +251,16 @@ public class FlightMonitor
     private double _departureHdgDeg;
     private bool _hdgDeviationFlagged;
     private bool _takeoffSideloadFlagged;
+    private bool _takeoffClimbWindowClosed;  // latches once climbed past the takeoff-climb altitude band
 
     // Fuel tracking
     private double _fuelAtTakeoffKg;
     private double _fuelAtLandingKg;
     private bool _lowFuelFlagged;
     private bool _fuelExhaustedFlagged;
+
+    // Takeoff power
+    private double _takeoffN1Pct;
 
     // New detection flags
     private bool _approachTooSlowFlagged;
@@ -445,6 +451,7 @@ public class FlightMonitor
                 _departureHdgDeg = snap.MagHeadingDeg;
                 _hdgDeviationFlagged = false;
                 _takeoffSideloadFlagged = false;
+                _takeoffClimbWindowClosed = false;
                 _fuelAtTakeoffKg = snap.FuelTotalKg;
                 SampleTrack(snap, forced: true);
                 logger.Log($"Phase → Airborne  GPS=({snap.Latitude:F5},{snap.Longitude:F5})  Fuel={snap.FuelTotalKg:F1}kg");
@@ -458,7 +465,8 @@ public class FlightMonitor
                 }
 
                 var liftoffN1 = Math.Max(snap.Eng1N1Pct, snap.Eng2N1Pct);
-                if (liftoffN1 < ScoringConfig.TakeoffMinN1Pct)
+                _takeoffN1Pct = liftoffN1;
+                if (liftoffN1 < ScoringConfig.TakeoffMinN1Pct - ScoringConfig.TakeoffMinN1BufferPct)
                 {
                     LogEvent(FlightEventType.TakeoffLowPower, snap.Timestamp,
                         $"Low power takeoff — N1={snap.Eng1N1Pct:F0}%/{snap.Eng2N1Pct:F0}% at liftoff");
@@ -537,6 +545,7 @@ public class FlightMonitor
                 _departureHdgDeg = snap.MagHeadingDeg;
                 _hdgDeviationFlagged = false;
                 _takeoffSideloadFlagged = false;
+                _takeoffClimbWindowClosed = false;
                 logger.Log("Phase → Airborne (touch-and-go)");
             }
             else
@@ -667,12 +676,16 @@ public class FlightMonitor
         }
         _prevCrashed = snap.HasCrashed;
 
-        // Overspeed — use XP12's own over_vne flag so limits are always correct per aircraft
-        var overVno = snap.Overspeed && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
+        // Overspeed — IAS above Vno + buffer. (snap.Overspeed is XP12's native over_vne flag,
+        // which is the never-exceed/red-line speed — far higher than the Vno caution range this
+        // check is meant to catch, so it's not used here.)
+        var overVno = _vnoKts > 0 && snap.IndicatedAirspeedKts > _vnoKts + ScoringConfig.VnoOverspeedBufferKts
+                      && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
         if (overVno && !_prevOverspeed)
         {
-            LogEvent(FlightEventType.Overspeed, snap.Timestamp, $"Overspeed — {snap.IndicatedAirspeedKts:F0}kt");
-            logger.Log($"EVENT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt)");
+            LogEvent(FlightEventType.Overspeed, snap.Timestamp,
+                $"Overspeed — {snap.IndicatedAirspeedKts:F0}kt (Vno={_vnoKts:F0}kt)");
+            logger.Log($"EVENT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt, Vno={_vnoKts:F0}kt)");
             CalloutOverspeed?.Invoke();
         }
         _prevOverspeed = overVno;
@@ -761,7 +774,10 @@ public class FlightMonitor
         if (_phase == FlightPhase.Taxiing)
             DetectTaxiEvents(snap, logger);
 
-        if (_phase == FlightPhase.Airborne && snap.AltitudeAglFt < 500)
+        if (_phase == FlightPhase.Airborne && snap.AltitudeAglFt >= 500)
+            _takeoffClimbWindowClosed = true;  // past the initial climb — a later dip below 500ft isn't a takeoff anymore
+
+        if (_phase == FlightPhase.Airborne && snap.AltitudeAglFt < 500 && !_takeoffClimbWindowClosed)
             DetectTakeoffClimbEvents(snap, logger);
 
         if (_phase == FlightPhase.Approach)
@@ -1076,6 +1092,7 @@ public class FlightMonitor
 
         if (!_fastTaxiFlagged && snap.GroundspeedKts > ScoringConfig.FastTaxiGsKts
             && snap.GroundspeedKts < 45.0   // ignore takeoff roll — anything above 45kt is not taxiing
+            && snap.ThrottleRatio < ScoringConfig.TaxiMaxThrottleRatio  // ignore full-power takeoff roll
             && (lateralG > ScoringConfig.FastTaxiLateralG || hdgRate > ScoringConfig.FastTaxiHdgRateDps))
         {
             LogEvent(FlightEventType.TaxiFastSpeed, snap.Timestamp,
@@ -1084,7 +1101,8 @@ public class FlightMonitor
             _fastTaxiFlagged = true;
         }
 
-        if (!_aggressiveTurnFlagged && lateralG > ScoringConfig.AggrTaxiLateralG)
+        if (!_aggressiveTurnFlagged && lateralG > ScoringConfig.AggrTaxiLateralG
+            && snap.ThrottleRatio < ScoringConfig.TaxiMaxThrottleRatio)  // ignore full-power takeoff roll
         {
             LogEvent(FlightEventType.TaxiAggressiveTurn, snap.Timestamp,
                 $"Aggressive taxi turn — {snap.GForceLateral:F2}G lateral at {snap.GroundspeedKts:F0}kt");
@@ -1218,7 +1236,8 @@ public class FlightMonitor
                 FuelAtLandingKg            = Math.Round(_fuelAtLandingKg, 1),
                 FuelBurnedKg               = _fuelAtTakeoffKg > 0
                                                ? Math.Round(Math.Max(0, _fuelAtTakeoffKg - _fuelAtLandingKg), 1)
-                                               : 0
+                                               : 0,
+                TakeoffN1Pct               = Math.Round(_takeoffN1Pct, 1)
             }
         };
 
