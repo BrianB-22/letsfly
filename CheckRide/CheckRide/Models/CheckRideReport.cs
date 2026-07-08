@@ -85,6 +85,9 @@ public class FlightStats
     public double FuelAtLandingKg { get; set; }
     public double FuelBurnedKg    { get; set; }
 
+    // Takeoff power
+    public double TakeoffN1Pct { get; set; }  // max of the two engines' N1% at liftoff
+
     // Aircraft limits used for scoring (kias)
     public double VsoKts { get; set; }
     public double VrefKts { get; set; }   // 1.3 × Vso
@@ -107,8 +110,16 @@ public class CheckRideReport
 
     public string Sim { get; init; } = "xplane12";
     public string ScoringVersion { get; init; } = ScoringVersionConst;
+    public string ClientVersion { get; init; } =
+        System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
     public string Aircraft { get; set; } = "";
     public string AircraftIcao { get; set; } = "";
+    public string AircraftManufacturer { get; set; } = "";
+    public string AircraftModel { get; set; } = "";
+    public string AircraftEngineClass { get; set; } = "";
+    public string AircraftWeightClass { get; set; } = "";
+    public double AircraftVrefKt { get; set; }
+    public string AircraftWtc { get; set; } = "";
     public DateTime RecordedAt { get; init; } = DateTime.UtcNow;
     public int Score { get; set; }
     public string Grade { get; set; } = "";
