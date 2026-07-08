@@ -191,6 +191,22 @@ internal class SupabaseClient
         return doc.RootElement[0].GetProperty("aircraft_icao").GetString();
     }
 
+    public async Task<int?> GetLastTransitionAltitudeAsync()
+    {
+        await EnsureTokenAsync();
+        var url = $"{Config.SupabaseUrl}/rest/v1/checkride_results" +
+                  "?select=transition_altitude_ft" +
+                  $"&user_id=eq.{_session.UserId}" +
+                  "&transition_altitude_ft=not.is.null" +
+                  "&order=recorded_at.desc" +
+                  "&limit=1";
+        var resp = await _http.SendAsync(AuthGet(url));
+        if (!resp.IsSuccessStatusCode) return null;
+        using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+        if (doc.RootElement.GetArrayLength() == 0) return null;
+        return doc.RootElement[0].GetProperty("transition_altitude_ft").GetInt32();
+    }
+
     public async Task UploadCheckRideAsync(string flightId, CheckRideReport report, string? logPath)
     {
         await EnsureTokenAsync();
@@ -215,6 +231,7 @@ internal class SupabaseClient
             ["aircraft_weight_class"] = string.IsNullOrEmpty(report.AircraftWeightClass) ? null : report.AircraftWeightClass,
             ["aircraft_vref_kt"]      = report.AircraftVrefKt > 0 ? (object?)Math.Round(report.AircraftVrefKt, 0) : null,
             ["aircraft_wtc"]          = string.IsNullOrEmpty(report.AircraftWtc) ? null : report.AircraftWtc,
+            ["transition_altitude_ft"] = report.TransitionAltitudeFt,
             ["sim"]              = report.Sim,
             ["scoring_version"]  = report.ScoringVersion,
             ["client_version"]   = report.ClientVersion,

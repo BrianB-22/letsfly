@@ -293,8 +293,11 @@ public class FlightMonitor
 
     public FlightPhase CurrentPhase => _phase;
 
+    private readonly int _transitionAltFt;
+
     public FlightMonitor(string depId = "", double depLat = 0, double depLon = 0,
-                         string arrId = "", double arrLat = 0, double arrLon = 0)
+                         string arrId = "", double arrLat = 0, double arrLon = 0,
+                         int transitionAltFt = 18000)
     {
         _expectedDepId  = depId;
         _expectedDepLat = depLat;
@@ -302,6 +305,7 @@ public class FlightMonitor
         _expectedArrId  = arrId;
         _expectedArrLat = arrLat;
         _expectedArrLon = arrLon;
+        _transitionAltFt = transitionAltFt;
     }
 
     public void OnSnapshot(FlightDataSnapshot snap, EventLogger logger)
@@ -867,7 +871,7 @@ public class FlightMonitor
         {
             if (_baroOnTakeoff == 0) _baroOnTakeoff = snap.BarometerInHg;
             if (Math.Abs(snap.BarometerInHg - _baroOnTakeoff) > 0.005) _baroEverChanged = true;
-            if (snap.AltitudeMslFt > 18000 && Math.Abs(snap.BarometerInHg - 29.92) < 0.02)
+            if (snap.AltitudeMslFt > _transitionAltFt && Math.Abs(snap.BarometerInHg - 29.92) < 0.02)
                 _baroEverAt2992WhileHigh = true;
             if (snap.AltitudeMslFt > _maxAltMsl) _maxAltMsl = snap.AltitudeMslFt;
         }
@@ -875,19 +879,20 @@ public class FlightMonitor
         if (_phase == FlightPhase.Landed && !_baroCheckedLanding)
         {
             _baroCheckedLanding = true;
-            if (_maxAltMsl > 18000)
+            var flLabel = $"FL{_transitionAltFt / 100}";
+            if (_maxAltMsl > _transitionAltFt)
             {
                 if (!_baroEverAt2992WhileHigh)
                 {
                     LogEvent(FlightEventType.SystemBarometer, snap.Timestamp,
-                        "Altimeter not set to 29.92 above FL180");
-                    logger.Log("EVENT: Baro never set to 29.92 above FL180");
+                        $"Altimeter not set to 29.92 above {flLabel}");
+                    logger.Log($"EVENT: Baro never set to 29.92 above {flLabel}");
                 }
                 if (Math.Abs(snap.BarometerInHg - 29.92) < 0.02)
                 {
                     LogEvent(FlightEventType.SystemBarometer, snap.Timestamp,
-                        "Altimeter still at 29.92 after descent from FL180 — local QNH not set");
-                    logger.Log("EVENT: Baro still 29.92 at landing after FL180 flight");
+                        $"Altimeter still at 29.92 after descent from {flLabel} — local QNH not set");
+                    logger.Log($"EVENT: Baro still 29.92 at landing after {flLabel} flight");
                 }
             }
             else if (!_baroEverChanged && _baroOnTakeoff > 0)

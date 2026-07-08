@@ -120,6 +120,7 @@ public class CheckRideReport
     public string AircraftWeightClass { get; set; } = "";
     public double AircraftVrefKt { get; set; }
     public string AircraftWtc { get; set; } = "";
+    public int TransitionAltitudeFt { get; set; } = 18000;
     public DateTime RecordedAt { get; init; } = DateTime.UtcNow;
     public int Score { get; set; }
     public string Grade { get; set; } = "";

@@ -173,14 +173,37 @@ internal class FlightListForm : Form
             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://simletsfly.com/flights.html") { UseShellExecute = true }); } catch { }
         };
 
-        top.Controls.AddRange(new Control[] { lblTitle, simPanel, _lblUser, btnMyFlights, _btnSignOut });
+        _btnOpenFlight.Text      = "Open Flight ↗";
+        _btnOpenFlight.ForeColor = _accent;
+        _btnOpenFlight.BackColor = Color.Transparent;
+        _btnOpenFlight.FlatStyle = FlatStyle.Flat;
+        _btnOpenFlight.FlatAppearance.BorderSize = 0;
+        _btnOpenFlight.Font      = _fontLabel;
+        _btnOpenFlight.AutoSize  = true;
+        _btnOpenFlight.Enabled   = false;
+        _btnOpenFlight.Cursor    = Cursors.Hand;
+        _btnOpenFlight.Click    += OnOpenFlight;
+
+        _btnRefresh.Text      = "↻";
+        _btnRefresh.ForeColor = _text3;
+        _btnRefresh.BackColor = Color.Transparent;
+        _btnRefresh.FlatStyle = FlatStyle.Flat;
+        _btnRefresh.FlatAppearance.BorderSize = 0;
+        _btnRefresh.Font      = _fontIcon;
+        _btnRefresh.AutoSize  = true;
+        _btnRefresh.Cursor    = Cursors.Hand;
+        _btnRefresh.Click    += async (s, e) => await LoadDataAsync();
+
+        top.Controls.AddRange(new Control[] { lblTitle, simPanel, _lblUser, _btnRefresh, _btnOpenFlight, btnMyFlights, _btnSignOut });
 
         top.Resize += (s, e) =>
         {
-            _btnSignOut.Location  = new Point(top.Width - _btnSignOut.Width - 12, (top.Height - _btnSignOut.Height) / 2);
-            btnMyFlights.Location = new Point(_btnSignOut.Left - btnMyFlights.Width - 10, (top.Height - btnMyFlights.Height) / 2);
-            _lblUser.Location     = new Point(btnMyFlights.Left - _lblUser.Width - 10, (top.Height - _lblUser.Height) / 2);
-            simPanel.Location     = new Point(_lblUser.Left - simPanel.Width - 20, (top.Height - simPanel.Height) / 2);
+            _btnSignOut.Location    = new Point(top.Width - _btnSignOut.Width - 12, (top.Height - _btnSignOut.Height) / 2);
+            btnMyFlights.Location   = new Point(_btnSignOut.Left - btnMyFlights.Width - 10, (top.Height - btnMyFlights.Height) / 2);
+            _btnOpenFlight.Location = new Point(btnMyFlights.Left - _btnOpenFlight.Width - 14, (top.Height - _btnOpenFlight.Height) / 2);
+            _btnRefresh.Location    = new Point(_btnOpenFlight.Left - _btnRefresh.Width - 10, (top.Height - _btnRefresh.Height) / 2);
+            _lblUser.Location       = new Point(_btnRefresh.Left - _lblUser.Width - 16, (top.Height - _lblUser.Height) / 2);
+            simPanel.Location       = new Point(_lblUser.Left - simPanel.Width - 20, (top.Height - simPanel.Height) / 2);
         };
 
         Controls.Add(top);
@@ -263,38 +286,13 @@ internal class FlightListForm : Form
         _lblStatus.Height    = 22;
         _lblStatus.Text      = "Select your flight for a CheckRide";
 
-        _btnRefresh.Text             = "↻";
-        _btnRefresh.BackColor        = Color.Transparent;
-        _btnRefresh.ForeColor        = _text3;
-        _btnRefresh.FlatStyle        = FlatStyle.Flat;
-        _btnRefresh.FlatAppearance.BorderColor = _border;
-        _btnRefresh.FlatAppearance.BorderSize  = 1;
-        _btnRefresh.Font             = _fontIcon;
-        _btnRefresh.Size             = new Size(36, 36);
-        _btnRefresh.Cursor           = Cursors.Hand;
-        _btnRefresh.Click           += async (s, e) => await LoadDataAsync();
-
-        _btnOpenFlight.Text             = "Open in SimLetsFly";
-        _btnOpenFlight.BackColor        = Color.Transparent;
-        _btnOpenFlight.ForeColor        = _accent;
-        _btnOpenFlight.FlatStyle        = FlatStyle.Flat;
-        _btnOpenFlight.FlatAppearance.BorderColor = _accent;
-        _btnOpenFlight.FlatAppearance.BorderSize  = 1;
-        _btnOpenFlight.Font             = _fontLabel;
-        _btnOpenFlight.Size             = new Size(158, 36);
-        _btnOpenFlight.Enabled          = false;
-        _btnOpenFlight.Cursor           = Cursors.Hand;
-        _btnOpenFlight.Click           += OnOpenFlight;
-
-        bottom.Controls.AddRange(new Control[] { _btnHelp, _btnRefresh, _btnDebug, _btnOpenFlight, _btnRetry, _btnCancel, _btnTake, _lblStatus });
+        bottom.Controls.AddRange(new Control[] { _btnHelp, _btnDebug, _btnRetry, _btnCancel, _btnTake, _lblStatus });
 
         bottom.Resize += (s, e) =>
         {
             _btnTake.Location       = new Point(bottom.Width - _btnTake.Width - 16, 18);
             _btnCancel.Location     = new Point(_btnTake.Left - _btnCancel.Width - 8, 18);
             _btnRetry.Location      = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - 16, 18);
-            _btnOpenFlight.Location = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnOpenFlight.Width - 24, 18);
-            _btnRefresh.Location    = new Point(_btnTake.Left - _btnCancel.Width - _btnRetry.Width - _btnOpenFlight.Width - _btnRefresh.Width - 32, 18);
             _lblStatus.Width        = bottom.Width - 32;
         };
 
@@ -385,12 +383,15 @@ internal class FlightListForm : Form
         _lblStatus.Text = "Loading your flights…"; _lblStatus.ForeColor = _text3;
         try
         {
-            var flightsTask  = _client.GetFlightsAsync();
-            var scoresTask   = _client.GetLastScoresAsync();
-            var lastAcTask   = _selectedAircraft == null && !_aircraftIsGeneric
-                               ? _client.GetLastAircraftIcaoAsync()
-                               : Task.FromResult<string?>(null);
-            await Task.WhenAll(flightsTask, scoresTask, lastAcTask);
+            var flightsTask      = _client.GetFlightsAsync();
+            var scoresTask       = _client.GetLastScoresAsync();
+            var lastAcTask       = _selectedAircraft == null && !_aircraftIsGeneric
+                                   ? _client.GetLastAircraftIcaoAsync()
+                                   : Task.FromResult<string?>(null);
+            var lastTransAltTask = !_transitionAltUserChanged
+                                   ? _client.GetLastTransitionAltitudeAsync()
+                                   : Task.FromResult<int?>(null);
+            await Task.WhenAll(flightsTask, scoresTask, lastAcTask, lastTransAltTask);
             _flights = flightsTask.Result;
             _scores  = scoresTask.Result;
             PopulateGrid();
@@ -403,6 +404,18 @@ internal class FlightListForm : Form
                     : AircraftDb.Search(lastIcao)
                         .FirstOrDefault(a => a.IcaoCode.Equals(lastIcao, StringComparison.OrdinalIgnoreCase));
                 if (match != null) SelectAircraft(match);
+            }
+
+            var lastTransAlt = lastTransAltTask.Result;
+            if (lastTransAlt != null && !_transitionAltUserChanged)
+            {
+                var idx = Array.FindIndex(TransitionAltOptions, o => o.Ft == lastTransAlt.Value);
+                if (idx >= 0)
+                {
+                    _suppressTransAltChange = true;
+                    _cmbTransitionAlt.SelectedIndex = idx;
+                    _suppressTransAltChange = false;
+                }
             }
 
             if (_state == AppState.Idle)
@@ -658,7 +671,8 @@ internal class FlightListForm : Form
             _logger    = new EventLogger(_sessionLogPath);
             _monitor   = new FlightMonitor(
                 _activeFlight!.DepId, _activeFlight!.DepLat, _activeFlight!.DepLon,
-                _activeFlight!.ArrId, _activeFlight!.ArrLat, _activeFlight!.ArrLon);
+                _activeFlight!.ArrId, _activeFlight!.ArrLat, _activeFlight!.ArrLon,
+                SelectedTransitionAltFt);
             _connector = new XP12Connector();
 
             _connector.Log       = msg => _logger.Log($"[XP12] {msg}");
@@ -756,6 +770,7 @@ internal class FlightListForm : Form
                 report.AircraftWtc          = ac.WakeTurbulenceCategory;
                 report.AircraftVrefKt       = ac.EffectiveVrefKt;
             }
+            report.TransitionAltitudeFt = SelectedTransitionAltFt;
             _logger!.Log($"Session ended — Score: {report.Score}  Grade: {report.Grade}  Aircraft: {report.AircraftIcao}");
             _logger.Close();
 
@@ -866,6 +881,7 @@ internal class FlightListForm : Form
         _btnSignOut.Enabled      = idle;
         _txtAircraftSearch.Enabled = idle;
         _btnAircraftClear.Enabled  = idle;
+        _cmbTransitionAlt.Enabled  = idle;
 
         // Status messages per state
         (string msg, Color col) = state switch
@@ -937,11 +953,40 @@ internal class FlightListForm : Form
         _lblAircraftInfo.Location  = new Point(86, 40);
         _lblAircraftInfo.Visible   = false;
 
-        bar.Controls.AddRange(new Control[] { lblType, _txtAircraftSearch, _btnAircraftClear, _lblAircraftInfo });
+        _lblTransAlt.Text      = "TRANS ALT:";
+        _lblTransAlt.Font      = _fontLabelBold;
+        _lblTransAlt.ForeColor = _text3;
+        _lblTransAlt.AutoSize  = true;
+
+        _cmbTransitionAlt.DropDownStyle = ComboBoxStyle.DropDownList;
+        _cmbTransitionAlt.BackColor     = _bg2;
+        _cmbTransitionAlt.ForeColor     = _text;
+        _cmbTransitionAlt.FlatStyle     = FlatStyle.Flat;
+        _cmbTransitionAlt.Font          = _fontSmall;
+        _cmbTransitionAlt.Width         = 64;
+        _cmbTransitionAlt.Height        = 24;
+        _cmbTransitionAlt.Items.AddRange(TransitionAltOptions.Cast<object>().ToArray());
+        _cmbTransitionAlt.SelectedIndex = 0; // FL180 default
+        _cmbTransitionAlt.SelectedIndexChanged += (s, e) =>
+        {
+            if (!_suppressTransAltChange) _transitionAltUserChanged = true;
+        };
+        var transAltTip = new ToolTip();
+        transAltTip.SetToolTip(_cmbTransitionAlt, "Altitude above which the altimeter should be set to 29.92\" / 1013 hPa");
+
+        bar.Controls.AddRange(new Control[]
+        {
+            lblType, _txtAircraftSearch, _btnAircraftClear, _lblAircraftInfo, _lblTransAlt, _cmbTransitionAlt
+        });
 
         bar.Resize += (s, e) =>
         {
-            _txtAircraftSearch.Width   = bar.Width - 86 - 34 - 16;
+            _cmbTransitionAlt.Location = new Point(bar.Width - _cmbTransitionAlt.Width - 16, 12);
+            _lblTransAlt.Location      = new Point(_cmbTransitionAlt.Left - _lblTransAlt.Width - 6, 16);
+            // Reserve room for the clear ("✕") button between the search box and the trans-alt
+            // group — it's invisible until an aircraft is selected, so this space must be
+            // reserved up front or the button overlaps the label once it appears.
+            _txtAircraftSearch.Width   = _lblTransAlt.Left - 8 - 34 - 86;
             _btnAircraftClear.Location = new Point(_txtAircraftSearch.Right + 4, 10);
             _lblAircraftInfo.Width     = _txtAircraftSearch.Width;
         };
@@ -1011,6 +1056,7 @@ internal class FlightListForm : Form
         _suppressDropdown = true;
         _txtAircraftSearch.Text      = a.ToString();
         _txtAircraftSearch.ForeColor = a.IsOther ? _amber : _text;
+        _txtAircraftSearch.Select(0, 0); // show from the start, not scrolled to the end
         _suppressDropdown = false;
 
         _lblAircraftInfo.Text      = a.InfoLine;
@@ -1192,6 +1238,27 @@ internal class FlightListForm : Form
     private AircraftType?     _selectedAircraft;
     private bool              _aircraftIsGeneric;
     private bool              _suppressDropdown;
+
+    // Transition altitude picker
+    private readonly ComboBox _cmbTransitionAlt       = new();
+    private readonly Label    _lblTransAlt            = new();
+    private bool              _suppressTransAltChange;
+    private bool              _transitionAltUserChanged;
+
+    private readonly record struct TransitionAltOption(string Label, int Ft)
+    {
+        public override string ToString() => Label;
+    }
+
+    private static readonly TransitionAltOption[] TransitionAltOptions =
+    {
+        new("FL180", 18000),
+        new("FL100", 10000),
+        new("FL050",  5000),
+    };
+
+    private int SelectedTransitionAltFt =>
+        _cmbTransitionAlt.SelectedItem is TransitionAltOption opt ? opt.Ft : 18000;
 
     // Plays a single named file from the sounds\ root (start.wav, stop.wav, etc.)
     private static void PlaySound(string file)
