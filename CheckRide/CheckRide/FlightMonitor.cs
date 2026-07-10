@@ -40,6 +40,11 @@ internal static class ScoringConfig
     public const int    CruiseStableCount   = 30;    // consecutive polls above cruise altitude to transition
     public const double CruiseAglFt         = 3000.0; // AGL above this = cruise phase candidate
 
+    // Missed approach detection — require a sustained, meaningful climb so a brief
+    // level-off/correction during a continued approach isn't misread as a go-around
+    public const int    MissedApproachClimbSamples = 20;  // consecutive ~1s polls of sustained climb
+    public const double MissedApproachClimbGainFt  = 500; // total altitude gained during that climb
+
     // Taxi detection
     public const double FastTaxiGsKts         = 25.0;  // GS above this while turning = fast taxi
     public const double FastTaxiLateralG      = 0.10;  // lateral G gate — excludes straight takeoff roll
@@ -209,6 +214,10 @@ public class FlightMonitor
 
     // Flare bank tracking — max |bank| seen below 20ft AGL on approach
     private double _flareMaxBankDeg;
+
+    // Missed approach detection — sustained-climb tracking
+    private int    _missedApchClimbCount;
+    private double _missedApchStartAgl;
 
     // Fires at liftoff (initial takeoff only, not go-arounds)
     public event Action? AfterTakeoffCallout;
@@ -532,10 +541,24 @@ public class FlightMonitor
             }
             else if (snap.VerticalSpeedFpm > 500 && snap.AltitudeAglFt > 1000)
             {
-                _stableCount = 0;
-                _flareMaxBankDeg = 0;  // reset for next approach
-                _phase = FlightPhase.Airborne;
-                logger.Log("Phase → Airborne (missed approach)");
+                if (_missedApchClimbCount == 0) _missedApchStartAgl = snap.AltitudeAglFt;
+                _missedApchClimbCount++;
+
+                // Require a sustained, meaningful climb — a brief level-off/correction
+                // during a continued approach isn't a go-around.
+                if (_missedApchClimbCount >= ScoringConfig.MissedApproachClimbSamples
+                    && snap.AltitudeAglFt - _missedApchStartAgl > ScoringConfig.MissedApproachClimbGainFt)
+                {
+                    _stableCount = 0;
+                    _flareMaxBankDeg = 0;  // reset for next approach
+                    _missedApchClimbCount = 0;
+                    _phase = FlightPhase.Airborne;
+                    logger.Log("Phase → Airborne (missed approach)");
+                }
+            }
+            else
+            {
+                _missedApchClimbCount = 0;
             }
         }
         else if (_phase == FlightPhase.Landed)
