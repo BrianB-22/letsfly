@@ -35,7 +35,8 @@ internal static class ScoringConfig
     public const double IceDamageThreshold  = 0.01;  // frm_ice above this = icing damage event
     public const double N1OverspeedPct        = 100.0; // N1% above this = prop/turbine over-speed (universal %)
     public const double N1OverspeedBufferPct  = 2.0;  // grace buffer before flagging
-    public const double VnoOverspeedBufferKts = 5.0;  // kt above Vno before flagging
+    public const double VnoOverspeedBufferKts = 5.0;  // kt above Vno before flagging (scoring)
+    public const double VneCalloutMarginKts   = 10.0; // kt below Vne before the audible overspeed callout fires
 
     public const int    CruiseStableCount   = 30;    // consecutive polls above cruise altitude to transition
     public const double CruiseAglFt         = 3000.0; // AGL above this = cruise phase candidate
@@ -180,6 +181,7 @@ public class FlightMonitor
 
     // Edge-trigger state — fire once per rising edge
     private bool _prevOverspeed;
+    private bool _prevNearVne;
     private bool _prevStall;
     private bool _prevHighG;
     private bool _prevVeryHighG;
@@ -235,7 +237,6 @@ public class FlightMonitor
     // In-flight personality callouts — fire once per flight, no scoring impact
     public event Action? CalloutRain;
     public event Action? CalloutIcing;
-    public event Action? CalloutTurbulence;
 
     // Scoring-linked callouts — fire each time the event occurs
     public event Action? CalloutOverspeed;
@@ -256,7 +257,6 @@ public class FlightMonitor
     // Personality callout flags — fire once per flight
     private bool _rainCalloutFired;
     private bool _icingCalloutFired;
-    private bool _turbulenceCalloutFired;
 
     // Taxi detection
     private bool _fastTaxiFlagged;
@@ -723,9 +723,19 @@ public class FlightMonitor
             LogEvent(FlightEventType.Overspeed, snap.Timestamp,
                 $"Overspeed — {snap.IndicatedAirspeedKts:F0}kt (Vno={_vnoKts:F0}kt)");
             logger.Log($"EVENT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt, Vno={_vnoKts:F0}kt)");
-            CalloutOverspeed?.Invoke();
         }
         _prevOverspeed = overVno;
+
+        // Overspeed callout (audible) — reserved for approaching the actual structural
+        // redline (Vne), not the Vno caution range the scoring penalty above uses.
+        var nearVne = _vneKts > 0 && snap.IndicatedAirspeedKts > _vneKts - ScoringConfig.VneCalloutMarginKts
+                      && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
+        if (nearVne && !_prevNearVne)
+        {
+            logger.Log($"CALLOUT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt, Vne={_vneKts:F0}kt)");
+            CalloutOverspeed?.Invoke();
+        }
+        _prevNearVne = nearVne;
 
         // 250kt below 10,000ft — regulatory speed limit (FAR 91.117), rising edge
         var overLimit = snap.AltitudeMslFt < 10000 && snap.IndicatedAirspeedKts > 250
@@ -982,14 +992,6 @@ public class FlightMonitor
                 _icingCalloutFired = true;
                 CalloutIcing?.Invoke();
                 logger.Log($"CALLOUT: Icing conditions (OAT {snap.OutsideAirTempC:F1}°C)");
-            }
-
-            // Turbulence callout — fire once when entering IMC (clouds = turbulence in practice)
-            if (!_turbulenceCalloutFired && inImc)
-            {
-                _turbulenceCalloutFired = true;
-                CalloutTurbulence?.Invoke();
-                logger.Log("CALLOUT: Turbulence (entered IMC)");
             }
         }
     }
