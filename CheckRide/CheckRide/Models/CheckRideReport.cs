@@ -77,6 +77,7 @@ public class FlightStats
     public double WindSpeedAtLandingKt { get; set; }
     public double WindDirectionAtLandingDeg { get; set; }
     public double RainPercentAtLanding { get; set; }
+    public double VisibilitySmAtLanding { get; set; }
     public double CrosswindAtLandingKt { get; set; }
 
     // Night tracking
@@ -108,7 +109,7 @@ public class ScoreLineItem
 
 public class CheckRideReport
 {
-    public const string ScoringVersionConst = "xp12-1.7";
+    public const string ScoringVersionConst = "xp12-1.8";
 
     public string Sim { get; init; } = "xplane12";
     public string ScoringVersion { get; init; } = ScoringVersionConst;
