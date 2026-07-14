@@ -118,8 +118,10 @@ internal static class ScoringConfig
     public const int BonusNightFlight          = 5;    // majority of flight at night
     public const int BonusImcFlight            = 10;   // flew and landed in IMC
     public const int BonusCrosswindLanding     = 5;    // >10kt crosswind component at touchdown
+    public const int BonusRainLanding          = 10;   // good landing with rain >= RainBonusThreshold
     public const double HandFlownMaxApPct      = 20.0; // AP% threshold for hand-flown bonus
     public const double CrosswindBonusKt       = 10.0; // minimum crosswind for bonus
+    public const double RainBonusThreshold     = 0.5;  // rain_percent at touchdown for rain bonus
 }
 
 public class FlightMonitor
@@ -136,6 +138,7 @@ public class FlightMonitor
     private double _landingLateralG;
     private double _windSpeedAtLanding;
     private double _windDirAtLanding;
+    private double _rainPercentAtLanding;
     private string _aircraft = "";
 
     // Aircraft performance limits — captured from first valid snapshot
@@ -602,6 +605,7 @@ public class FlightMonitor
         _landingLateralG    = snap.GForceLateral;
         _windSpeedAtLanding = snap.WindSpeedKt;
         _windDirAtLanding   = snap.WindDirectionDeg;
+        _rainPercentAtLanding = snap.RainPercent;
         var relWindRad = (_windDirAtLanding - snap.MagHeadingDeg) * Math.PI / 180.0;
         _landingCrosswindKts = Math.Abs(_windSpeedAtLanding * Math.Sin(relWindRad));
         // Wrong arrival airport check
@@ -1252,6 +1256,7 @@ public class FlightMonitor
                 LandingLateralG            = Math.Round(_landingLateralG, 2),
                 WindSpeedAtLandingKt       = Math.Round(_windSpeedAtLanding, 1),
                 WindDirectionAtLandingDeg  = Math.Round(_windDirAtLanding, 0),
+                RainPercentAtLanding       = Math.Round(_rainPercentAtLanding, 2),
                 CrosswindAtLandingKt       = Math.Round(_landingCrosswindKts, 1),
                 NightFlightPct             = _totalFlightSamples > 0
                                                ? Math.Round(_nightFlightSamples * 100.0 / _totalFlightSamples, 1)
@@ -1496,6 +1501,12 @@ public class FlightMonitor
         {
             score += ScoringConfig.BonusCrosswindLanding;
             bd.Add(new ScoreLineItem { Label = "Crosswind Landing Bonus", Count = 1, Pts = ScoringConfig.BonusCrosswindLanding });
+        }
+        if (absVs < 150 && r.Stats.RainPercentAtLanding >= ScoringConfig.RainBonusThreshold
+            && !r.Summary.Crashed && !r.Summary.RunwayExcursion)
+        {
+            score += ScoringConfig.BonusRainLanding;
+            bd.Add(new ScoreLineItem { Label = "Rain Landing Bonus", Count = 1, Pts = ScoringConfig.BonusRainLanding });
         }
 
         r.Breakdown = bd;
