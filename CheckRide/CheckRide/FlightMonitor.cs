@@ -170,6 +170,7 @@ public class FlightMonitor
     private readonly List<FlightConditionSample> _conditions = new();
     private DateTime _lastConditionSample = DateTime.MinValue;
     private const int ConditionIntervalSec = 300;
+    private const int ConditionWarmupSec = 15;  // let XP12 weather datarefs settle before first sample
 
     // Edge-trigger state — fire once per rising edge
     private bool _prevOverspeed;
@@ -1283,6 +1284,10 @@ public class FlightMonitor
     {
         // Skip snapshots during sim loading (WindSpeedKt = -1 while loading)
         if (snap.WindSpeedKt < 0 || snap.AltitudeAglFt < -5) return;
+
+        // Skip the first few seconds — weather datarefs can report stale/default
+        // values until XP12 finishes settling right after connection.
+        if (_lastConditionSample == DateTime.MinValue && _elapsedSec < ConditionWarmupSec) return;
 
         var elapsed = (snap.Timestamp - _lastConditionSample).TotalSeconds;
         if (_lastConditionSample != DateTime.MinValue && elapsed < ConditionIntervalSec) return;
