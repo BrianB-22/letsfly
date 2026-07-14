@@ -421,6 +421,7 @@ public class FlightMonitor
                    $"Sink={snap.TireSinkDepthM:F3}m " +
                    $"Thr={snap.ThrottleRatio:F2} Flp={snap.FlapRatio:F2} Sbk={snap.SpeedbrakeRatio:F2} " +
                    $"Wind={snap.WindSpeedKt:F0}kt@{snap.WindDirectionDeg:F0}° " +
+                   $"{(snap.OutsideAirTempC <= 0 ? "Snow" : "Rain")}={snap.RainPercent:P0} " +
                    $"Xpdr={snap.TransponderMode} AP={snap.AutopilotOn} " +
                    $"GS={snap.GlideslopeDevDots:F2}dot LOC={snap.LocalizerDevDots:F2}dot " +
                    $"N1={snap.Eng1N1Pct:F1}%/{snap.Eng2N1Pct:F1}% ITT={snap.Eng1IttC:F0}°C/{snap.Eng2IttC:F0}°C OAT={snap.OutsideAirTempC:F1}°C " +
@@ -1296,6 +1297,7 @@ public class FlightMonitor
             VisibilityM      = Math.Round(snap.VisibilityM, 0),
             CloudBaseAglFt   = Math.Round(snap.CloudBaseAglM * 3.28084, 0),
             CloudCoverage    = Math.Round(snap.CloudCoverage, 2),
+            RainPercent      = Math.Round(snap.RainPercent, 2),
             OatC             = Math.Round(snap.OutsideAirTempC, 1),
             AltMslFt         = (int)snap.AltitudeMslFt
         });

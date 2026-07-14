@@ -10,6 +10,7 @@ public class FlightConditionSample
     public double VisibilityM { get; set; }    // 0 if not available from sim
     public double CloudBaseAglFt { get; set; } // 0 if not available
     public double CloudCoverage { get; set; }  // 0–1 fraction, 0 if not available
+    public double RainPercent { get; set; }    // 0–1 precipitation intensity
     public double OatC { get; set; }           // outside air temp °C; 0 to -20 + cloud = icing risk
     public int AltMslFt { get; set; }
 }
