@@ -5132,8 +5132,10 @@ async function pullRoute(fromICAO, toICAO, btn) {
       showToast('No IFR route available for this airport pair — try SimBrief for VFR or direct routing', 'err');
     } else if (e.message === 'no_session' || e.message === 'auth_failed') {
       showToast('Session expired — please sign out and sign back in', 'err');
-    } else if (e.name === 'AbortError' || e.message === 'non-200') {
+    } else if (e.name === 'AbortError') {
       showToast('The route service is waking up from sleep — give it a few seconds and try again', 'info');
+    } else if (e.message === 'non-200') {
+      showToast('The IFR route service (flightplandatabase.com) is currently down — please try again later', 'err');
     } else {
       showToast('Failed to pull route — please try again', 'err');
     }
