@@ -1084,19 +1084,23 @@ function _drawChartCursor(t) {
   if (!canvas || !_pb._chartImg || _pb._chartMaxT <= 0) return;
   const ctx = canvas.getContext('2d');
   ctx.putImageData(_pb._chartImg, 0, 0);
-  const { _chartPad: pad, _chartCW: cW, _chartH: H, _chartDpr: dpr, _chartMaxT: tMax } = _pb;
-  const xPx = (pad.l + (t / tMax) * cW) * dpr;
-  ctx.beginPath(); ctx.moveTo(xPx, pad.t * dpr); ctx.lineTo(xPx, (pad.t + H - pad.t - pad.b) * dpr);
-  ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1 * dpr;
-  ctx.setLineDash([4*dpr, 3*dpr]); ctx.stroke(); ctx.setLineDash([]);
+  const { _chartPad: pad, _chartCW: cW, _chartH: H, _chartW: W, _chartMaxT: tMax } = _pb;
+  // putImageData ignores the canvas transform and writes raw device pixels, but this context
+  // still has ctx.scale(dpr, dpr) active from renderChart() — so cursor coordinates need to
+  // stay in the same CSS-pixel space renderChart's xOf/yAlt use, not pre-multiplied by dpr
+  // (that double-scaled the cursor, drawing the right data label at the wrong x position).
+  const xPx = pad.l + (t / tMax) * cW;
+  ctx.beginPath(); ctx.moveTo(xPx, pad.t); ctx.lineTo(xPx, pad.t + H - pad.t - pad.b);
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
   const snap = _getInterpolated(t);
   if (snap) {
     const label = `${Math.round(snap.AltMslFt).toLocaleString()} ft  ${Math.round(snap.IasKts)} kt`;
-    ctx.font = `${10*dpr}px monospace`;
+    ctx.font = '10px monospace';
     const tw = ctx.measureText(label).width;
-    const lx = Math.min(xPx + 4*dpr, canvas.width - tw - 6*dpr);
-    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(lx - 2*dpr, (pad.t+1)*dpr, tw + 4*dpr, 14*dpr);
-    ctx.fillStyle = '#fff'; ctx.fillText(label, lx, (pad.t+11)*dpr);
+    const lx = Math.min(xPx + 4, W - tw - 6);
+    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(lx - 2, pad.t + 1, tw + 4, 14);
+    ctx.fillStyle = '#fff'; ctx.fillText(label, lx, pad.t + 11);
   }
 }
 
