@@ -178,6 +178,7 @@ XP12 exposes a local REST API for reading/writing datarefs and sending commands.
 | `sim/weather/visibility_reported_m` | float | Horizontal visibility in metres (e.g. 51410m ≈ 28nm = good VFR) |
 | `sim/weather/region/cloud_base_msl_m` | float_array | 3 cloud layers; [0]=lowest. Metres MSL. Subtract airport elevation for AGL. |
 | `sim/weather/region/cloud_coverage_percent` | float_array | 3 cloud layers; [0]=lowest. **Scale is 0–1 (not 0–100 despite name).** e.g. 0.498 = ~50% coverage. |
+| `sim/weather/region/turbulence` | float_array | **13 elements**, not 3 as previously assumed — same element count as the wind arrays. Confirmed live 2026-07-19 (King Air 350, FL280): values ~0.01–0.02, but two readings taken ~2.5min apart during a subjective bumpy→smooth transition were nearly identical. Likely a regional forecast value like cloud coverage, not a live felt-turbulence signal — **not yet trusted, needs more contrast testing**. See `todo.md` CheckRide Scoring section. |
 
 ---
 

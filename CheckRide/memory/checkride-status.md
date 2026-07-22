@@ -41,6 +41,7 @@ Scoring version: `xp12-1.3`
 1. **Taxi detection** — do an erratic taxi run; confirm TaxiFastSpeed and TaxiAggressiveTurn appear in log/JSON
 2. **Takeoff detection** — deliberate low-power or crooked takeoff; confirm TakeoffLowPower / TakeoffHeadingDeviation / TakeoffDirectionalControl fire
 3. **PropInBeta** — check next flight rollout for `Rev=True` in tick log to confirm `sim/flightmodel2/engines/prop_in_beta` resolves in XP12
+4. **Small-talk callout** — long cruise flight (or shortened test constants) to confirm `CalloutSmallTalk` fires every ~30-40 min while airborne and plays a random `sounds\small_talk\*.wav`
 
 ## Pending decisions
 - Vne=400kt: cap at Vno or ignore?
