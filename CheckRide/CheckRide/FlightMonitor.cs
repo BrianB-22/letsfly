@@ -136,6 +136,8 @@ internal static class ScoringConfig
     public const double CrosswindBonusKt       = 10.0; // minimum crosswind for bonus
     public const double RainBonusThreshold     = 0.5;  // rain_percent at touchdown for rain bonus
     public const double LowVisBonusSm          = 1.5;  // visibility (statute miles) at touchdown for low-vis bonus
+    public const double LowVisCruiseSm         = 1.0;  // visibility (SM) in cruise for "I Can't See Nothing" bonus
+    public const int    BonusLowVisCruise      = 5;    // fires once, any tick under LowVisCruiseSm while in Cruise
     public const int BonusRunupCheck           = 5;    // sustained high-N1 power check while stationary, pre-takeoff
 
     // Runup / pre-takeoff power check detection
@@ -232,6 +234,7 @@ public class FlightMonitor
     private bool _approachSpeedFlagged;
     private bool _unstableApproachFlagged;
     private bool _antiIceFlagged;
+    private bool _lowVisCruiseFlagged;
     private bool _imcFlagged;
     private double _baroOnTakeoff;
     private bool _baroEverChanged;
@@ -1083,16 +1086,36 @@ public class FlightMonitor
             _imcFlagged = true;
         }
 
+        // "I Can't See Nothing" — visibility under 1SM while in cruise. A much lower bar than
+        // IMC (<3SM), fires once, no scoring penalty, just a small flavor bonus for surviving
+        // the cruise segment near-blind.
+        if (_phase == FlightPhase.Cruise && snap.VisibilityM > 0
+            && snap.VisibilityM / 1609.34 < ScoringConfig.LowVisCruiseSm && !_lowVisCruiseFlagged)
+        {
+            var visSmiles = snap.VisibilityM / 1609.34;
+            LogEvent(FlightEventType.LowVisCruise, snap.Timestamp,
+                $"Visibility {visSmiles:F1}SM in cruise — I Can't See Nothing");
+            logger.Log($"EVENT: Low visibility cruise (vis={visSmiles:F1}SM)");
+            _lowVisCruiseFlagged = true;
+        }
+
         // Anti-ice off in icing conditions (OAT 0 to -20°C AND in solid cloud, not just scattered)
         var icingConditions = snap.OutsideAirTempC <= ScoringConfig.AntiIceTempHighC
                               && snap.OutsideAirTempC >= ScoringConfig.AntiIceTempLowC
                               && snap.CloudCoverage > ScoringConfig.AntiIceCloudMin && snap.AltitudeAglFt > 200;
+        // Re-arms once you leave icing conditions or turn anti-ice on — a single flight can
+        // cross hundreds of miles and multiple separate icing encounters, and leaving anti-ice
+        // off through each one is a fresh violation, not a one-time slip.
         if (icingConditions && !snap.AntiIceOn && !_antiIceFlagged)
         {
             LogEvent(FlightEventType.SystemAntiIce, snap.Timestamp,
                 $"Anti-ice off in icing conditions (OAT {snap.OutsideAirTempC:F1}°C, cloud {snap.CloudCoverage:P0})");
             logger.Log($"EVENT: Anti-ice off in icing conditions (OAT {snap.OutsideAirTempC:F1}°C)");
             _antiIceFlagged = true;
+        }
+        else if (!icingConditions || snap.AntiIceOn)
+        {
+            _antiIceFlagged = false;
         }
 
         // ── Personality callouts (no scoring) ────────────────────────────────
@@ -1532,6 +1555,7 @@ public class FlightMonitor
             ImcFlight      = r.Events.Any(e => e.Type == FlightEventType.SystemIMC),
             NightFlight    = r.Stats.NightFlightPct >= 50.0,
             RunupCompleted = r.Events.Any(e => e.Type == FlightEventType.RunupCheckCompleted),
+            LowVisCruise   = r.Events.Any(e => e.Type == FlightEventType.LowVisCruise),
             CrosswindAtLandingKt = r.Stats.CrosswindAtLandingKt,
             TakeoffFlags   = r.Events.Count(e => e.Type is
                 FlightEventType.TakeoffLowPower or FlightEventType.TakeoffHeadingDeviation or
@@ -1659,6 +1683,11 @@ public class FlightMonitor
         {
             score += ScoringConfig.BonusRunupCheck;
             bd.Add(new ScoreLineItem { Label = "Runup Check Bonus", Count = 1, Pts = ScoringConfig.BonusRunupCheck });
+        }
+        if (r.Summary.LowVisCruise)
+        {
+            score += ScoringConfig.BonusLowVisCruise;
+            bd.Add(new ScoreLineItem { Label = "I Can't See Nothing Bonus", Count = 1, Pts = ScoringConfig.BonusLowVisCruise });
         }
         if (r.Summary.OverspeedCount == 0 && r.Summary.StallCount == 0)
         {

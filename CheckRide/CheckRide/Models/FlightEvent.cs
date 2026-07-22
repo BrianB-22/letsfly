@@ -71,6 +71,7 @@ public enum FlightEventType
     EngineStart,
     RunupCheckCompleted,    // sustained high-N1 power check while stationary, pre-takeoff
     Turbulence,              // sustained rough air (rolling Gn stddev) — dings Pax Comfort only, not the CheckRide score
+    LowVisCruise,            // visibility dropped below 1SM while in cruise — "I Can't See Nothing" bonus
     Takeoff,
     CruiseReached,
     ApproachStarted,
