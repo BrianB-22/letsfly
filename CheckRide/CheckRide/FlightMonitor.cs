@@ -31,13 +31,24 @@ internal static class ScoringConfig
 
     public const double AntiIceTempLowC     = -20.0; // lower bound of icing window
     public const double AntiIceTempHighC    = 0.0;   // upper bound of icing window
-    public const double AntiIceCloudMin     = 0.1;   // minimum cloud coverage to flag icing
+    public const double AntiIceCloudMin     = 0.5;   // minimum cloud coverage to flag icing — BKN+, not just scattered
+    public const double RainCalloutMinPct   = 0.20;  // minimum RainPercent to call out rain — filters trace/virga noise
+    public const int    TurbulenceGnWindowSize          = 20;   // seconds of Gn history used for the rolling stddev
+    public const double TurbulenceGnStdDevTripThreshold = 0.09; // stddev above this = bumpy enough to call out
+    public const double TurbulenceGnStdDevResetThreshold = 0.05; // must fall back below this to re-arm (hysteresis)
+    public const double TurbulenceMinSustainSeconds     = 5.0;  // stddev must stay above the trip line this long
+                                                                  // before calling out — filters a single G spike
     public const double IceDamageThreshold  = 0.01;  // frm_ice above this = icing damage event
     public const double N1OverspeedPct        = 100.0; // N1% above this = prop/turbine over-speed (universal %)
     public const double N1OverspeedBufferPct  = 2.0;  // grace buffer before flagging
-    public const double VnoOverspeedBufferKts = 5.0;  // kt above Vno before flagging (scoring)
-    public const double VneCalloutMarginKts   = 10.0; // kt below Vne before the audible overspeed callout fires
+    public const double VnoOverspeedBufferKts = 5.0;   // kt above Vno before flagging — used when the aircraft has
+                                                        // verified POH V-speeds (see AircraftVSpeeds/refdata/aircraft.json)
+    public const double VnoOverspeedBufferUnverifiedKts = 60.0; // wider buffer for aircraft with no verified entry,
+                                                        // since addon acf_Vno is often wrong (e.g. the King Air 350's
+                                                        // stock acf_Vno is really its Va, not a cruise ceiling)
+    public const double OverspeedResetHysteresisKts = 10.0; // must drop this far below the trip point before re-arming
 
+    public const double MinAirborneBeforeLandingSec = 15.0; // ignore on-ground flicker for this long after liftoff
     public const int    CruiseStableCount   = 30;    // consecutive polls above cruise altitude to transition
     public const double CruiseAglFt         = 3000.0; // AGL above this = cruise phase candidate
 
@@ -125,6 +136,16 @@ internal static class ScoringConfig
     public const double CrosswindBonusKt       = 10.0; // minimum crosswind for bonus
     public const double RainBonusThreshold     = 0.5;  // rain_percent at touchdown for rain bonus
     public const double LowVisBonusSm          = 1.5;  // visibility (statute miles) at touchdown for low-vis bonus
+    public const int BonusRunupCheck           = 5;    // sustained high-N1 power check while stationary, pre-takeoff
+
+    // Runup / pre-takeoff power check detection
+    public const double RunupN1Pct             = 85.0; // min N1% (either engine) while stationary to count as a check
+    public const double RunupMaxGroundspeedKt  = 2.0;  // must be essentially stationary — brakes held
+    public const double RunupMinHoldSeconds    = 2.0;  // sustained duration above RunupN1Pct before it counts
+
+    // Small-talk personality callout — random interval while airborne, no scoring impact
+    public const double SmallTalkMinMinutes     = 30.0;
+    public const double SmallTalkMaxMinutes     = 40.0;
 }
 
 public class FlightMonitor
@@ -154,6 +175,7 @@ public class FlightMonitor
     private double _vsCleanKts;
     private double _vrefKts;        // 1.3 × Vso
     private bool _flapOverspeedFlagged;
+    private bool _vSpeedsVerified;  // true when limits came from AircraftVSpeeds, not the raw sim dataref
 
     // Running stats
     private double _prevLat;
@@ -180,11 +202,17 @@ public class FlightMonitor
     private const int ConditionWarmupSec = 15;  // let XP12 weather datarefs settle before first sample
 
     // Edge-trigger state — fire once per rising edge
-    private bool _prevOverspeed;
-    private bool _prevNearVne;
+    private bool _overspeedTripped;   // Schmitt-trigger latch — see OverspeedResetHysteresisKts
     private bool _prevStall;
     private bool _prevHighG;
     private bool _prevVeryHighG;
+
+    // Turbulence — rolling window of Gn samples for stddev-based detection
+    private readonly Queue<double> _gnWindow = new();
+    private double _gnWindowSum;
+    private double _gnWindowSumSq;
+    private bool _turbulenceTripped;
+    private DateTime _turbulenceHighSince;
     private bool _prevHighBank;
     private bool _prevVeryHighBank;
     private bool _prevCrashed;
@@ -237,6 +265,10 @@ public class FlightMonitor
     // In-flight personality callouts — fire once per flight, no scoring impact
     public event Action? CalloutRain;
     public event Action? CalloutIcing;
+    public event Action? CalloutTurbulence;
+
+    // Small-talk personality callout — fires repeatedly at a random 30-40min interval while airborne
+    public event Action? CalloutSmallTalk;
 
     // Scoring-linked callouts — fire each time the event occurs
     public event Action? CalloutOverspeed;
@@ -257,6 +289,14 @@ public class FlightMonitor
     // Personality callout flags — fire once per flight
     private bool _rainCalloutFired;
     private bool _icingCalloutFired;
+
+    // Small-talk personality callout — repeats on a random 30-40min cadence while airborne
+    private DateTime _nextSmallTalkAt;
+    private readonly Random _smallTalkRng = new();
+
+    // Runup / pre-takeoff power check detection
+    private bool _runupChecked;
+    private DateTime _runupHighN1Since;
 
     // Taxi detection
     private bool _fastTaxiFlagged;
@@ -311,9 +351,11 @@ public class FlightMonitor
 
     private readonly int _transitionAltFt;
 
+    private readonly string? _selectedIcao;
+
     public FlightMonitor(string depId = "", double depLat = 0, double depLon = 0,
                          string arrId = "", double arrLat = 0, double arrLon = 0,
-                         int transitionAltFt = 18000)
+                         int transitionAltFt = 18000, string? selectedIcao = null)
     {
         _expectedDepId  = depId;
         _expectedDepLat = depLat;
@@ -322,6 +364,7 @@ public class FlightMonitor
         _expectedArrLat = arrLat;
         _expectedArrLon = arrLon;
         _transitionAltFt = transitionAltFt;
+        _selectedIcao    = selectedIcao;
     }
 
     public void OnSnapshot(FlightDataSnapshot snap, EventLogger logger)
@@ -360,12 +403,26 @@ public class FlightMonitor
 
         if (!_limitsCaptured && snap.VsoKts > 0)
         {
-            _vsoKts = snap.VsoKts;
-            _vnoKts = snap.VnoKts;
-            _vneKts = snap.VneKts > snap.VnoKts * 2 ? snap.VnoKts * 1.4 : snap.VneKts;
-            _vfeKts = snap.VfeKts;
-            _vsCleanKts = snap.VsCleanKts;
-            _vrefKts = snap.VsoKts * 1.3;
+            var verified = AircraftVSpeeds.Find(_selectedIcao, snap.AircraftName);
+            if (verified != null)
+            {
+                _vsoKts = verified.VsoKts;
+                _vnoKts = verified.VnoKts;
+                _vneKts = verified.VneKts;
+                _vfeKts = verified.VfeKts;
+                _vsCleanKts = snap.VsCleanKts;
+                _vSpeedsVerified = true;
+                logger.Log($"Aircraft limits — using verified POH V-speeds ({verified.Source})");
+            }
+            else
+            {
+                _vsoKts = snap.VsoKts;
+                _vnoKts = snap.VnoKts;
+                _vneKts = snap.VneKts > snap.VnoKts * 2 ? snap.VnoKts * 1.4 : snap.VneKts;
+                _vfeKts = snap.VfeKts;
+                _vsCleanKts = snap.VsCleanKts;
+            }
+            _vrefKts = _vsoKts * 1.3;
             _limitsCaptured = true;
             logger.Log($"Aircraft limits — Vso={_vsoKts:F0}kt Vno={_vnoKts:F0}kt Vne={_vneKts:F0}kt " +
                        $"Vfe={_vfeKts:F0}kt Vs={_vsCleanKts:F0}kt → Vref={_vrefKts:F0}kt");
@@ -497,13 +554,17 @@ public class FlightMonitor
         }
         else if (_phase == FlightPhase.Airborne)
         {
-            if (snap.OnGround)
+            // XP12's on-ground flag can flicker true for a tick right at rotation (squat-switch/
+            // gear-compression noise) — without a minimum time-since-liftoff guard, that flicker
+            // reads as an instant landing, firing a bogus "wrong arrival airport"/"runway excursion"
+            // and a touchdown-quality callout seconds after takeoff.
+            if (snap.OnGround && (snap.Timestamp - _airborneTime).TotalSeconds > ScoringConfig.MinAirborneBeforeLandingSec)
             {
                 RecordLanding(snap, logger);
                 _phase = FlightPhase.Landed;
                 logger.Log("Phase → Landed");
             }
-            else if (snap.AltitudeAglFt > 1000
+            else if (!snap.OnGround && snap.AltitudeAglFt > 1000
                   && Math.Abs(snap.VerticalSpeedFpm) < 500
                   && snap.GroundspeedKts > 40)
             {
@@ -521,13 +582,16 @@ public class FlightMonitor
         }
         else if (_phase == FlightPhase.Cruise)
         {
-            if (snap.OnGround)
+            // Same on-ground-flicker guard as the Airborne→Landed transition — an instant
+            // "landing" from cruise altitude would be absurd, but apply it uniformly rather
+            // than trusting phase alone to rule out sensor noise.
+            if (snap.OnGround && (snap.Timestamp - _airborneTime).TotalSeconds > ScoringConfig.MinAirborneBeforeLandingSec)
             {
                 RecordLanding(snap, logger);
                 _phase = FlightPhase.Landed;
                 logger.Log("Phase → Landed");
             }
-            else if (snap.AltitudeAglFt < 5000 && snap.VerticalSpeedFpm < -300)
+            else if (!snap.OnGround && snap.AltitudeAglFt < 5000 && snap.VerticalSpeedFpm < -300)
             {
                 _phase = FlightPhase.Approach;
                 _highDescentFlagged = false;
@@ -541,13 +605,13 @@ public class FlightMonitor
             if (snap.AltitudeAglFt < 20.0 && !snap.OnGround)
                 _flareMaxBankDeg = Math.Max(_flareMaxBankDeg, Math.Abs(snap.BankAngleDeg));
 
-            if (snap.OnGround)
+            if (snap.OnGround && (snap.Timestamp - _airborneTime).TotalSeconds > ScoringConfig.MinAirborneBeforeLandingSec)
             {
                 RecordLanding(snap, logger);
                 _phase = FlightPhase.Landed;
                 logger.Log("Phase → Landed");
             }
-            else if (snap.VerticalSpeedFpm > 500 && snap.AltitudeAglFt > 1000)
+            else if (!snap.OnGround && snap.VerticalSpeedFpm > 500 && snap.AltitudeAglFt > 1000)
             {
                 if (_missedApchClimbCount == 0) _missedApchStartAgl = snap.AltitudeAglFt;
                 _missedApchClimbCount++;
@@ -716,26 +780,27 @@ public class FlightMonitor
         // Overspeed — IAS above Vno + buffer. (snap.Overspeed is XP12's native over_vne flag,
         // which is the never-exceed/red-line speed — far higher than the Vno caution range this
         // check is meant to catch, so it's not used here.)
-        var overVno = _vnoKts > 0 && snap.IndicatedAirspeedKts > _vnoKts + ScoringConfig.VnoOverspeedBufferKts
-                      && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
-        if (overVno && !_prevOverspeed)
+        // Schmitt trigger: once tripped, IAS must fall OverspeedResetHysteresisKts below the trip
+        // point before it can re-arm — otherwise IAS hovering right at the line (e.g. AP speed
+        // hold hunting by a knot) logs a fresh penalty on every flicker instead of one excursion.
+        if (_vnoKts > 0 && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach)
         {
-            LogEvent(FlightEventType.Overspeed, snap.Timestamp,
-                $"Overspeed — {snap.IndicatedAirspeedKts:F0}kt (Vno={_vnoKts:F0}kt)");
-            logger.Log($"EVENT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt, Vno={_vnoKts:F0}kt)");
+            var buffer   = _vSpeedsVerified ? ScoringConfig.VnoOverspeedBufferKts : ScoringConfig.VnoOverspeedBufferUnverifiedKts;
+            var tripKts  = _vnoKts + buffer;
+            var resetKts = tripKts - ScoringConfig.OverspeedResetHysteresisKts;
+            if (!_overspeedTripped && snap.IndicatedAirspeedKts > tripKts)
+            {
+                LogEvent(FlightEventType.Overspeed, snap.Timestamp,
+                    $"Overspeed — {snap.IndicatedAirspeedKts:F0}kt (Vno={_vnoKts:F0}kt)");
+                logger.Log($"EVENT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt, Vno={_vnoKts:F0}kt)");
+                CalloutOverspeed?.Invoke();
+                _overspeedTripped = true;
+            }
+            else if (_overspeedTripped && snap.IndicatedAirspeedKts < resetKts)
+            {
+                _overspeedTripped = false;
+            }
         }
-        _prevOverspeed = overVno;
-
-        // Overspeed callout (audible) — reserved for approaching the actual structural
-        // redline (Vne), not the Vno caution range the scoring penalty above uses.
-        var nearVne = _vneKts > 0 && snap.IndicatedAirspeedKts > _vneKts - ScoringConfig.VneCalloutMarginKts
-                      && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
-        if (nearVne && !_prevNearVne)
-        {
-            logger.Log($"CALLOUT: Overspeed ({snap.IndicatedAirspeedKts:F0}kt, Vne={_vneKts:F0}kt)");
-            CalloutOverspeed?.Invoke();
-        }
-        _prevNearVne = nearVne;
 
         // 250kt below 10,000ft — regulatory speed limit (FAR 91.117), rising edge
         var overLimit = snap.AltitudeMslFt < 10000 && snap.IndicatedAirspeedKts > 250
@@ -779,6 +844,61 @@ public class FlightMonitor
         }
         _prevHighG = isHighG;
 
+        // Turbulence (passenger-comfort callout only — no scoring impact). Instantaneous Gn
+        // barely moves even in genuinely rough air (prior testing: flat 0.94-1.05 through a
+        // pilot-reported bumpy stretch), and sim/weather/region/turbulence is a slow-moving
+        // regional forecast value uncorrelated with felt buffeting — both dead ends (see todo.md).
+        // Rolling stddev of Gn over a ~20s window tracks it instead: baseline noise across a full
+        // flight sits ~0.02-0.04, spiking to 0.13-0.18 during a real pilot-reported "heavy
+        // turbulence" stretch (rain 71-81%) and dropping straight back to baseline once it settled.
+        if (airborne)
+        {
+            _gnWindow.Enqueue(snap.GForceNormal);
+            _gnWindowSum   += snap.GForceNormal;
+            _gnWindowSumSq += snap.GForceNormal * snap.GForceNormal;
+            if (_gnWindow.Count > ScoringConfig.TurbulenceGnWindowSize)
+            {
+                var dropped = _gnWindow.Dequeue();
+                _gnWindowSum   -= dropped;
+                _gnWindowSumSq -= dropped * dropped;
+            }
+
+            if (_gnWindow.Count == ScoringConfig.TurbulenceGnWindowSize)
+            {
+                var mean = _gnWindowSum / _gnWindow.Count;
+                var variance = Math.Max(0, _gnWindowSumSq / _gnWindow.Count - mean * mean);
+                var gnStdDev = Math.Sqrt(variance);
+
+                if (!_turbulenceTripped && gnStdDev > ScoringConfig.TurbulenceGnStdDevTripThreshold)
+                {
+                    // Debounce: a single hard bump can push the 20s stddev over the trip line by
+                    // itself, so require it to stay elevated for a few seconds — not one G spike —
+                    // before actually calling it out. Any dip back at or below the trip line resets
+                    // the streak (see the else-branch below).
+                    if (_turbulenceHighSince == default) _turbulenceHighSince = snap.Timestamp;
+                    else if ((snap.Timestamp - _turbulenceHighSince).TotalSeconds >= ScoringConfig.TurbulenceMinSustainSeconds)
+                    {
+                        _turbulenceTripped = true;
+                        // Milestone only — no ScoringConfig penalty/PerOccurrence wired to this type,
+                        // so it never touches the CheckRide grade. report.html's separate Pax Comfort
+                        // metric docks a small amount per occurrence instead (see Turbulence filter there).
+                        LogEvent(FlightEventType.Turbulence, snap.Timestamp, $"Turbulence — Gn stddev={gnStdDev:F3}");
+                        CalloutTurbulence?.Invoke();
+                        logger.Log($"CALLOUT: Turbulence (Gn stddev={gnStdDev:F3} over {ScoringConfig.TurbulenceGnWindowSize}s, sustained {ScoringConfig.TurbulenceMinSustainSeconds:F0}s+)");
+                    }
+                }
+                else if (!_turbulenceTripped)
+                {
+                    _turbulenceHighSince = default;
+                }
+                else if (gnStdDev < ScoringConfig.TurbulenceGnStdDevResetThreshold)
+                {
+                    _turbulenceTripped = false;
+                    _turbulenceHighSince = default;
+                }
+            }
+        }
+
         // Bank angle — rising edge, airborne phases only
         var absBank = Math.Abs(snap.BankAngleDeg);
         var isVeryHighBank = absBank > 60;
@@ -817,6 +937,9 @@ public class FlightMonitor
             DetectSystemChecks(snap, logger);
 
         if (snap.AltitudeAglFt > _peakAglFt) _peakAglFt = snap.AltitudeAglFt;
+
+        if (_phase is FlightPhase.Idle or FlightPhase.Taxiing)
+            DetectRunupCheck(snap, logger);
 
         if (_phase == FlightPhase.Taxiing)
             DetectTaxiEvents(snap, logger);
@@ -960,9 +1083,10 @@ public class FlightMonitor
             _imcFlagged = true;
         }
 
-        // Anti-ice off in icing conditions (OAT 0 to -20°C AND in cloud)
-        var icingConditions = snap.OutsideAirTempC <= 0 && snap.OutsideAirTempC >= -20
-                              && snap.CloudCoverage > 0.1 && snap.AltitudeAglFt > 200;
+        // Anti-ice off in icing conditions (OAT 0 to -20°C AND in solid cloud, not just scattered)
+        var icingConditions = snap.OutsideAirTempC <= ScoringConfig.AntiIceTempHighC
+                              && snap.OutsideAirTempC >= ScoringConfig.AntiIceTempLowC
+                              && snap.CloudCoverage > ScoringConfig.AntiIceCloudMin && snap.AltitudeAglFt > 200;
         if (icingConditions && !snap.AntiIceOn && !_antiIceFlagged)
         {
             LogEvent(FlightEventType.SystemAntiIce, snap.Timestamp,
@@ -979,7 +1103,7 @@ public class FlightMonitor
             if (snap.SunPitchDeg < 0) _nightFlightSamples++;
 
             // Rain callout — fire once when precipitation begins
-            if (!_rainCalloutFired && snap.RainPercent > 0.05)
+            if (!_rainCalloutFired && snap.RainPercent > ScoringConfig.RainCalloutMinPct)
             {
                 _rainCalloutFired = true;
                 CalloutRain?.Invoke();
@@ -992,6 +1116,24 @@ public class FlightMonitor
                 _icingCalloutFired = true;
                 CalloutIcing?.Invoke();
                 logger.Log($"CALLOUT: Icing conditions (OAT {snap.OutsideAirTempC:F1}°C)");
+            }
+
+            // Small-talk callout — random line every 30-40 min while airborne, just to
+            // add personality and remind the player the recording is still going.
+            // Scheduled off snap.Timestamp so time spent paused doesn't count down the interval.
+            if (_nextSmallTalkAt == default)
+            {
+                _nextSmallTalkAt = snap.Timestamp.AddMinutes(
+                    ScoringConfig.SmallTalkMinMinutes +
+                    _smallTalkRng.NextDouble() * (ScoringConfig.SmallTalkMaxMinutes - ScoringConfig.SmallTalkMinMinutes));
+            }
+            else if (snap.Timestamp >= _nextSmallTalkAt)
+            {
+                CalloutSmallTalk?.Invoke();
+                logger.Log("CALLOUT: Small talk");
+                _nextSmallTalkAt = snap.Timestamp.AddMinutes(
+                    ScoringConfig.SmallTalkMinMinutes +
+                    _smallTalkRng.NextDouble() * (ScoringConfig.SmallTalkMaxMinutes - ScoringConfig.SmallTalkMinMinutes));
             }
         }
     }
@@ -1117,6 +1259,30 @@ public class FlightMonitor
         }
     }
 
+    private void DetectRunupCheck(FlightDataSnapshot snap, EventLogger logger)
+    {
+        if (_runupChecked) return;
+
+        var maxN1 = Math.Max(snap.Eng1N1Pct, snap.Eng2N1Pct);
+        if (snap.GroundspeedKts <= ScoringConfig.RunupMaxGroundspeedKt && maxN1 >= ScoringConfig.RunupN1Pct)
+        {
+            if (_runupHighN1Since == default)
+                _runupHighN1Since = snap.Timestamp;
+
+            if ((snap.Timestamp - _runupHighN1Since).TotalSeconds >= ScoringConfig.RunupMinHoldSeconds)
+            {
+                LogEvent(FlightEventType.RunupCheckCompleted, snap.Timestamp,
+                    $"Runup / power check completed — N1={snap.Eng1N1Pct:F0}%/{snap.Eng2N1Pct:F0}%");
+                logger.Log($"EVENT: Runup check completed (N1={snap.Eng1N1Pct:F0}%/{snap.Eng2N1Pct:F0}%)");
+                _runupChecked = true;
+            }
+        }
+        else
+        {
+            _runupHighN1Since = default;
+        }
+    }
+
     private void DetectTaxiEvents(FlightDataSnapshot snap, EventLogger logger)
     {
         double hdgRate = 0;
@@ -1210,12 +1376,16 @@ public class FlightMonitor
 
         // Unstable below 500ft — Vref×1.3 speed or -1000fpm VS; fallback 150kt
         var unstableSpeedThreshold = _vrefKts > 0 ? _vrefKts * 1.3 : 150;
-        if (snap.AltitudeAglFt < 500 && !_unstableApproachFlagged
-            && (snap.VerticalSpeedFpm < -1000 || snap.IndicatedAirspeedKts > unstableSpeedThreshold))
+        var unstableOnSpeed = snap.IndicatedAirspeedKts > unstableSpeedThreshold;
+        var unstableOnVs    = snap.VerticalSpeedFpm < -1000;
+        if (snap.AltitudeAglFt < 500 && !_unstableApproachFlagged && (unstableOnSpeed || unstableOnVs))
         {
+            var reason = unstableOnSpeed && unstableOnVs ? "overspeed, vertical speed"
+                       : unstableOnSpeed                  ? "overspeed"
+                                                            : "vertical speed";
             LogEvent(FlightEventType.UnstableApproach, snap.Timestamp,
-                $"Unstable below 500ft — {snap.IndicatedAirspeedKts:F0}kt / {snap.VerticalSpeedFpm:F0} fpm");
-            logger.Log($"EVENT: Unstable approach below 500ft ({snap.IndicatedAirspeedKts:F0}kt / {snap.VerticalSpeedFpm:F0} fpm)");
+                $"Unstable below 500ft ({reason}) — {snap.IndicatedAirspeedKts:F0}kt / {snap.VerticalSpeedFpm:F0} fpm");
+            logger.Log($"EVENT: Unstable approach below 500ft ({reason}) — {snap.IndicatedAirspeedKts:F0}kt / {snap.VerticalSpeedFpm:F0} fpm");
             _unstableApproachFlagged = true;
         }
 
@@ -1361,6 +1531,7 @@ public class FlightMonitor
                 FlightEventType.SystemAntiIce or FlightEventType.SystemBarometer),
             ImcFlight      = r.Events.Any(e => e.Type == FlightEventType.SystemIMC),
             NightFlight    = r.Stats.NightFlightPct >= 50.0,
+            RunupCompleted = r.Events.Any(e => e.Type == FlightEventType.RunupCheckCompleted),
             CrosswindAtLandingKt = r.Stats.CrosswindAtLandingKt,
             TakeoffFlags   = r.Events.Count(e => e.Type is
                 FlightEventType.TakeoffLowPower or FlightEventType.TakeoffHeadingDeviation or
@@ -1483,6 +1654,11 @@ public class FlightMonitor
         {
             score += ScoringConfig.BonusCleanSystems;
             bd.Add(new ScoreLineItem { Label = "Clean Systems Bonus", Count = 1, Pts = ScoringConfig.BonusCleanSystems });
+        }
+        if (r.Summary.RunupCompleted)
+        {
+            score += ScoringConfig.BonusRunupCheck;
+            bd.Add(new ScoreLineItem { Label = "Runup Check Bonus", Count = 1, Pts = ScoringConfig.BonusRunupCheck });
         }
         if (r.Summary.OverspeedCount == 0 && r.Summary.StallCount == 0)
         {

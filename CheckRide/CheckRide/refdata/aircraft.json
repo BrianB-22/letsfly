@@ -5,6 +5,79 @@
     "faaApproachSpeedKts": 107,
     "aac": "B",
     "typicalRotationKts": 105,
-    "normalTakeoffN1Pct": 96
+    "normalTakeoffN1Pct": 96,
+    "vSpeeds": {
+      "vsoKts": 81,
+      "vnoKts": 263,
+      "vneKts": 263,
+      "vfeKts": 202,
+      "source": "Beechcraft King Air 350 POH — Vmo 263 KIAS (SL-21,000ft, decreasing above); Vfe approach-flap stage 202 KIAS. Addon's acf_Vno (182kt) is actually Va (maneuvering speed), not a cruise ceiling — overridden here."
+    }
+  },
+  {
+    "xp12Name": "Cessna 172SP",
+    "icao": "C172",
+    "vSpeeds": {
+      "vsoKts": 40,
+      "vnoKts": 129,
+      "vneKts": 163,
+      "vfeKts": 110,
+      "source": "Cessna 172SP POH — Vno 129 KIAS, Vne 163 KIAS, Vso 40 KIAS. Vfe uses the less-restrictive 0-10° flap stage (110 KIAS); full-flap (30°) Vfe is lower at 85 KIAS — staged flap limits aren't modeled."
+    }
+  },
+  {
+    "xp12Name": "Baron 58",
+    "icao": "BE58",
+    "vSpeeds": {
+      "vsoKts": 73,
+      "vnoKts": 195,
+      "vneKts": 223,
+      "vfeKts": 152,
+      "source": "Beechcraft Baron 58 POH — Vno 195 KIAS, Vne 223 KIAS, Vso 73 KIAS. Vfe uses the less-restrictive 15° flap stage (152 KIAS); full-flap (30°) Vfe is lower at 122 KIAS — staged flap limits aren't modeled."
+    }
+  },
+  {
+    "xp12Name": "Citation X",
+    "icao": "C750",
+    "vSpeeds": {
+      "vsoKts": 115,
+      "vnoKts": 270,
+      "vneKts": 270,
+      "vfeKts": 180,
+      "source": "Cessna Citation X POH — Vmo 270 KIAS (SL-8,000ft; rises to 350 KIAS then Mmo .935 above); Vfe (full flap) 180 KIAS; Vso 115 KIAS. Low-altitude Vmo used as the flat ceiling — the altitude-varying schedule above 8,000ft isn't modeled."
+    }
+  },
+  {
+    "xp12Name": "Cirrus SR22",
+    "icao": "SR22",
+    "vSpeeds": {
+      "vsoKts": 59,
+      "vnoKts": 176,
+      "vneKts": 205,
+      "vfeKts": 150,
+      "source": "Cirrus SR22 POH — Vno 176 KIAS, Vne 205 KIAS, Vso 59 KIAS. Vfe uses the less-restrictive 50% flap stage (150 KIAS); full-flap (100%) Vfe is lower at 110 KIAS — staged flap limits aren't modeled."
+    }
+  },
+  {
+    "xp12Name": "Cirrus Vision SF50",
+    "icao": "SF50",
+    "vSpeeds": {
+      "vsoKts": 67,
+      "vnoKts": 250,
+      "vneKts": 250,
+      "vfeKts": 190,
+      "source": "Cirrus Vision SF50 AFM — Vmo 250 KIAS (Mmo .53); Vfe uses the less-restrictive 50%/takeoff/approach flap stage (190 KIAS); full-flap (100%/land) Vfe is lower at 150 KIAS. Vso 67 KIAS."
+    }
+  },
+  {
+    "xp12Name": "Lancair Evolution",
+    "icao": "EVOT",
+    "vSpeeds": {
+      "vsoKts": 65,
+      "vnoKts": 240,
+      "vneKts": 250,
+      "vfeKts": 140,
+      "source": "Lancair Evolution (PT6A turbine) — Vmo 240 KIAS, Vne 250 KIAS, Vso 65 KIAS. Vfe uses the less-restrictive takeoff-flap stage (140 KIAS); full-flap Vfe is lower at 125 KIAS — staged flap limits aren't modeled. Lower-confidence source (kitplane QRG, not a certified POH)."
+    }
   }
 ]

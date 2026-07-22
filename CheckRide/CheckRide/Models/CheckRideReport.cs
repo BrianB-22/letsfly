@@ -42,6 +42,7 @@ public class CheckRideSummary
     public bool RunwayExcursion { get; set; }
     public bool ImcFlight { get; set; }
     public bool NightFlight { get; set; }
+    public bool RunupCompleted { get; set; }
     public double CrosswindAtLandingKt { get; set; }
     public string LandingQuality { get; set; } = "Unknown";
 }
@@ -109,7 +110,7 @@ public class ScoreLineItem
 
 public class CheckRideReport
 {
-    public const string ScoringVersionConst = "xp12-1.8";
+    public const string ScoringVersionConst = "xp12-1.14";
 
     public string Sim { get; init; } = "xplane12";
     public string ScoringVersion { get; init; } = ScoringVersionConst;

@@ -69,6 +69,8 @@ public enum FlightEventType
     // Milestones (no scoring impact — timeline markers only)
     RecordingStarted,
     EngineStart,
+    RunupCheckCompleted,    // sustained high-N1 power check while stationary, pre-takeoff
+    Turbulence,              // sustained rough air (rolling Gn stddev) — dings Pax Comfort only, not the CheckRide score
     Takeoff,
     CruiseReached,
     ApproachStarted,

@@ -338,6 +338,11 @@ function calcPassengerComfort(r) {
   score -= events.filter(e => e.Type === 'HighG').length     * 5;
   score -= events.filter(e => e.Type === 'VeryHighG').length * 12;
 
+  // Sustained rough air (rolling Gn stddev) — felt by passengers even when it never
+  // reaches a HighG spike. Small deduction per occurrence, capped so a long rough
+  // flight doesn't get penalized without bound.
+  score -= Math.min(events.filter(e => e.Type === 'Turbulence').length, 5) * 4;
+
   // Steep bank (felt in turns)
   const maxBank = Math.abs(stats.MaxBankAngleDeg || 0);
   if      (maxBank >= 60) score -= 18;

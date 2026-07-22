@@ -23,6 +23,7 @@ catch (Exception ex)
 }
 
 AircraftDb.Load(Path.Combine(EmbeddedAssets.Dir, "refdata", "faa_aircraft_data.csv"));
+AircraftVSpeeds.Load(Path.Combine(EmbeddedAssets.Dir, "refdata", "aircraft.json"));
 
 var session = SessionStore.Load();
 

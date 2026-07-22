@@ -672,7 +672,7 @@ internal class FlightListForm : Form
             _monitor   = new FlightMonitor(
                 _activeFlight!.DepId, _activeFlight!.DepLat, _activeFlight!.DepLon,
                 _activeFlight!.ArrId, _activeFlight!.ArrLat, _activeFlight!.ArrLon,
-                SelectedTransitionAltFt);
+                SelectedTransitionAltFt, _selectedAircraft?.IcaoCode);
             _connector = new XP12Connector();
 
             _connector.Log       = msg => _logger.Log($"[XP12] {msg}");
@@ -697,8 +697,10 @@ internal class FlightListForm : Form
             _monitor.TouchdownCallout     += q  => BeginInvoke(() => PlaySoundRandom($"landing_{q}"));
             _monitor.CalloutRain          += () => BeginInvoke(() => PlaySoundRandom("callout_rain"));
             _monitor.CalloutIcing         += () => BeginInvoke(() => PlaySoundRandom("callout_icing"));
+            _monitor.CalloutTurbulence    += () => BeginInvoke(() => PlaySoundRandom("callout_turbulence"));
             _monitor.CalloutOverspeed     += () => BeginInvoke(() => PlaySoundRandom("callout_overspeed"));
             _monitor.CalloutHighBank      += () => BeginInvoke(() => PlaySoundRandom("callout_highbank"));
+            _monitor.CalloutSmallTalk     += () => BeginInvoke(() => PlaySoundRandom("small_talk"));
             _monitor.WrongDepartureDetected += () => BeginInvoke(OnWrongDepartureDetected);
             _monitor.FlightCompleted        += () => BeginInvoke(OnFlightCompleted);
 
