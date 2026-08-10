@@ -193,6 +193,8 @@ internal class FlightListForm : Form
         _btnRefresh.AutoSize  = true;
         _btnRefresh.Cursor    = Cursors.Hand;
         _btnRefresh.Click    += async (s, e) => await LoadDataAsync();
+        var refreshTip = new ToolTip();
+        refreshTip.SetToolTip(_btnRefresh, "Refresh Saved Flights in SimLetsFly");
 
         _btnHelp.Text             = "Help";
         _btnHelp.ForeColor        = _text3;
