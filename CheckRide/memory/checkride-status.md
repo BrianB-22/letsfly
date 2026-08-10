@@ -61,6 +61,27 @@ diagnosable from real data in the first place.
   cover `WaitingXP12` (waiting on X-Plane) and `Uploading` (score not yet saved) — closing
   during any of those now warns before letting the window close.
 
+## Fixed: version gate only checked at login, not for cached sessions (2026-08-10)
+`Program.cs` skips `LoginForm` entirely when `SessionStore.Load()` returns a cached
+session — but `VerifyClientAsync` only used to be called from inside `LoginForm.OnLogin`.
+So once anyone had ever logged in successfully, they could keep running a blocked,
+out-of-date exe forever without ever hitting the gate again. Fixed:
+- `SupabaseClient.VerifyClientAsync` is now an instance method (was `static`, took a raw
+  token) — calls `EnsureTokenAsync()` first so it also works against a stale cached
+  session, not just a token fresh off `LoginAsync`.
+- `Program.cs` now calls it against any cached session before launching `TrayApp`. Any
+  failure (version block, or expired refresh token) falls through to `LoginForm`, reusing
+  its existing blocked-message-with-link UI rather than a bare MessageBox.
+- `TrackEvent("checkride_login")` moved out of `VerifyClientAsync` (was firing on every
+  app launch with a cached session, not just real logins) to `LoginForm.OnLogin` only.
+
+## Added: "Remember Me" on login (2026-08-10)
+New `LoginPrefs.cs` — unencrypted local JSON (`%LOCALAPPDATA%\SimLetsFly\CheckRide\login_prefs.json`,
+just an email + bool, not sensitive like `SessionStore`'s tokens) persists the last
+successfully-used email when "Remember Me" is checked at login; unchecking it on a
+future login forgets the saved address again. `LoginForm` pre-fills the email field and
+jumps focus straight to the password field when a remembered email exists.
+
 ## Open — bottom status area
 User wants to talk through an issue with the bottom status bar/label; not yet described.
 

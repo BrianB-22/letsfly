@@ -27,6 +27,18 @@ AircraftVSpeeds.Load(Path.Combine(EmbeddedAssets.Dir, "refdata", "aircraft.json"
 
 var session = SessionStore.Load();
 
+if (session is not null)
+{
+    // A cached session skips LoginForm entirely, which is also the only place that
+    // called the version gate -- without this, anyone who's ever logged in successfully
+    // could keep running a blocked, out-of-date exe forever. Any failure here (version
+    // block, or the session/refresh token having genuinely expired) falls through to
+    // LoginForm, which already knows how to display it (including the clickable
+    // download link for a version-block message).
+    try { await new SupabaseClient(session).VerifyClientAsync(); }
+    catch { session = null; }
+}
+
 if (session is null)
 {
     using var login = new LoginForm();

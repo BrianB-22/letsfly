@@ -14,10 +14,11 @@ internal class LoginForm : Form
     private static readonly Color _text3   = Color.FromArgb(74, 96, 112);
     private static readonly Color _red     = Color.FromArgb(231, 111, 81);
 
-    private readonly TextBox    _txtEmail    = new();
-    private readonly TextBox    _txtPassword = new();
-    private readonly Button     _btnLogin    = new();
-    private readonly LinkLabel  _lblError    = new();
+    private readonly TextBox    _txtEmail     = new();
+    private readonly TextBox    _txtPassword  = new();
+    private readonly CheckBox   _chkRemember  = new();
+    private readonly Button     _btnLogin     = new();
+    private readonly LinkLabel  _lblError     = new();
     private string?             _errorLinkUrl;
 
     public SupabaseSession? Session { get; private set; }
@@ -29,7 +30,7 @@ internal class LoginForm : Form
         Text            = $"CheckRide for SimLetsFly{verStr} — Sign In";
         var icoPath = Path.Combine(EmbeddedAssets.Dir, "images", "icon_256x256.ico");
         if (File.Exists(icoPath)) try { Icon = new Icon(icoPath); } catch { }
-        ClientSize      = new Size(420, 434);
+        ClientSize      = new Size(420, 450);
         BackColor       = _bg;
         ForeColor       = _text;
         Font            = new Font("Segoe UI", 9f);
@@ -53,11 +54,14 @@ internal class LoginForm : Form
         // ── Email ─────────────────────────────────────────────────────────────
         var lblEmail = MakeFieldLabel("EMAIL", 40, 202);
 
+        var (rememberedEmail, rememberMe) = LoginPrefs.Load();
+
         _txtEmail.Bounds        = new Rectangle(40, 220, 340, 28);
         _txtEmail.BackColor     = _panel;
         _txtEmail.ForeColor     = _text;
         _txtEmail.BorderStyle   = BorderStyle.FixedSingle;
         _txtEmail.Font          = new Font("Segoe UI", 10f);
+        _txtEmail.Text          = rememberedEmail ?? "";
         _txtEmail.KeyDown      += OnKeyDown;
 
         // ── Password ──────────────────────────────────────────────────────────
@@ -71,9 +75,18 @@ internal class LoginForm : Form
         _txtPassword.PasswordChar = '●';
         _txtPassword.KeyDown     += OnKeyDown;
 
+        // ── Remember me ───────────────────────────────────────────────────────
+        _chkRemember.Text      = "Remember Me";
+        _chkRemember.Bounds    = new Rectangle(40, 306, 200, 22);
+        _chkRemember.ForeColor = _text2;
+        _chkRemember.Font      = new Font("Segoe UI", 8.5f);
+        _chkRemember.BackColor = Color.Transparent;
+        _chkRemember.Cursor    = Cursors.Hand;
+        _chkRemember.Checked   = rememberMe;
+
         // ── Login button ──────────────────────────────────────────────────────
         _btnLogin.Text      = "SIGN IN";
-        _btnLogin.Bounds    = new Rectangle(130, 320, 160, 36);
+        _btnLogin.Bounds    = new Rectangle(130, 336, 160, 36);
         _btnLogin.BackColor = _accent;
         _btnLogin.ForeColor = Color.FromArgb(10, 13, 16);
         _btnLogin.FlatStyle = FlatStyle.Flat;
@@ -87,7 +100,7 @@ internal class LoginForm : Form
         // (e.g. the version-gate "download the latest version at simletsfly.com/...")
         // can render that URL as a clickable link. LinkArea is set per-message in
         // OnLogin -- (0,0) for messages with no URL, which renders as plain text.
-        _lblError.Bounds    = new Rectangle(40, 364, 340, 36);
+        _lblError.Bounds    = new Rectangle(40, 380, 340, 36);
         _lblError.ForeColor = _red;
         _lblError.LinkColor = _accent;
         _lblError.ActiveLinkColor  = Color.White;
@@ -107,7 +120,7 @@ internal class LoginForm : Form
         var lnkHelp = new LinkLabel
         {
             Text      = helpText,
-            Bounds    = new Rectangle(40, 404, 340, 20),
+            Bounds    = new Rectangle(40, 420, 340, 20),
             TextAlign = ContentAlignment.MiddleCenter,
             Font      = new Font("Segoe UI", 8.5f),
             ForeColor = _text3,
@@ -123,8 +136,10 @@ internal class LoginForm : Form
 
         Controls.AddRange(new Control[] {
             picBanner, divider, lblEmail, _txtEmail,
-            lblPwd, _txtPassword, _btnLogin, _lblError, lnkHelp
+            lblPwd, _txtPassword, _chkRemember, _btnLogin, _lblError, lnkHelp
         });
+
+        if (!string.IsNullOrEmpty(rememberedEmail)) ActiveControl = _txtPassword;
     }
 
     private Label MakeFieldLabel(string text, int x, int y) => new()
@@ -148,9 +163,12 @@ internal class LoginForm : Form
 
         try
         {
-            var session = await SupabaseClient.LoginAsync(_txtEmail.Text.Trim(), _txtPassword.Text);
-            await SupabaseClient.VerifyClientAsync(session.AccessToken);
+            var email   = _txtEmail.Text.Trim();
+            var session = await SupabaseClient.LoginAsync(email, _txtPassword.Text);
+            await new SupabaseClient(session).VerifyClientAsync();
+            SupabaseClient.TrackEvent("checkride_login");
             SessionStore.Save(session);
+            LoginPrefs.Save(email, _chkRemember.Checked);
             Session      = session;
             DialogResult = DialogResult.OK;
             Close();

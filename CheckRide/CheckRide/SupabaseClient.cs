@@ -51,17 +51,21 @@ internal class SupabaseClient
         };
     }
 
-    // Calls the verify-client edge function after login.
-    // Currently always passes — add subscription/version gating server-side without touching this code.
-    public static async Task VerifyClientAsync(string accessToken)
+    // Calls the verify-client edge function — checks the version gate (and, in future,
+    // subscription status) server-side. Instance method (not static) so it can call
+    // EnsureTokenAsync() first: this also runs at app startup against a cached session
+    // (see Program.cs), which may be stale, not just right after a fresh LoginAsync.
+    public async Task VerifyClientAsync()
     {
+        await EnsureTokenAsync();
+
         var clientVersion = System.Reflection.Assembly.GetExecutingAssembly()
                                 .GetName().Version?.ToString() ?? "unknown";
 
         var req = new HttpRequestMessage(HttpMethod.Post,
             $"{Config.SupabaseUrl}/functions/v1/verify-client");
         req.Headers.Add("apikey",         Config.SupabaseAnonKey);
-        req.Headers.Add("Authorization",  $"Bearer {accessToken}");
+        req.Headers.Add("Authorization",  $"Bearer {_session.AccessToken}");
         req.Content = JsonContent.Create(new { client_version = clientVersion });
 
         var resp = await _http.SendAsync(req);
@@ -70,8 +74,6 @@ internal class SupabaseClient
         var result = JsonSerializer.Deserialize<VerifyClientResponse>(body, _readOpts);
         if (result is not null && !result.Allowed)
             throw new Exception(result.Message ?? "Access denied. Please check your subscription at simletsfly.com.");
-
-        TrackEvent("checkride_login");
     }
 
     public async Task SignOutAsync()
