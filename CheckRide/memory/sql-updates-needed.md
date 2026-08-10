@@ -11,11 +11,21 @@ ALTER TABLE checkride_results
   ADD COLUMN landing_quality   text,             -- from summary.LandingQuality (Greaser/Smooth/Firm/Hard)
   ADD COLUMN crashed           boolean DEFAULT false,
   ADD COLUMN imc_flight        boolean DEFAULT false,
-  ADD COLUMN log_text          text;             -- raw tick log content, populated only when user opts in
+  ADD COLUMN log_text          text;             -- unused as of 2026-08-10, see below
 ```
 
-## Supabase Storage bucket (NOT needed)
-Log text is stored directly in log_text column — no Storage bucket required.
+## SUPERSEDED (2026-08-10) — log_text column is no longer written to
+
+The original plan below (raw log stored directly on `checkride_results.log_text`)
+was replaced by a separate `checkride_logs` table — see
+`supabase/migrations/20260810000000_add_checkride_logs.sql` — so logs can be
+purged on a retention schedule without touching scored results. The client
+(`SupabaseClient.UploadCheckRideAsync`) no longer populates `log_text`.
+The column itself was left in place (not dropped) rather than making that
+call unilaterally; it's dead going forward. Original plan kept below for
+history:
+
+## Supabase Storage bucket (NOT needed) — superseded, see above
 
 ## Existing columns (already present)
 id, flight_id, user_id, score, grade, aircraft, sim, scoring_version, recorded_at, events (jsonb), summary (jsonb), stats (jsonb)

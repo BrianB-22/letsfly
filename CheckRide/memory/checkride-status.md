@@ -31,6 +31,29 @@ Found 2026-08-10 from real production data (two live user flights, one C-graded 
 
 Both fixed in `FlightMonitor.cs` DetectEvents/DetectFailures; version bumped 1.16→1.19.
 
+## Opt-in flight log upload (2026-08-10)
+Added a "Upload flight log, to improve development" checkbox (`FlightListForm`, bottom-left,
+idle-only) so testers can send the raw per-second session log alongside their score for
+debugging/scoring-tuning purposes — this is what made the speed-limit/cold-start bugs above
+diagnosable from real data in the first place.
+- New `checkride_logs` table (`supabase/migrations/20260810000000_add_checkride_logs.sql`),
+  FK'd to `checkride_results.id`, RLS: insert-only for the owning user, no SELECT policy for
+  anon/authenticated (service_role only) — same privacy posture as the log_text lockdown (H-1).
+- `checkride_results.id` is now generated client-side (`Guid.NewGuid()` in
+  `SupabaseClient.UploadCheckRideAsync`) instead of relying on the DB default, so it can be
+  reused as the FK for the log upload without a round trip.
+- The old `checkride_results.log_text` column is no longer written to — superseded, not
+  dropped (see `sql-updates-needed.md`).
+- Checkbox defaults unchecked, not persisted across sessions (privacy-conscious default;
+  fast follow if a "remember my choice" pref is wanted later).
+
+## Other UI tweaks (2026-08-10)
+- Initial window size 880×560 → 1040×680 (felt cramped).
+- "?" icon-only Help button moved from bottom-left to a labeled "Help" button in the top bar.
+
+## Open — bottom status area
+User wants to talk through an issue with the bottom status bar/label; not yet described.
+
 ## Key XP12 / King Air 350 findings
 - `sim/cockpit2/engine/actuators/throttle_ratio` reads **1.0 for both full forward AND full reverse** on King Air 350 turboprops — ambiguous without `prop_in_beta`
 - Added `sim/flightmodel2/engines/prop_in_beta` → `PropInBeta` bool on snapshot — tick log now shows `Rev=True/False`

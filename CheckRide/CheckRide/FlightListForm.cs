@@ -26,7 +26,6 @@ internal class FlightListForm : Form
     private static readonly Font _fontSmall     = new("Segoe UI", 8.5f);                 // tertiary/info text
     private static readonly Font _fontSmallBold = new("Segoe UI", 8.5f, FontStyle.Bold);
     private static readonly Font _fontIcon      = new("Segoe UI", 14f);                  // icon-only buttons (↻)
-    private static readonly Font _fontIconBold  = new("Segoe UI", 13f, FontStyle.Bold);  // icon-only buttons (?)
 
     private enum AppState { Idle, WaitingXP12, Recording, Uploading, Done }
 
@@ -44,6 +43,7 @@ internal class FlightListForm : Form
     private readonly Button  _btnRefresh      = new();
     private readonly Button  _btnHelp         = new();
     private readonly Button  _btnSignOut      = new();
+    private readonly CheckBox _chkUploadLog   = new();
 
     // Held after a failed upload so the Retry button can re-attempt
     private (string FlightId, CheckRideReport Report, string? LogPath)? _pendingUpload;
@@ -73,7 +73,7 @@ internal class FlightListForm : Form
         Text            = $"CheckRide for SimLetsFly{verStr}";
         var icoPath = Path.Combine(EmbeddedAssets.Dir, "images", "icon_256x256.ico");
         if (File.Exists(icoPath)) try { Icon = new Icon(icoPath); } catch { }
-        ClientSize      = new Size(880, 560);
+        ClientSize      = new Size(1040, 680);
         BackColor       = _bg;
         ForeColor       = _text;
         Font            = _fontBase;
@@ -194,7 +194,18 @@ internal class FlightListForm : Form
         _btnRefresh.Cursor    = Cursors.Hand;
         _btnRefresh.Click    += async (s, e) => await LoadDataAsync();
 
-        top.Controls.AddRange(new Control[] { lblTitle, simPanel, _lblUser, _btnRefresh, _btnOpenFlight, btnMyFlights, _btnSignOut });
+        _btnHelp.Text             = "Help";
+        _btnHelp.ForeColor        = _text3;
+        _btnHelp.BackColor        = Color.Transparent;
+        _btnHelp.FlatStyle        = FlatStyle.Flat;
+        _btnHelp.FlatAppearance.BorderColor = _border;
+        _btnHelp.FlatAppearance.BorderSize  = 1;
+        _btnHelp.Font             = _fontLabel;
+        _btnHelp.AutoSize         = true;
+        _btnHelp.Cursor           = Cursors.Hand;
+        _btnHelp.Click           += (s, e) => ShowHelp();
+
+        top.Controls.AddRange(new Control[] { lblTitle, simPanel, _lblUser, _btnHelp, _btnRefresh, _btnOpenFlight, btnMyFlights, _btnSignOut });
 
         top.Resize += (s, e) =>
         {
@@ -202,7 +213,8 @@ internal class FlightListForm : Form
             btnMyFlights.Location   = new Point(_btnSignOut.Left - btnMyFlights.Width - 10, (top.Height - btnMyFlights.Height) / 2);
             _btnOpenFlight.Location = new Point(btnMyFlights.Left - _btnOpenFlight.Width - 14, (top.Height - _btnOpenFlight.Height) / 2);
             _btnRefresh.Location    = new Point(_btnOpenFlight.Left - _btnRefresh.Width - 10, (top.Height - _btnRefresh.Height) / 2);
-            _lblUser.Location       = new Point(_btnRefresh.Left - _lblUser.Width - 16, (top.Height - _lblUser.Height) / 2);
+            _btnHelp.Location       = new Point(_btnRefresh.Left - _btnHelp.Width - 14, (top.Height - _btnHelp.Height) / 2);
+            _lblUser.Location       = new Point(_btnHelp.Left - _lblUser.Width - 16, (top.Height - _lblUser.Height) / 2);
             simPanel.Location       = new Point(_lblUser.Left - simPanel.Width - 20, (top.Height - simPanel.Height) / 2);
         };
 
@@ -217,18 +229,6 @@ internal class FlightListForm : Form
             using var pen = new Pen(_border);
             e.Graphics.DrawLine(pen, 0, 0, bottom.Width, 0);
         };
-
-        _btnHelp.Text             = "?";
-        _btnHelp.BackColor        = Color.Transparent;
-        _btnHelp.ForeColor        = _text3;
-        _btnHelp.FlatStyle        = FlatStyle.Flat;
-        _btnHelp.FlatAppearance.BorderColor = _border;
-        _btnHelp.FlatAppearance.BorderSize  = 1;
-        _btnHelp.Font             = _fontIconBold;
-        _btnHelp.Size             = new Size(36, 36);
-        _btnHelp.Location         = new Point(16, 18);
-        _btnHelp.Cursor           = Cursors.Hand;
-        _btnHelp.Click           += (s, e) => ShowHelp();
 
         _btnDebug.Text             = "Simulate Upload";
         _btnDebug.BackColor        = Color.Transparent;
@@ -286,7 +286,20 @@ internal class FlightListForm : Form
         _lblStatus.Height    = 22;
         _lblStatus.Text      = "Select your flight for a CheckRide";
 
-        bottom.Controls.AddRange(new Control[] { _btnHelp, _btnDebug, _btnRetry, _btnCancel, _btnTake, _lblStatus });
+        _chkUploadLog.Text      = "Upload flight log, to improve development";
+        _chkUploadLog.ForeColor = _text2;
+        _chkUploadLog.Font      = _fontSmall;
+        _chkUploadLog.BackColor = Color.Transparent;
+        _chkUploadLog.AutoSize  = true;
+        _chkUploadLog.Cursor    = Cursors.Hand;
+        _chkUploadLog.Checked   = false;
+        _chkUploadLog.Location  = new Point(16, 18);
+        var uploadLogTip = new ToolTip();
+        uploadLogTip.SetToolTip(_chkUploadLog,
+            "Sends the detailed per-second flight log (raw sim data) along with your score.\n" +
+            "Helps us investigate bugs and tune scoring. Not required to use CheckRide.");
+
+        bottom.Controls.AddRange(new Control[] { _btnDebug, _btnRetry, _btnCancel, _btnTake, _lblStatus, _chkUploadLog });
 
         bottom.Resize += (s, e) =>
         {
@@ -785,7 +798,7 @@ internal class FlightListForm : Form
             var jsonPath = Path.Combine(OutputDir(), $"checkride_{_activeFlight!.Id[..8]}_{_sessionTimestamp}.json");
             ReportWriter.Write(report, jsonPath);
 
-            string? logPath = null;
+            string? logPath = _chkUploadLog.Checked ? _sessionLogPath : null;
             _pendingUpload = (_activeFlight!.Id, report, logPath);
 
             var uploaded = await UploadPendingAsync();
@@ -883,6 +896,7 @@ internal class FlightListForm : Form
         _txtAircraftSearch.Enabled = idle;
         _btnAircraftClear.Enabled  = idle;
         _cmbTransitionAlt.Enabled  = idle;
+        _chkUploadLog.Enabled      = idle;
 
         // Status messages per state
         (string msg, Color col) = state switch

@@ -211,14 +211,13 @@ internal class SupabaseClient
     {
         await EnsureTokenAsync();
 
-        string? logText = null;
-        if (logPath is not null && File.Exists(logPath))
-        {
-            try { logText = await File.ReadAllTextAsync(logPath); } catch { }
-        }
+        // Generated client-side (not by the DB default) so it can be reused below as the
+        // FK when uploading the opt-in raw log to checkride_logs, without a round trip.
+        var resultId = Guid.NewGuid();
 
         var payload = new Dictionary<string, object?>
         {
+            ["id"]               = resultId,
             ["flight_id"]        = flightId,
             ["user_id"]          = _session.UserId,
             ["score"]            = report.Score,
@@ -242,7 +241,6 @@ internal class SupabaseClient
             ["landing_quality"]  = string.IsNullOrEmpty(report.Summary.LandingQuality) ? null : report.Summary.LandingQuality,
             ["crashed"]          = report.Summary.Crashed,
             ["imc_flight"]       = report.Summary.ImcFlight,
-            ["log_text"]         = logText,
             // Full JSONB blobs
             ["events"]           = JsonSerializer.SerializeToElement(report.Events,     _enumOpts),
             ["summary"]          = JsonSerializer.SerializeToElement(report.Summary,    _enumOpts),
@@ -264,6 +262,38 @@ internal class SupabaseClient
         }
 
         TrackEvent("checkride_upload");
+
+        // Opt-in raw log — best-effort. Failing to attach the log shouldn't fail an
+        // otherwise-successful score upload, so swallow errors here.
+        if (logPath is not null && File.Exists(logPath))
+        {
+            try
+            {
+                var logText = await File.ReadAllTextAsync(logPath);
+                await UploadFlightLogAsync(resultId, logText);
+            }
+            catch { }
+        }
+    }
+
+    // Uploads the raw session log to checkride_logs, linked to the checkride_results
+    // row via resultId. Separate table (not a column on checkride_results) so logs
+    // can be purged on a retention schedule without touching scored results.
+    private async Task UploadFlightLogAsync(Guid resultId, string logText)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["result_id"] = resultId,
+            ["user_id"]   = _session.UserId,
+            ["log_text"]  = logText,
+        };
+
+        var req = AuthPost($"{Config.SupabaseUrl}/rest/v1/checkride_logs");
+        req.Headers.Add("Prefer", "return=minimal");
+        req.Content = JsonContent.Create(payload);
+
+        var resp = await _http.SendAsync(req);
+        resp.EnsureSuccessStatusCode();
     }
 
     // ── Analytics ────────────────────────────────────────────────────────────
