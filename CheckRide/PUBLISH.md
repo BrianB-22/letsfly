@@ -15,7 +15,28 @@ The version drives two things: the `client_version` sent to `verify-client` at l
 and the extraction folder for embedded assets
 (`%LOCALAPPDATA%\SimLetsFly\CheckRide\assets\{version}` — a new version re-extracts).
 
-## 2. Publish the single-file exe
+If `Models/CheckRideReport.cs` → `ScoringVersionConst` changed since the last release,
+bump that too — it's what lets you tell which scoring logic actually produced a given
+`checkride_results` row.
+
+## 2. Commit and tag before publishing
+
+**Do this before running `dotnet publish`, not after.** A published exe that doesn't
+correspond to an exact commit can't be reproduced or audited later — this has already
+happened once (v0.2.5.0 shipped from an uncommitted version bump and has no matching
+commit in this repo).
+
+```powershell
+git add CheckRide\CheckRide.csproj
+git commit -m "Bump version to 0.2.x.0"
+git tag v0.2.x
+git push origin main --tags
+```
+
+Only `dotnet publish` from this exact tagged commit — no further edits, staged or not,
+between tagging and publishing.
+
+## 3. Publish the single-file exe
 
 ```powershell
 cd CheckRide\CheckRide
@@ -24,7 +45,7 @@ dotnet publish -p:PublishProfile=SingleFileRelease
 
 Output: `bin\Publish\CheckRide.exe` — self-contained win-x64, no .NET install required.
 
-## 3. Generate the SHA-256 hash
+## 4. Generate the SHA-256 hash
 
 Until the exe is code-signed (see security-review.md L-6), publish a hash with every
 release so testers can verify their download:
@@ -40,7 +61,7 @@ Or to write it to a file that ships alongside the exe:
   Out-File -Encoding ascii bin\Publish\CheckRide.exe.sha256
 ```
 
-## 4. Smoke test
+## 5. Smoke test
 
 - Run `CheckRide.exe` on a machine (or clean folder) **without** the repo present
 - Verify: login form shows the banner image, sign-in works, sounds play,
@@ -48,7 +69,7 @@ Or to write it to a file that ships alongside the exe:
   was created with `sounds\`, `images\`, `refdata\`
 - SmartScreen will warn on an unsigned exe — "More info → Run anyway" is expected
 
-## 5. Release
+## 6. Release
 
 - Attach `CheckRide.exe` and `CheckRide.exe.sha256` to the GitHub release
 - Put the hash in the release notes too (testers rarely download the .sha256 file):
@@ -78,4 +99,4 @@ Or to write it to a file that ships alongside the exe:
 
 SmartScreen flags unsigned downloads until reputation builds. The hash check is the
 interim integrity story; Azure Trusted Signing (~$10/mo) is the plan before any
-public/paid launch — it drops into step 2 as a post-publish signing command.
+public/paid launch — it drops into step 3 as a post-publish signing command.
