@@ -44,8 +44,9 @@ diagnosable from real data in the first place.
   reused as the FK for the log upload without a round trip.
 - The old `checkride_results.log_text` column is no longer written to — superseded, not
   dropped (see `sql-updates-needed.md`).
-- Checkbox defaults unchecked, not persisted across sessions (privacy-conscious default;
-  fast follow if a "remember my choice" pref is wanted later).
+- Checkbox defaults **checked** (2026-08-10: flipped from unchecked to gather data while
+  actively hunting scoring bugs — revisit the default once that settles down) and is not
+  persisted across sessions (fast follow if a "remember my choice" pref is wanted later).
 
 ## Other UI tweaks (2026-08-10)
 - Initial window size 880×560 → 1040×680 (felt cramped).

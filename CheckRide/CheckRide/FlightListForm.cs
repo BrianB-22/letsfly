@@ -292,7 +292,7 @@ internal class FlightListForm : Form
         _chkUploadLog.BackColor = Color.Transparent;
         _chkUploadLog.AutoSize  = true;
         _chkUploadLog.Cursor    = Cursors.Hand;
-        _chkUploadLog.Checked   = false;
+        _chkUploadLog.Checked   = true;  // default on for now while gathering data for scoring bug hunts
         _chkUploadLog.Location  = new Point(16, 18);
         var uploadLogTip = new ToolTip();
         uploadLogTip.SetToolTip(_chkUploadLog,
