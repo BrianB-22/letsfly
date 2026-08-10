@@ -111,7 +111,7 @@ public class ScoreLineItem
 
 public class CheckRideReport
 {
-    public const string ScoringVersionConst = "xp12-1.17";
+    public const string ScoringVersionConst = "xp12-1.19";
 
     public string Sim { get; init; } = "xplane12";
     public string ScoringVersion { get; init; } = ScoringVersionConst;
