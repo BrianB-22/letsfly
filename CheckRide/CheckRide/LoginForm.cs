@@ -14,16 +14,19 @@ internal class LoginForm : Form
     private static readonly Color _text3   = Color.FromArgb(74, 96, 112);
     private static readonly Color _red     = Color.FromArgb(231, 111, 81);
 
-    private readonly TextBox _txtEmail    = new();
-    private readonly TextBox _txtPassword = new();
-    private readonly Button  _btnLogin    = new();
-    private readonly Label   _lblError    = new();
+    private readonly TextBox    _txtEmail    = new();
+    private readonly TextBox    _txtPassword = new();
+    private readonly Button     _btnLogin    = new();
+    private readonly LinkLabel  _lblError    = new();
+    private string?             _errorLinkUrl;
 
     public SupabaseSession? Session { get; private set; }
 
     public LoginForm()
     {
-        Text            = "CheckRide for SimLetsFly — Sign In";
+        var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        var verStr = ver is null ? "" : $" v{ver.Major}.{ver.Minor}.{ver.Build}";
+        Text            = $"CheckRide for SimLetsFly{verStr} — Sign In";
         var icoPath = Path.Combine(EmbeddedAssets.Dir, "images", "icon_256x256.ico");
         if (File.Exists(icoPath)) try { Icon = new Icon(icoPath); } catch { }
         ClientSize      = new Size(420, 434);
@@ -80,11 +83,24 @@ internal class LoginForm : Form
         _btnLogin.Click    += OnLogin;
 
         // ── Error label ───────────────────────────────────────────────────────
+        // A LinkLabel rather than a plain Label so messages that reference a URL
+        // (e.g. the version-gate "download the latest version at simletsfly.com/...")
+        // can render that URL as a clickable link. LinkArea is set per-message in
+        // OnLogin -- (0,0) for messages with no URL, which renders as plain text.
         _lblError.Bounds    = new Rectangle(40, 364, 340, 36);
         _lblError.ForeColor = _red;
+        _lblError.LinkColor = _accent;
+        _lblError.ActiveLinkColor  = Color.White;
+        _lblError.VisitedLinkColor = _accent;
+        _lblError.LinkArea  = new LinkArea(0, 0);
         _lblError.TextAlign = ContentAlignment.TopCenter;
         _lblError.Font      = new Font("Segoe UI", 8.5f);
         _lblError.AutoSize  = false;
+        _lblError.LinkClicked += (s, e) =>
+        {
+            if (_errorLinkUrl is null) return;
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_errorLinkUrl) { UseShellExecute = true }); } catch { }
+        };
 
         // ── Account help link ─────────────────────────────────────────────────
         const string helpText = "To reset your password or create an account, visit simletsfly.com";
@@ -141,9 +157,31 @@ internal class LoginForm : Form
         }
         catch (Exception ex)
         {
-            _lblError.Text    = ex.Message;
+            _lblError.Text = ex.Message;
+            SetErrorLink(ex.Message);
             _btnLogin.Enabled = true;
             _btnLogin.Text    = "SIGN IN";
         }
+    }
+
+    // Renders a URL inside the error message as a clickable link, if the message
+    // contains one -- prefers the more specific path (e.g. /checkride) when present.
+    private void SetErrorLink(string message)
+    {
+        foreach (var (needle, url) in new (string, string)[]
+        {
+            ("simletsfly.com/checkride", "https://simletsfly.com/checkride"),
+            ("simletsfly.com",           "https://simletsfly.com"),
+        })
+        {
+            var idx = message.IndexOf(needle, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) continue;
+            _lblError.LinkArea = new LinkArea(idx, needle.Length);
+            _errorLinkUrl      = url;
+            return;
+        }
+
+        _lblError.LinkArea = new LinkArea(0, 0);
+        _errorLinkUrl       = null;
     }
 }

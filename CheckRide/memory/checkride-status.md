@@ -51,9 +51,25 @@ diagnosable from real data in the first place.
 ## Other UI tweaks (2026-08-10)
 - Initial window size 880×560 → 1040×680 (felt cramped).
 - "?" icon-only Help button moved from bottom-left to a labeled "Help" button in the top bar.
+- Refresh button now has a tooltip ("Refresh Saved Flights in SimLetsFly").
+- `LoginForm` titlebar now shows the client version (`CheckRide for SimLetsFly v0.2.7 — Sign In`).
+- `LoginForm`'s error label is now a `LinkLabel` (`_lblError`) — any message containing
+  `simletsfly.com` or `simletsfly.com/checkride` (e.g. the version-gate rejection message)
+  renders that URL as a clickable link via `SetErrorLink()`. Falls back to plain text for
+  ordinary auth errors with no URL.
 
 ## Open — bottom status area
 User wants to talk through an issue with the bottom status bar/label; not yet described.
+
+## Fixed: version gate ignored patch number (2026-08-10)
+`supabase/functions/verify-client/index.ts` `parseVersion()` only parsed major.minor,
+dropping the patch segment entirely. Set `app_config.min_client_version = '0.2.7'`
+expecting it to block `0.2.6.0` clients — it didn't, because both parsed to `[0,2]` and
+compared equal. Fixed `parseVersion` to keep 3 segments and the `allowed` comparison to
+check patch when major.minor match. **Needs `supabase functions deploy verify-client`
+to take effect** — I don't have the Supabase CLI in this environment, so this fix is
+committed but not deployed. Also updated `PUBLISH.md`'s gate instructions to use full
+major.minor.patch instead of major.minor-only.
 
 ## Key XP12 / King Air 350 findings
 - `sim/cockpit2/engine/actuators/throttle_ratio` reads **1.0 for both full forward AND full reverse** on King Air 350 turboprops — ambiguous without `prop_in_beta`

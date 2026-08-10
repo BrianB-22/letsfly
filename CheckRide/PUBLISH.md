@@ -89,11 +89,19 @@ Or to write it to a file that ships alongside the exe:
 - **Update the version gate** in the Supabase SQL Editor to block older clients:
 
   ```sql
-  UPDATE app_config SET min_client_version = '0.2' WHERE id = 1;
+  UPDATE app_config SET min_client_version = '0.2.7' WHERE id = 1;
   ```
 
-  Replace `0.2` with this release's major.minor. Do this after the new exe is
-  published so users aren't blocked before they can download it.
+  Replace `0.2.7` with this release's full major.minor.patch — the
+  `verify-client` edge function compares all three segments (fixed 2026-08-10;
+  it used to silently ignore the patch number, so e.g. `0.2` or `0.2.6` would
+  both let a `0.2.6.0` client through even after bumping to `0.2.7`). Do this
+  after the new exe is published so users aren't blocked before they can
+  download it, and redeploy the edge function first if you've changed it:
+
+  ```powershell
+  supabase functions deploy verify-client
+  ```
 
 ## Verifier note (what testers see)
 

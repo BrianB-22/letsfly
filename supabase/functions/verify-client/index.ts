@@ -12,9 +12,9 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function parseVersion(v: string): [number, number] {
+function parseVersion(v: string): [number, number, number] {
   const parts = (v ?? '').split('.').map(Number);
-  return [parts[0] ?? 0, parts[1] ?? 0];
+  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
 }
 
 Deno.serve(async (req) => {
@@ -49,9 +49,12 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { /* version field is optional */ }
 
   const clientVersion = parseVersion(body.client_version ?? '');
-  const [cMaj, cMin] = clientVersion;
-  const [mMaj, mMin] = minVersion;
-  const allowed = cMaj > mMaj || (cMaj === mMaj && cMin >= mMin);
+  const [cMaj, cMin, cPatch] = clientVersion;
+  const [mMaj, mMin, mPatch] = minVersion;
+  const allowed =
+    cMaj > mMaj ||
+    (cMaj === mMaj && cMin > mMin) ||
+    (cMaj === mMaj && cMin === mMin && cPatch >= mPatch);
 
   console.log(`verify-client: user=${user.id} client=${body.client_version ?? 'unknown'} min=${config?.min_client_version ?? '?'} allowed=${allowed}`);
 
