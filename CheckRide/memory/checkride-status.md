@@ -57,6 +57,9 @@ diagnosable from real data in the first place.
   `simletsfly.com` or `simletsfly.com/checkride` (e.g. the version-gate rejection message)
   renders that URL as a clickable link via `SetErrorLink()`. Falls back to plain text for
   ordinary auth errors with no URL.
+- `OnFormClosing` close-confirmation broadened from `AppState.Recording` only to also
+  cover `WaitingXP12` (waiting on X-Plane) and `Uploading` (score not yet saved) — closing
+  during any of those now warns before letting the window close.
 
 ## Open — bottom status area
 User wants to talk through an issue with the bottom status bar/label; not yet described.

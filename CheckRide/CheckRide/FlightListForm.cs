@@ -1307,13 +1307,22 @@ internal class FlightListForm : Form
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        if (e.CloseReason == CloseReason.UserClosing && _state == AppState.Recording)
+        if (e.CloseReason == CloseReason.UserClosing)
         {
-            var r = MessageBox.Show(
-                "A flight is currently being recorded.\nClosing will cancel the recording and lose this session.\n\nClose anyway?",
-                "Recording in progress",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (r == DialogResult.No) { e.Cancel = true; return; }
+            var warning = _state switch
+            {
+                AppState.WaitingXP12 => "CheckRide is waiting for X-Plane 12.\nClosing now will cancel this CheckRide.",
+                AppState.Recording   => "A flight is currently being recorded.\nClosing now will cancel the recording and lose this session's flight data.",
+                AppState.Uploading   => "Your CheckRide is still uploading.\nClosing now may lose this session's score.",
+                _                    => null,
+            };
+
+            if (warning is not null)
+            {
+                var r = MessageBox.Show($"{warning}\n\nClose anyway?", "CheckRide in progress",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+                if (r == DialogResult.No) { e.Cancel = true; return; }
+            }
         }
         base.OnFormClosing(e);
     }
