@@ -22,7 +22,14 @@ Produces a graded JSON report + text log in `[MyDocuments]\CheckRide\` (OneDrive
 
 ## Scoring
 All thresholds and weights in `ScoringConfig` static class at top of `FlightMonitor.cs`.
-Scoring version: `xp12-1.3`
+Scoring version: `xp12-1.17` (const `CheckRideReport.ScoringVersionConst` — bump on any change to detection/penalty behavior)
+
+## Fixed bugs (scoring re-trigger / false-positive)
+Found 2026-08-10 from real production data (two live user flights, one C-graded one D-graded) pasted by the user, who suspected re-triggers were tanking scores. Confirmed both:
+1. **`SpeedLimitViolation` re-trigger** — was a raw edge-trigger at exactly 250kt with no hysteresis (unlike `Overspeed`, which has `OverspeedResetHysteresisKts`). An aircraft holding 250kt on autothrottle through a 250kt-restricted climb re-armed on every sub-knot flicker, firing 4x for one continuous compliant segment (-40 pts on a real A319 flight). Fixed by adding a Schmitt-trigger latch (`SpeedLimitResetHysteresisKts = 5.0`), mirroring the Overspeed pattern.
+2. **System-failure false positives at cold-and-dark** — `OilPressureLow`/`FuelPressureLow`/`HydraulicPressureLow`/`LowVoltage` had no gate on engine state, so they fired (once each, but simultaneously) the moment a cold-and-dark aircraft was loaded — before engine start, before any systems were powered. Real flight: all 4 fired at T=1020 while phase was still `Idle`, ~700s before `EngineStart` — cost -40 pts before the pilot touched the throttle, on an otherwise clean flight (D grade, should've been much higher). Fixed by gating all 4 checks behind `anyEngineRunning`.
+
+Both fixed in `FlightMonitor.cs` DetectEvents/DetectFailures; version bumped 1.16→1.17.
 
 ## Key XP12 / King Air 350 findings
 - `sim/cockpit2/engine/actuators/throttle_ratio` reads **1.0 for both full forward AND full reverse** on King Air 350 turboprops — ambiguous without `prop_in_beta`

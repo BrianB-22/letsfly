@@ -47,6 +47,7 @@ internal static class ScoringConfig
                                                         // since addon acf_Vno is often wrong (e.g. the King Air 350's
                                                         // stock acf_Vno is really its Va, not a cruise ceiling)
     public const double OverspeedResetHysteresisKts = 10.0; // must drop this far below the trip point before re-arming
+    public const double SpeedLimitResetHysteresisKts = 5.0; // must drop this far below 250kt before re-arming — see SpeedLimitViolation
 
     public const double MinAirborneBeforeLandingSec = 15.0; // ignore on-ground flicker for this long after liftoff
     public const int    CruiseStableCount   = 30;    // consecutive polls above cruise altitude to transition
@@ -218,7 +219,7 @@ public class FlightMonitor
     private bool _prevHighBank;
     private bool _prevVeryHighBank;
     private bool _prevCrashed;
-    private bool _prevSpeedLimit;
+    private bool _speedLimitTripped;  // Schmitt-trigger latch — see SpeedLimitResetHysteresisKts
     private bool _excursionFlagged;
 
     // System state checks — one flag per flight
@@ -805,16 +806,26 @@ public class FlightMonitor
             }
         }
 
-        // 250kt below 10,000ft — regulatory speed limit (FAR 91.117), rising edge
-        var overLimit = snap.AltitudeMslFt < 10000 && snap.IndicatedAirspeedKts > 250
-                        && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
-        if (overLimit && !_prevSpeedLimit)
+        // 250kt below 10,000ft — regulatory speed limit (FAR 91.117)
+        // Schmitt trigger: once tripped, IAS must fall SpeedLimitResetHysteresisKts below 250kt
+        // before it can re-arm — otherwise IAS held right at the line (e.g. a 250kt speed
+        // restriction flown on autothrottle, hunting by a fraction of a knot) logs a fresh
+        // penalty on every flicker instead of one continuous excursion.
+        if (snap.AltitudeMslFt < 10000 && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach)
         {
-            LogEvent(FlightEventType.SpeedLimitViolation, snap.Timestamp,
-                $"Exceeded 250kt below 10,000ft — {snap.IndicatedAirspeedKts:F0}kt at {snap.AltitudeMslFt:F0}ft");
-            logger.Log($"EVENT: Speed limit violation ({snap.IndicatedAirspeedKts:F0}kt below 10,000ft)");
+            const double resetKts = 250.0 - ScoringConfig.SpeedLimitResetHysteresisKts;
+            if (!_speedLimitTripped && snap.IndicatedAirspeedKts > 250)
+            {
+                LogEvent(FlightEventType.SpeedLimitViolation, snap.Timestamp,
+                    $"Exceeded 250kt below 10,000ft — {snap.IndicatedAirspeedKts:F0}kt at {snap.AltitudeMslFt:F0}ft");
+                logger.Log($"EVENT: Speed limit violation ({snap.IndicatedAirspeedKts:F0}kt below 10,000ft)");
+                _speedLimitTripped = true;
+            }
+            else if (_speedLimitTripped && snap.IndicatedAirspeedKts < resetKts)
+            {
+                _speedLimitTripped = false;
+            }
         }
-        _prevSpeedLimit = overLimit;
 
         // Stall — annunciator (any non-zero = stick shaker) OR high AoA
         var airborne = _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach;
@@ -1217,28 +1228,34 @@ public class FlightMonitor
         _prevEng1Running = snap.Engine1Running;
         _prevEng2Running = snap.Engine2Running;
 
-        if (snap.OilPressureLow && !_oilFlagged)
+        // Oil/fuel/hydraulic pressure and bus voltage all read as "failed" on a cold-and-dark
+        // aircraft before engines are running — that's the normal unpowered state, not a
+        // failure. Gate on at least one engine running so these only fire as real in-flight
+        // (or post-start) system faults.
+        var anyEngineRunning = snap.Engine1Running || snap.Engine2Running;
+
+        if (anyEngineRunning && snap.OilPressureLow && !_oilFlagged)
         {
             LogEvent(FlightEventType.FailureOilPressure, snap.Timestamp, "Oil pressure warning");
             logger.Log("EVENT: Oil pressure low");
             _oilFlagged = true;
         }
 
-        if (snap.FuelPressureLow && !_fuelPrsFlagged)
+        if (anyEngineRunning && snap.FuelPressureLow && !_fuelPrsFlagged)
         {
             LogEvent(FlightEventType.FailureFuelPressure, snap.Timestamp, "Fuel pressure warning");
             logger.Log("EVENT: Fuel pressure low");
             _fuelPrsFlagged = true;
         }
 
-        if (snap.HydraulicPressureLow && !_hydFlagged)
+        if (anyEngineRunning && snap.HydraulicPressureLow && !_hydFlagged)
         {
             LogEvent(FlightEventType.FailureHydraulic, snap.Timestamp, "Hydraulic pressure warning");
             logger.Log("EVENT: Hydraulic pressure low");
             _hydFlagged = true;
         }
 
-        if (snap.LowVoltage && !_voltFlagged)
+        if (anyEngineRunning && snap.LowVoltage && !_voltFlagged)
         {
             LogEvent(FlightEventType.FailureLowVoltage, snap.Timestamp, "Low voltage / electrical failure");
             logger.Log("EVENT: Low voltage");
