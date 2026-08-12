@@ -281,6 +281,30 @@ Examples
 
 ------------------------------------------------------------------------
 
+## Route Progress Awareness (idea, 2026-08-10)
+
+Destination airport is already known — it's the `arr_id` from the SimLetsFly-selected
+flight plan that seeds `_expectedArrId`/`_expectedArrLat`/`_expectedArrLon` in
+`FlightMonitor`. Distance-to-destination is a straight Haversine from live GPS position
+(`sim/flightmodel/position/latitude/longitude`) against that lat/lon — same math already
+used for the wrong-arrival-airport check, just computed continuously instead of once at
+landing. No dependency on the addon's own FMS (which turned out to be unreliable for
+this — see the King Air 350 FMS findings above: stock ETA/distance-to-TOD read 0, and the
+addon's own per-leg distance field goes stale between updates).
+
+Possible uses:
+- Periodic callout, e.g. "50 miles from Yuma, time to start thinking about the approach."
+- UI: a live "NM to destination" / progress-bar readout in the flight-in-progress view,
+  next to the existing log path / flight-in-progress status line.
+
+Examples
+
+> Forty miles out. Might be a good time to start your descent planning.
+
+> Closing in on Yuma.
+
+------------------------------------------------------------------------
+
 ## Taxi Commentary
 
 Taxi too fast

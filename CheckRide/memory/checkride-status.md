@@ -102,6 +102,32 @@ major.minor.patch instead of major.minor-only.
 - `CloudBaseAglM` from `sim/weather/region/cloud_base_msl_m` is **MSL altitude**, not AGL — field name in code is misleading; ceiling AGL calculation requires airport elevation
 - `StallW=1.00` confirmed fires for King Air 350 stick shaker at ~1.2× stall speed (not aerodynamic stall)
 - `acf_Vne` = 400kt anomaly for King Air 350 (real Vmo ~180kt)
+- **Confirmed false positive (2026-08-10):** `sim/cockpit/radios/transponder_mode` read `1` (STBY) for the entire duration of live flight `checkride_7e99959e_20260810_210239` from 307.5s through 2405s (past liftoff and well into cruise), triggering the one-shot `SystemTransponder` flag (-3 pts) at liftoff, despite the user having the panel set to ALT the whole time. Live test confirmed the dataref *does* respond to panel changes — switching the King Air 350's transponder to ON moved the reading from `1`→`2` within a second — but it never produces `4` (ALT) at any point, including with ALT selected. So the addon's custom avionics panel supports OFF/STBY/ON on this dataref but caps out at ON=2 and has no path to write ALT=4. Confirmed King-Air-350-specific tool bug, not a pilot procedure miss (same family as the `throttle_ratio`/`prop_in_beta` and `acf_Vno`/`Va` mismatches above). Root cause found via live test: cycled OFF→STBY→ON→ALT and dataref read 0→1→2→**3**, never 4. The King Air 350 addon's transponder panel has only 4 positions (OFF/STBY/ON/ALT — no TEST), so it writes sequential indices 0-3 through the same stock dataref instead of the 5-position stock legend (0=off 1=stby 2=on 3=test 4=ALT). ALT=4 is simply unreachable on this airframe; ALT reports as 3. Fix: `DetectSystemChecks` (FlightMonitor.cs ~line 1039, `snap.TransponderMode != 4`) needs an aircraft-aware check — either accept `3` as ALT-equivalent for King Air 350 specifically, or (more robust) treat "highest observed/selectable mode value" as ALT per-airframe rather than hardcoding 4.
+
+- **King Air 350 addon has its own FMS, doesn't sync stock datarefs** — stock `sim/cockpit2/radios/indicators/fms1_act_eta*` and `fms_distance_to_tod_pilot` read `0` even with a route loaded. The addon exposes its own path instead: `KA350/fms/fmsEntryCount` (route leg count, confirms a plan is loaded), `KA350/instruments/EHSI_Pilot/ehsiDistNM` (distance to next active waypoint), `KA350/instruments/EHSI_Pilot/gpsDmeTime`/`dmeTimeMMgps` (time to next waypoint). No dataref found for total remaining route distance/ETE to final destination — only per-leg values are exposed. Confirmed live via manual poll 2026-08-10, not wired into the app.
+
+## Ad-hoc live API polling (debugging technique, 2026-08-10)
+Used to troubleshoot the transponder and FMS issues above by querying XP12's Web API v3
+directly with `curl` while a flight was in progress — no code changes needed, works
+against any running session:
+
+1. **Resolve name → id:** `GET http://localhost:8086/api/v3/datarefs?filter[name]=<dataref path>`
+   returns `{"data":[{"id":<int>,"is_writable":bool,"name":...,"value_type":...}]}`.
+2. **Poll value:** `GET http://localhost:8086/api/v3/datarefs/<id>/value` → `{"data":<value>}`.
+3. **curl gotcha:** the literal `[` `]` in `filter[name]` trip curl's URL-globbing parser
+   and silently produce no request/output. Either pass `-g` (disable globbing) or
+   URL-encode as `filter%5Bname%5D=`. Also URL-encode `/` in the dataref path as `%2F`
+   (or just leave literal `/` — both worked in testing, but encoding is safer).
+4. **String-type datarefs come back base64-encoded**, fixed-width, null/space-padded
+   (e.g. active FMS waypoint ident). Decode with `base64 -d` then `xxd`/`strings` to read.
+5. **Full dataref catalog:** `GET /api/v3/datarefs` (no filter) dumps everything X-Plane
+   exposes (~9,600 entries for this XP12 install) — useful for `grep`-ing for addon-specific
+   paths (e.g. everything under `KA350/`) when the stock dataref for something doesn't work.
+6. Distance-to-destination was cross-checked this way: pulled live lat/lon via
+   `sim/flightmodel/position/latitude`/`longitude`, looked up the destination airport's
+   lat/lon in `refdata/airports.json`, and ran Haversine by hand (`awk`, no python3
+   available in this shell) — got 51.0nm to KNYL, matching reality. This is the same
+   distance-remaining approach recommended for the callout/UI feature idea above.
 
 ## Known XP12 Web API limitations
 - No surface type datarefs (asphalt/grass/dirt) — exhaustively tested, all 404
@@ -118,3 +144,9 @@ major.minor.patch instead of major.minor-only.
 - Vne=400kt: cap at Vno or ignore?
 - Per-aircraft engine limit config file (for ITT scoring on specific airframes)
 - MSFS support (future)
+
+## TODO
+- **Fix King Air 350 transponder ALT false positive** — `DetectSystemChecks` (FlightMonitor.cs ~line 1039) hardcodes `snap.TransponderMode != 4` for the ALT check, but this addon's 4-position panel (OFF/STBY/ON/ALT, no TEST) writes ALT as `3` instead of the stock `4`. See root-cause writeup above under "Key XP12 / King Air 350 findings." Needs an aircraft-aware fix before this airframe's transponder check is trustworthy again.
+- **Distance/time-to-destination for callouts + UI progress** — idea captured in `CheckRide_Voice_System_Plan.md` under "Route Progress Awareness." Destination is already known (`_expectedArrId` etc., from the SimLetsFly-selected flight plan), so live NM-remaining is just a Haversine against current GPS position — same approach validated manually 2026-08-10 (computed 51.0nm to KNYL live via the Web API + `airports.json`, matched reality). Don't rely on the King Air 350 addon's own FMS distance field for this — confirmed stale/infrequently-updated in testing.
+- **Add full switch/system-settings dump for debugging** (not for scoring) — log a complete snapshot of all switch/system dataref states at three points: (1) session start, (2) just before takeoff roll, (3) on shutdown. Goal: make it much faster to troubleshoot other testers' reports (like the transponder-mode confusion above) by having the raw before/after state on hand instead of having to grep tick-by-tick through the whole log to reconstruct what a switch was doing.
+- **Consider: is `PenaltyEngineOverspeed` (-20) too harsh / threshold too tight?** Observed 2026-08-10 on live King Air 350 flight `checkride_7e99959e_20260810_210239`: N1 sat at 101.9-102.0% for 11+ sustained seconds at Thr=0.99 cruise power, tripping the one-shot flag at the `N1OverspeedPct(100.0) + N1OverspeedBufferPct(2.0)` = 102% line. Not a re-trigger bug (fires once, condition was genuinely sustained, not a blip) — but two things worth reconsidering: (1) the 100%/+2% threshold is labeled "universal %" in code, never verified against this airframe's actual PT6A-60 POH N1 redline the way V-speeds were; (2) -20 pts sits in the same severity tier as Engine Out (-25) and Engine Fire (-30), which seems disproportionate for a few-seconds, few-percent overtorque vs. an actual failure. Not changed yet — just flagging for review.
