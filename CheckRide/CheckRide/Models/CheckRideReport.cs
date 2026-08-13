@@ -111,7 +111,7 @@ public class ScoreLineItem
 
 public class CheckRideReport
 {
-    public const string ScoringVersionConst = "xp12-1.19";
+    public const string ScoringVersionConst = "xp12-1.20";
 
     public string Sim { get; init; } = "xplane12";
     public string ScoringVersion { get; init; } = ScoringVersionConst;
@@ -133,6 +133,7 @@ public class CheckRideReport
     public CheckRideSummary Summary { get; set; } = new();
     public FlightStats Stats { get; set; } = new();
     public List<ScoreLineItem> Breakdown { get; set; } = new();
+    public string? Notes { get; set; }
     public List<FlightConditionSample> Conditions { get; set; } = new();
     public List<FlightTrackPoint> Track { get; set; } = new();
 }

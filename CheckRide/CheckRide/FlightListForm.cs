@@ -44,6 +44,7 @@ internal class FlightListForm : Form
     private readonly Button  _btnHelp         = new();
     private readonly Button  _btnSignOut      = new();
     private readonly CheckBox _chkUploadLog   = new();
+    private readonly CheckBox _chkDivert      = new();
 
     // Held after a failed upload so the Retry button can re-attempt
     private (string FlightId, CheckRideReport Report, string? LogPath)? _pendingUpload;
@@ -225,7 +226,7 @@ internal class FlightListForm : Form
 
     private void BuildBottomBar()
     {
-        var bottom = new Panel { BackColor = _panel, Height = 88, Dock = DockStyle.Bottom };
+        var bottom = new Panel { BackColor = _panel, Height = 114, Dock = DockStyle.Bottom };
         bottom.Paint += (s, e) =>
         {
             using var pen = new Pen(_border);
@@ -301,7 +302,28 @@ internal class FlightListForm : Form
             "Sends the detailed per-second flight log (raw sim data) along with your score.\n" +
             "Helps us investigate bugs and tune scoring. Not required to use CheckRide.");
 
-        bottom.Controls.AddRange(new Control[] { _btnDebug, _btnRetry, _btnCancel, _btnTake, _lblStatus, _chkUploadLog });
+        _chkDivert.Text      = "Diverting to alternate airport";
+        _chkDivert.ForeColor = _amber;
+        _chkDivert.Font      = _fontSmallBold;
+        _chkDivert.BackColor = Color.Transparent;
+        _chkDivert.AutoSize  = true;
+        _chkDivert.Cursor    = Cursors.Hand;
+        _chkDivert.Visible   = false;  // only shown while a flight is being recorded
+        _chkDivert.Location  = new Point(16, 84);
+        var divertTip = new ToolTip();
+        divertTip.SetToolTip(_chkDivert,
+            "Check this before you land if you're diverting away from your planned destination.\n" +
+            "Waives the wrong-arrival-airport penalty — declare it before touchdown, not after.");
+        _chkDivert.CheckedChanged += (s, e) =>
+        {
+            if (_chkDivert.Checked && _monitor is not null)
+            {
+                _monitor.DeclarePilotDiversion(_logger);
+                _chkDivert.Enabled = false;
+            }
+        };
+
+        bottom.Controls.AddRange(new Control[] { _btnDebug, _btnRetry, _btnCancel, _btnTake, _lblStatus, _chkUploadLog, _chkDivert });
 
         bottom.Resize += (s, e) =>
         {
@@ -692,6 +714,8 @@ internal class FlightListForm : Form
 
             _connector.Log       = msg => _logger.Log($"[XP12] {msg}");
             _engineStartAnnounced = false;
+            _chkDivert.Checked  = false;
+            _chkDivert.Enabled  = true;
             _connector.Connected     = () => BeginInvoke(() =>
             {
                 PlaySoundRandom("ready");
@@ -712,9 +736,9 @@ internal class FlightListForm : Form
             _monitor.TouchdownCallout     += q  => BeginInvoke(() => PlaySoundRandom($"landing_{q}"));
             _monitor.CalloutRain          += () => BeginInvoke(() => PlaySoundRandom("callout_rain"));
             _monitor.CalloutIcing         += () => BeginInvoke(() => PlaySoundRandom("callout_icing"));
-            _monitor.CalloutTurbulence    += () => BeginInvoke(() => PlaySoundRandom("callout_turbulence"));
             _monitor.CalloutOverspeed     += () => BeginInvoke(() => PlaySoundRandom("callout_overspeed"));
             _monitor.CalloutHighBank      += () => BeginInvoke(() => PlaySoundRandom("callout_highbank"));
+            _monitor.CalloutEngineFailure += () => BeginInvoke(() => PlaySoundRandom("engine_failure"));
             _monitor.CalloutSmallTalk     += () => BeginInvoke(() => PlaySoundRandom("small_talk"));
             _monitor.WrongDepartureDetected += () => BeginInvoke(OnWrongDepartureDetected);
             _monitor.FlightCompleted        += () => BeginInvoke(OnFlightCompleted);
@@ -899,6 +923,7 @@ internal class FlightListForm : Form
         _btnAircraftClear.Enabled  = idle;
         _cmbTransitionAlt.Enabled  = idle;
         _chkUploadLog.Enabled      = idle;
+        _chkDivert.Visible         = state == AppState.Recording;
 
         // Status messages per state
         (string msg, Color col) = state switch

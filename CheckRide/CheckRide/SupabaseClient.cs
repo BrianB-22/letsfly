@@ -243,6 +243,7 @@ internal class SupabaseClient
             ["landing_quality"]  = string.IsNullOrEmpty(report.Summary.LandingQuality) ? null : report.Summary.LandingQuality,
             ["crashed"]          = report.Summary.Crashed,
             ["imc_flight"]       = report.Summary.ImcFlight,
+            ["notes"]            = string.IsNullOrEmpty(report.Notes) ? null : report.Notes,
             // Full JSONB blobs
             ["events"]           = JsonSerializer.SerializeToElement(report.Events,     _enumOpts),
             ["summary"]          = JsonSerializer.SerializeToElement(report.Summary,    _enumOpts),

@@ -33,10 +33,6 @@ internal static class ScoringConfig
     public const double AntiIceTempHighC    = 0.0;   // upper bound of icing window
     public const double AntiIceCloudMin     = 0.5;   // minimum cloud coverage to flag icing — BKN+, not just scattered
     public const double RainCalloutMinPct   = 0.20;  // minimum RainPercent to call out rain — filters trace/virga noise
-    public const int    TurbulenceGnWindowSize          = 20;   // seconds of Gn history used for the rolling stddev
-    public const double TurbulenceGnStdDevTripThreshold = 0.09; // stddev above this = bumpy enough to call out
-    public const double TurbulenceGnStdDevResetThreshold = 0.05; // must fall back below this to re-arm (hysteresis)
-    public const double TurbulenceMinSustainSeconds     = 5.0;  // stddev must stay above the trip line this long
                                                                   // before calling out — filters a single G spike
     public const double IceDamageThreshold  = 0.01;  // frm_ice above this = icing damage event
     public const double N1OverspeedPct        = 100.0; // N1% above this = prop/turbine over-speed (universal %)
@@ -115,8 +111,6 @@ internal static class ScoringConfig
     public const int PenaltyNoFlapLanding      = -10;
     public const int PenaltyTakeoffParkingBrake = -5;
 
-    public const int PenaltyEngineFire         = -30;
-    public const int PenaltyEngineOut          = -25;
     public const int PenaltyEngineOverspeed    = -20;
     public const int PenaltyOverGFailure       = -20;
     public const int PenaltyIcingDamage        = -20;
@@ -210,12 +204,6 @@ public class FlightMonitor
     private bool _prevHighG;
     private bool _prevVeryHighG;
 
-    // Turbulence — rolling window of Gn samples for stddev-based detection
-    private readonly Queue<double> _gnWindow = new();
-    private double _gnWindowSum;
-    private double _gnWindowSumSq;
-    private bool _turbulenceTripped;
-    private DateTime _turbulenceHighSince;
     private bool _prevHighBank;
     private bool _prevVeryHighBank;
     private bool _prevCrashed;
@@ -269,7 +257,6 @@ public class FlightMonitor
     // In-flight personality callouts — fire once per flight, no scoring impact
     public event Action? CalloutRain;
     public event Action? CalloutIcing;
-    public event Action? CalloutTurbulence;
 
     // Small-talk personality callout — fires repeatedly at a random 30-40min interval while airborne
     public event Action? CalloutSmallTalk;
@@ -277,6 +264,10 @@ public class FlightMonitor
     // Scoring-linked callouts — fire each time the event occurs
     public event Action? CalloutOverspeed;
     public event Action? CalloutHighBank;
+
+    // Fires once, the first time an engine failure (out or fire) is detected — also
+    // marks the flight as a declared diversion (see DeclareDiversion). No scoring impact.
+    public event Action? CalloutEngineFailure;
 
     // Flight completion
     public event Action? FlightCompleted;
@@ -331,6 +322,13 @@ public class FlightMonitor
     private bool _engineFireFlagged;
     private bool _eng1OutFlagged;
     private bool _eng2OutFlagged;
+
+    // Diversion — declared either automatically (engine failure) or by the pilot (manual
+    // checkbox in FlightListForm). One-way latch: once declared, stays declared for the flight.
+    private bool    _diversionDeclared;
+    private string? _diversionNoteBase;
+    private string? _finalNotes;
+
     private bool _prevEng1Running;
     private bool _prevEng2Running;
     private bool _oilFlagged;
@@ -687,9 +685,19 @@ public class FlightMonitor
             logger.Log($"Arrival check — {arrDistNm:F1}nm from {_expectedArrId}");
             if (arrDistNm > ScoringConfig.WrongAirportDistNm)
             {
-                LogEvent(FlightEventType.WrongArrivalAirport, snap.Timestamp,
-                    $"Wrong arrival airport — {arrDistNm:F0}nm from {_expectedArrId}");
-                logger.Log($"EVENT: Wrong arrival airport ({arrDistNm:F0}nm from {_expectedArrId})");
+                if (_diversionDeclared)
+                {
+                    _finalNotes = $"{_diversionNoteBase} (landed {snap.Latitude:F4},{snap.Longitude:F4})";
+                    LogEvent(FlightEventType.DivertedToAlternate, snap.Timestamp,
+                        $"Diverted to alternate — {arrDistNm:F0}nm from {_expectedArrId}");
+                    logger.Log($"EVENT: Diverted to alternate ({arrDistNm:F0}nm from {_expectedArrId})");
+                }
+                else
+                {
+                    LogEvent(FlightEventType.WrongArrivalAirport, snap.Timestamp,
+                        $"Wrong arrival airport — {arrDistNm:F0}nm from {_expectedArrId}");
+                    logger.Log($"EVENT: Wrong arrival airport ({arrDistNm:F0}nm from {_expectedArrId})");
+                }
             }
         }
 
@@ -858,60 +866,11 @@ public class FlightMonitor
         }
         _prevHighG = isHighG;
 
-        // Turbulence (passenger-comfort callout only — no scoring impact). Instantaneous Gn
-        // barely moves even in genuinely rough air (prior testing: flat 0.94-1.05 through a
-        // pilot-reported bumpy stretch), and sim/weather/region/turbulence is a slow-moving
-        // regional forecast value uncorrelated with felt buffeting — both dead ends (see todo.md).
-        // Rolling stddev of Gn over a ~20s window tracks it instead: baseline noise across a full
-        // flight sits ~0.02-0.04, spiking to 0.13-0.18 during a real pilot-reported "heavy
-        // turbulence" stretch (rain 71-81%) and dropping straight back to baseline once it settled.
-        if (airborne)
-        {
-            _gnWindow.Enqueue(snap.GForceNormal);
-            _gnWindowSum   += snap.GForceNormal;
-            _gnWindowSumSq += snap.GForceNormal * snap.GForceNormal;
-            if (_gnWindow.Count > ScoringConfig.TurbulenceGnWindowSize)
-            {
-                var dropped = _gnWindow.Dequeue();
-                _gnWindowSum   -= dropped;
-                _gnWindowSumSq -= dropped * dropped;
-            }
-
-            if (_gnWindow.Count == ScoringConfig.TurbulenceGnWindowSize)
-            {
-                var mean = _gnWindowSum / _gnWindow.Count;
-                var variance = Math.Max(0, _gnWindowSumSq / _gnWindow.Count - mean * mean);
-                var gnStdDev = Math.Sqrt(variance);
-
-                if (!_turbulenceTripped && gnStdDev > ScoringConfig.TurbulenceGnStdDevTripThreshold)
-                {
-                    // Debounce: a single hard bump can push the 20s stddev over the trip line by
-                    // itself, so require it to stay elevated for a few seconds — not one G spike —
-                    // before actually calling it out. Any dip back at or below the trip line resets
-                    // the streak (see the else-branch below).
-                    if (_turbulenceHighSince == default) _turbulenceHighSince = snap.Timestamp;
-                    else if ((snap.Timestamp - _turbulenceHighSince).TotalSeconds >= ScoringConfig.TurbulenceMinSustainSeconds)
-                    {
-                        _turbulenceTripped = true;
-                        // Milestone only — no ScoringConfig penalty/PerOccurrence wired to this type,
-                        // so it never touches the CheckRide grade. report.html's separate Pax Comfort
-                        // metric docks a small amount per occurrence instead (see Turbulence filter there).
-                        LogEvent(FlightEventType.Turbulence, snap.Timestamp, $"Turbulence — Gn stddev={gnStdDev:F3}");
-                        CalloutTurbulence?.Invoke();
-                        logger.Log($"CALLOUT: Turbulence (Gn stddev={gnStdDev:F3} over {ScoringConfig.TurbulenceGnWindowSize}s, sustained {ScoringConfig.TurbulenceMinSustainSeconds:F0}s+)");
-                    }
-                }
-                else if (!_turbulenceTripped)
-                {
-                    _turbulenceHighSince = default;
-                }
-                else if (gnStdDev < ScoringConfig.TurbulenceGnStdDevResetThreshold)
-                {
-                    _turbulenceTripped = false;
-                    _turbulenceHighSince = default;
-                }
-            }
-        }
+        // Turbulence callout retired (2026-08-13) — second failed detection signal in a row.
+        // Instantaneous Gn (dead flat through real bumpy air) and sim/weather/region/turbulence
+        // (a slow regional forecast, uncorrelated/anti-correlated with felt buffeting) both failed
+        // first. Rolling stddev of Gn looked promising in initial testing but misfired on ordinary
+        // smooth flying once used for real. See todo.md for the full history.
 
         // Bank angle — rising edge, airborne phases only
         var absBank = Math.Abs(snap.BankAngleDeg);
@@ -1190,6 +1149,7 @@ public class FlightMonitor
             LogEvent(FlightEventType.FailureEngineFire, snap.Timestamp, "Engine fire warning");
             logger.Log("EVENT: Engine fire");
             _engineFireFlagged = true;
+            DeclareDiversion("Engine fire", announce: true, logger);
         }
 
         // Engine out in flight — either engine stops while airborne
@@ -1201,6 +1161,7 @@ public class FlightMonitor
             LogEvent(FlightEventType.FailureEngineOut, snap.Timestamp, "Engine 1 out in flight");
             logger.Log("EVENT: Engine 1 out in flight");
             _eng1OutFlagged = true;
+            DeclareDiversion("Engine 1 out in flight", announce: true, logger);
         }
         if (!_eng2OutFlagged && eng2Out && _prevEng2Running
             && _phase is FlightPhase.Airborne or FlightPhase.Cruise or FlightPhase.Approach)
@@ -1208,6 +1169,7 @@ public class FlightMonitor
             LogEvent(FlightEventType.FailureEngineOut, snap.Timestamp, "Engine 2 out in flight");
             logger.Log("EVENT: Engine 2 out in flight");
             _eng2OutFlagged = true;
+            DeclareDiversion("Engine 2 out in flight", announce: true, logger);
         }
         // Engine start milestone — rising edge while still on ground
         if (!_eng1StartLogged && snap.Engine1Running && !_prevEng1Running
@@ -1298,6 +1260,33 @@ public class FlightMonitor
             }
         }
     }
+
+    // One-way latch — the first call wins, whether it comes from an automatic engine-failure
+    // detection (DetectFailures, above) or the pilot manually checking the "diverting to
+    // alternate airport" box in FlightListForm. Once declared, RecordLanding treats a landing
+    // away from the planned destination as a diversion instead of a wrong-airport mistake.
+    private void DeclareDiversion(string reason, bool announce, EventLogger? logger)
+    {
+        if (_diversionDeclared) return;
+        _diversionDeclared = true;
+        _diversionNoteBase = announce
+            ? "An issue occurred requiring an alternate landing destination — no points subtracted."
+            : "Pilot declared a diversion to an alternate airport — no points subtracted.";
+        LogEvent(FlightEventType.DiversionDeclared, DateTime.UtcNow, reason);
+        if (announce)
+        {
+            CalloutEngineFailure?.Invoke();
+            logger?.Log($"CALLOUT: Engine failure — diversion declared ({reason})");
+        }
+        else
+        {
+            logger?.Log($"Diversion declared — {reason}");
+        }
+    }
+
+    // Called from FlightListForm when the pilot checks the manual diversion box mid-flight.
+    public void DeclarePilotDiversion(EventLogger? logger) =>
+        DeclareDiversion("Pilot-declared diversion", announce: false, logger);
 
     private void DetectRunupCheck(FlightDataSnapshot snap, EventLogger logger)
     {
@@ -1452,6 +1441,7 @@ public class FlightMonitor
         {
             Aircraft  = _aircraft,
             RecordedAt = DateTime.UtcNow,
+            Notes     = _finalNotes,
             Events    = new List<FlightEvent>(_events),
             Stats     = new FlightStats
             {
@@ -1669,14 +1659,17 @@ public class FlightMonitor
         Once("Takeoff with Parking Brake",     r.Events.Any(e => e.Type == FlightEventType.TakeoffParkingBrake),  ScoringConfig.PenaltyTakeoffParkingBrake);
         Once("Wrong Departure Airport",        r.Events.Any(e => e.Type == FlightEventType.WrongDepartureAirport), ScoringConfig.PenaltyWrongDepartureAirport);
         Once("Wrong Arrival Airport",          r.Events.Any(e => e.Type == FlightEventType.WrongArrivalAirport),   ScoringConfig.PenaltyWrongArrivalAirport);
+        Once("Diverted to Alternate",          r.Events.Any(e => e.Type == FlightEventType.DivertedToAlternate),  0);
 
         // Fuel
         Once("Low Fuel in Flight",             r.Events.Any(e => e.Type == FlightEventType.LowFuel),             ScoringConfig.PenaltyLowFuel);
         Once("Fuel Exhausted in Flight",       r.Events.Any(e => e.Type == FlightEventType.FuelExhausted),       ScoringConfig.PenaltyFuelExhausted);
 
-        // Aircraft failures
-        Once("Engine Fire",                    r.Events.Any(e => e.Type == FlightEventType.FailureEngineFire),    ScoringConfig.PenaltyEngineFire);
-        Once("Engine Out",                     r.Events.Any(e => e.Type == FlightEventType.FailureEngineOut),     ScoringConfig.PenaltyEngineOut);
+        // Aircraft failures — Engine Fire/Out no longer cost points (2026-08-13): surviving a
+        // failure is the skill being tested, not avoiding one that's outside pilot control.
+        // Kept as 0-pt breakdown lines so the report still shows they happened.
+        Once("Engine Fire",                    r.Events.Any(e => e.Type == FlightEventType.FailureEngineFire),    0);
+        Once("Engine Out",                     r.Events.Any(e => e.Type == FlightEventType.FailureEngineOut),     0);
         Once("Engine Overspeed",               r.Events.Any(e => e.Type == FlightEventType.FailureEngineOverspeed), ScoringConfig.PenaltyEngineOverspeed);
         Once("Over-G Structural Damage",       r.Events.Any(e => e.Type == FlightEventType.FailureOverG),         ScoringConfig.PenaltyOverGFailure);
         Once("Icing Damage",                   r.Events.Any(e => e.Type == FlightEventType.FailureIcingDamage),   ScoringConfig.PenaltyIcingDamage);

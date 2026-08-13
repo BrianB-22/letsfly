@@ -22,7 +22,8 @@ Produces a graded JSON report + text log in `[MyDocuments]\CheckRide\` (OneDrive
 
 ## Scoring
 All thresholds and weights in `ScoringConfig` static class at top of `FlightMonitor.cs`.
-Scoring version: `xp12-1.19` (const `CheckRideReport.ScoringVersionConst` — bump on any change to detection/penalty behavior)
+Scoring version: `xp12-1.20` (const `CheckRideReport.ScoringVersionConst` — bump on any change to detection/penalty behavior)
+- 1.20 (2026-08-13): diversion handling shipped — Engine Fire/Out no longer cost points; landing away from plan after a declared diversion (`DiversionDeclared`, automatic on engine failure or manual via a new status-bar checkbox) logs `DivertedToAlternate` instead of `WrongArrivalAirport`, no penalty. See todo.md CheckRide Scoring section for full detail.
 
 ## Fixed bugs (scoring re-trigger / false-positive)
 Found 2026-08-10 from real production data (two live user flights, one C-graded one D-graded) pasted by the user, who suspected re-triggers were tanking scores. Confirmed both:

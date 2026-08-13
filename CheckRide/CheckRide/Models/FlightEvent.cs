@@ -65,12 +65,14 @@ public enum FlightEventType
     TakeoffParkingBrake,    // parking brake set at moment of liftoff
     WrongDepartureAirport,
     WrongArrivalAirport,
+    DivertedToAlternate,    // landed away from planned arrival after a declared diversion — no penalty
 
     // Milestones (no scoring impact — timeline markers only)
     RecordingStarted,
     EngineStart,
+    DiversionDeclared,      // pilot committed to landing somewhere other than the planned destination — reason in Description
     RunupCheckCompleted,    // sustained high-N1 power check while stationary, pre-takeoff
-    Turbulence,              // sustained rough air (rolling Gn stddev) — dings Pax Comfort only, not the CheckRide score
+    Turbulence,              // retired 2026-08-13 (unreliable detection) — kept so historical event logs still deserialize
     LowVisCruise,            // visibility dropped below 1SM while in cruise — "I Can't See Nothing" bonus
     Takeoff,
     CruiseReached,

@@ -303,6 +303,25 @@ Examples
 
 > Closing in on Yuma.
 
+### Descent-point trigger, not a fixed NM (2026-08-12)
+
+A flat "40nm out" threshold doesn't scale — a King Air at FL280 needs far more room
+to descend than a C172 at 5,500ft. Better trigger: the standard 3° glidepath rule of
+thumb ("3:1 rule") — distance needed (nm) ≈ altitude to lose (ft) ÷ 300, i.e. altitude
+in thousands of feet × 3. FL280 → sea level ≈ 93nm; 5,500ft → sea level ≈ 18nm. Add a
+flat buffer on top (~10-15nm, TBD) for deceleration/vectors/pattern entry, and fire the
+callout once live distance-remaining crosses that computed point. Recompute each tick
+during cruise (not locked in once) since it depends on current altitude, which changes.
+
+Altitude to lose is current altitude **minus destination field elevation**, not minus
+sea level — needs the destination airport's elevation, which nothing currently carries.
+Decided approach: capture it at flight-plan-creation time on the website (which already
+fetches `airports.json` in JS for `flights.html`) as a new `arr_elev` column on
+`saved_flights`, alongside the existing `arr_lat`/`arr_lon`. The client then just reads
+a plain number off the flight record it already fetches — no need to parse the 19MB
+`refdata/airports.json` in C# for this (that file stays untouched/unparsed by the client,
+same as today).
+
 ------------------------------------------------------------------------
 
 ## Taxi Commentary
