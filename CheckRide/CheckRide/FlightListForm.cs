@@ -685,9 +685,11 @@ internal class FlightListForm : Form
         _lblStatus.ForeColor = _amber;
 
         var live = await XP12Connector.ProbeAsync();
+        if (_activeFlight is null) return; // cancelled while ProbeAsync was in flight
+
         if (!live)
         {
-            _lblStatus.Text = $"XP12 not detected — open XP12 and load your aircraft for {_activeFlight!.DisplayRoute}.";
+            _lblStatus.Text = $"XP12 not detected — open XP12 and load your aircraft for {_activeFlight.DisplayRoute}.";
             return;
         }
 
@@ -808,7 +810,6 @@ internal class FlightListForm : Form
                 report.AircraftEngineClass  = ac.EngineClass;
                 report.AircraftWeightClass  = ac.WeightClass;
                 report.AircraftWtc          = ac.WakeTurbulenceCategory;
-                report.AircraftVrefKt       = ac.EffectiveVrefKt;
             }
             report.TransitionAltitudeFt = SelectedTransitionAltFt;
             _logger!.Log($"Session ended — Score: {report.Score}  Grade: {report.Grade}  Aircraft: {report.AircraftIcao}");

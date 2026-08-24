@@ -230,7 +230,6 @@ internal class SupabaseClient
             ["aircraft_model"]        = string.IsNullOrEmpty(report.AircraftModel) ? null : report.AircraftModel,
             ["aircraft_engine_class"] = string.IsNullOrEmpty(report.AircraftEngineClass) ? null : report.AircraftEngineClass,
             ["aircraft_weight_class"] = string.IsNullOrEmpty(report.AircraftWeightClass) ? null : report.AircraftWeightClass,
-            ["aircraft_vref_kt"]      = report.AircraftVrefKt > 0 ? (object?)Math.Round(report.AircraftVrefKt, 0) : null,
             ["aircraft_wtc"]          = string.IsNullOrEmpty(report.AircraftWtc) ? null : report.AircraftWtc,
             ["transition_altitude_ft"] = report.TransitionAltitudeFt,
             ["sim"]              = report.Sim,

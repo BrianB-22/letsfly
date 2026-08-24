@@ -123,7 +123,6 @@ public class CheckRideReport
     public string AircraftModel { get; set; } = "";
     public string AircraftEngineClass { get; set; } = "";
     public string AircraftWeightClass { get; set; } = "";
-    public double AircraftVrefKt { get; set; }
     public string AircraftWtc { get; set; } = "";
     public int TransitionAltitudeFt { get; set; } = 18000;
     public DateTime RecordedAt { get; init; } = DateTime.UtcNow;

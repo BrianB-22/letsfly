@@ -32,7 +32,7 @@ internal static class ScoringConfig
     public const double AntiIceTempLowC     = -20.0; // lower bound of icing window
     public const double AntiIceTempHighC    = 0.0;   // upper bound of icing window
     public const double AntiIceCloudMin     = 0.5;   // minimum cloud coverage to flag icing — BKN+, not just scattered
-    public const double RainCalloutMinPct   = 0.20;  // minimum RainPercent to call out rain — filters trace/virga noise
+    public const double RainCalloutMinPct   = 0.50;  // minimum RainPercent to call out rain — matches BonusRainLanding's bar
                                                                   // before calling out — filters a single G spike
     public const double IceDamageThreshold  = 0.01;  // frm_ice above this = icing damage event
     public const double N1OverspeedPct        = 100.0; // N1% above this = prop/turbine over-speed (universal %)
@@ -134,6 +134,7 @@ internal static class ScoringConfig
     public const double LowVisCruiseSm         = 1.0;  // visibility (SM) in cruise for "I Can't See Nothing" bonus
     public const int    BonusLowVisCruise      = 5;    // fires once, any tick under LowVisCruiseSm while in Cruise
     public const int BonusRunupCheck           = 5;    // sustained high-N1 power check while stationary, pre-takeoff
+    public const int BonusDivertedSafeLanding  = 20;   // declared a diversion (engine fire/out) and still landed safely at the alternate
 
     // Runup / pre-takeoff power check detection
     public const double RunupN1Pct             = 85.0; // min N1% (either engine) while stationary to count as a check
@@ -406,6 +407,20 @@ public class FlightMonitor
         if (!_limitsCaptured && snap.VsoKts > 0)
         {
             var verified = AircraftVSpeeds.Find(_selectedIcao, snap.AircraftName);
+
+            if (AircraftVSpeeds.SelectedIcaoMismatchesLiveName(_selectedIcao, snap.AircraftName))
+            {
+                var caughtByLiveMatch = verified != null && !string.IsNullOrEmpty(verified.Xp12Name)
+                    && snap.AircraftName.Contains(verified.Xp12Name, StringComparison.OrdinalIgnoreCase);
+                logger.Log(caughtByLiveMatch
+                    ? $"WARNING — selected aircraft ({_selectedIcao}) doesn't match the live aircraft " +
+                      $"({snap.AircraftName}); did you forget to update the aircraft picker? Using the " +
+                      "live aircraft's limits instead of the stale pick."
+                    : $"WARNING — selected aircraft ({_selectedIcao}) doesn't match the live aircraft " +
+                      $"({snap.AircraftName}), and the live aircraft isn't catalogued either — falling " +
+                      "back to the stale pick's limits anyway. Update the aircraft picker to fix this.");
+            }
+
             if (verified != null)
             {
                 _vsoKts = verified.VsoKts;
@@ -1659,7 +1674,10 @@ public class FlightMonitor
         Once("Takeoff with Parking Brake",     r.Events.Any(e => e.Type == FlightEventType.TakeoffParkingBrake),  ScoringConfig.PenaltyTakeoffParkingBrake);
         Once("Wrong Departure Airport",        r.Events.Any(e => e.Type == FlightEventType.WrongDepartureAirport), ScoringConfig.PenaltyWrongDepartureAirport);
         Once("Wrong Arrival Airport",          r.Events.Any(e => e.Type == FlightEventType.WrongArrivalAirport),   ScoringConfig.PenaltyWrongArrivalAirport);
-        Once("Diverted to Alternate",          r.Events.Any(e => e.Type == FlightEventType.DivertedToAlternate),  0);
+        var landedSafely = !r.Summary.Crashed && !r.Summary.RunwayExcursion;
+        var diverted     = r.Events.Any(e => e.Type == FlightEventType.DivertedToAlternate);
+        Once("Diverted to Alternate & Landed Safely", diverted && landedSafely,  ScoringConfig.BonusDivertedSafeLanding);
+        Once("Diverted to Alternate",                 diverted && !landedSafely, 0);
 
         // Fuel
         Once("Low Fuel in Flight",             r.Events.Any(e => e.Type == FlightEventType.LowFuel),             ScoringConfig.PenaltyLowFuel);
@@ -1673,9 +1691,16 @@ public class FlightMonitor
         Once("Engine Overspeed",               r.Events.Any(e => e.Type == FlightEventType.FailureEngineOverspeed), ScoringConfig.PenaltyEngineOverspeed);
         Once("Over-G Structural Damage",       r.Events.Any(e => e.Type == FlightEventType.FailureOverG),         ScoringConfig.PenaltyOverGFailure);
         Once("Icing Damage",                   r.Events.Any(e => e.Type == FlightEventType.FailureIcingDamage),   ScoringConfig.PenaltyIcingDamage);
-        PerOccurrence("System Failure",        r.Events.Count(e => e.Type is
+
+        // Oil/fuel/hydraulic/voltage failures are frequently a direct downstream symptom of an
+        // already-declared engine emergency (e.g. a shut-down engine's own oil pressure reading
+        // zero) rather than an independent new fault — once a diversion has been declared, don't
+        // double-penalize the same emergency. Kept as a 0-pt breakdown line so it still shows.
+        var diversionDeclared  = r.Events.Any(e => e.Type == FlightEventType.DiversionDeclared);
+        var systemFailureCount = r.Events.Count(e => e.Type is
             FlightEventType.FailureOilPressure or FlightEventType.FailureFuelPressure or
-            FlightEventType.FailureHydraulic or FlightEventType.FailureLowVoltage),                               ScoringConfig.PenaltySystemFailure);
+            FlightEventType.FailureHydraulic or FlightEventType.FailureLowVoltage);
+        PerOccurrence("System Failure", systemFailureCount, diversionDeclared ? 0 : ScoringConfig.PenaltySystemFailure);
 
         // Bonuses
         var absVs = Math.Abs(r.Stats.LandingVsFpm);

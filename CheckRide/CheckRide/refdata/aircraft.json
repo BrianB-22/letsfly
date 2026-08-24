@@ -79,5 +79,18 @@
       "vfeKts": 140,
       "source": "Lancair Evolution (PT6A turbine) — Vmo 240 KIAS, Vne 250 KIAS, Vso 65 KIAS. Vfe uses the less-restrictive takeoff-flap stage (140 KIAS); full-flap Vfe is lower at 125 KIAS — staged flap limits aren't modeled. Lower-confidence source (kitplane QRG, not a certified POH)."
     }
+  },
+  {
+    "xp12Name": "X-Crafts ERJ 145",
+    "icao": "E145",
+    "faaApproachSpeedKts": 124,
+    "aac": "C",
+    "vSpeeds": {
+      "vsoKts": 121,
+      "vnoKts": 250,
+      "vneKts": 250,
+      "vfeKts": 230,
+      "source": "X-Crafts ERJ 145 addon acf limits, verified live via the XP12 Web API 2026-08-22 (sim/aircraft/view/acf_Vso/Vno/Vne/Vfe) — unlike the King Air 350, this addon's own limits are internally sane, so this entry just pins them instead of using a real Embraer AFM. The addon's FMS also computes real per-flight V1/VR/V2/Vapp/Vref (XCrafts/ERJ/FMS/ACARS_vspeed_data_*) which would be a better source than any static table if wired in later — see memory/erj145.md."
+    }
   }
 ]
