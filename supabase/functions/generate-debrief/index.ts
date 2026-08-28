@@ -81,7 +81,8 @@ function buildPrompt(
 Flight: ${route} | ${date} | ${sim} | ${run.aircraft || 'unknown aircraft'}
 Score: ${run.score ?? '—'}/100 | Grade: ${run.grade || '?'}
 Flight time: ${fmtTime(stats.FlightTimeSec)} | Distance: ${stats.DistanceNm ? stats.DistanceNm.toFixed(1) + ' nm' : '—'}
-Landing: ${summary.LandingQuality || '—'} at ${stats.LandingVsFpm || '—'} fpm | Crosswind: ${stats.CrosswindAtLandingKt != null ? stats.CrosswindAtLandingKt.toFixed(0) + ' kt' : '—'}
+Landing touchdown rate: ${summary.LandingQuality || '—'} at ${stats.LandingVsFpm || '—'} fpm | Crosswind: ${stats.CrosswindAtLandingKt != null ? stats.CrosswindAtLandingKt.toFixed(0) + ' kt' : '—'}
+Approach descent rate (avg, below 1,500ft AGL — separate from the landing touchdown rate above): ${stats.AvgFinalDescentRateFpm != null ? stats.AvgFinalDescentRateFpm.toFixed(0) + ' fpm' : '—'}
 Max G: ${stats.MaxGForceNormal != null ? stats.MaxGForceNormal.toFixed(2) : '—'}G | Max IAS: ${stats.MaxIasKts != null ? stats.MaxIasKts.toFixed(0) + ' kt' : '—'} | Max Bank: ${stats.MaxBankAngleDeg != null ? Math.abs(stats.MaxBankAngleDeg).toFixed(1) + '°' : '—'}
 Autopilot: ${stats.AutopilotPct != null ? stats.AutopilotPct.toFixed(0) + '%' : '—'}
 
