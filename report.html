@@ -672,12 +672,27 @@ function renderEvents(r) {
   const events = r.events || [];
   const BAD  = new Set(['Crash','RunwayExcursion','GearUpLanding','Overspeed','Stall','VeryHighG','VeryHighBank']);
   const OK   = new Set(['SmoothLanding','Greaser','LandingSmooth','LandingGreaser','Touchdown']);
-  const WARN = new Set(['HighG','HighBank','HighDescentRate','UnstableApproach','ExcessiveApproachSpeed','HardLanding','FirmLanding','SystemPitotHeat','SystemLandingLights','SystemStrobes','SystemTransponder','SystemFlaps','SystemGearCruise','SystemGearApproach','SystemBeacon']);
+  const WARN = new Set(['HighG','HighBank','HighDescentRate','UnstableApproach','ExcessiveApproachSpeed','HardLanding','FirmLanding',
+    'SpeedLimitViolation','ApproachTooSlow','FlapOverspeed','FastLanding','SideloadLanding','NoseWheelFirst','NoFlapLanding',
+    'SystemPitotHeat','SystemLandingLights','SystemStrobes','SystemTransponder','SystemFlapsCruise','SystemGearCruise','SystemGearApproach','SystemBeacon','SystemAntiIce','SystemBarometer',
+    'TaxiFastSpeed','TaxiAggressiveTurn',
+    'TakeoffLowPower','TakeoffHeadingDeviation','TakeoffDirectionalControl','TakeoffParkingBrake',
+    'WrongDepartureAirport','WrongArrivalAirport',
+    'LowFuel','FuelExhausted',
+    'FailureEngineOverspeed','FailureOverG','FailureIcingDamage',
+    'FailureOilPressure','FailureFuelPressure','FailureHydraulic','FailureLowVoltage']);
   const INFO = new Set(['EngineStart','Takeoff','CruiseReached','ApproachStarted','ParkingBrakeSet','RecordingStarted','RecordingEnded']);
   const fmtTime = s => { if (s == null) return ''; const m = Math.floor(s/60); return m + 'm ' + (s%60) + 's'; };
   document.getElementById('cr-modal-events').innerHTML = events.length
     ? events.map(e => {
-        const cls = BAD.has(e.Type) ? 'is-bad' : OK.has(e.Type) ? 'is-ok' : WARN.has(e.Type) ? 'is-warn' : 'is-info';
+        // Touchdown's own event type is always logged the same regardless of quality — the actual
+        // Greaser/Smooth/Poor verdict only shows up in its description text, so read it from there
+        // instead of always coloring it green (a Poor landing already gets its own red/yellow line
+        // from HardLanding/SideloadLanding/etc.; this dot should agree with that, not contradict it).
+        const touchdownCls = e.Type === 'Touchdown'
+          ? ((e.Description || '').includes('Poor') ? 'is-bad' : 'is-ok')
+          : null;
+        const cls = touchdownCls || (BAD.has(e.Type) ? 'is-bad' : OK.has(e.Type) ? 'is-ok' : WARN.has(e.Type) ? 'is-warn' : 'is-info');
         return `<div class="cr-event ${cls}"><span class="cr-event-time">${fmtTime(e.TimestampSec)}</span><div class="cr-dot"></div><span class="cr-event-desc">${escapeHtml(e.Description || e.Type)}</span></div>`;
       }).join('')
     : '<div class="cr-empty">No events recorded.</div>';

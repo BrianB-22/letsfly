@@ -46,6 +46,10 @@ internal static class ScoringConfig
     public const double SpeedLimitResetHysteresisKts = 5.0; // must drop this far below 250kt before re-arming — see SpeedLimitViolation
 
     public const double MinAirborneBeforeLandingSec = 15.0; // ignore on-ground flicker for this long after liftoff
+    public const double RunwayExcursionMinDurationSec = 2.0; // off-ground/below-terrain condition must persist this
+                                                        // long during rollout before flagging — a single-tick on_ground
+                                                        // flicker (nose gear dataref only) from a bounced touchdown
+                                                        // otherwise reads as a false excursion
     public const int    CruiseStableCount   = 30;    // consecutive polls above cruise altitude to transition
     public const double CruiseAglFt         = 3000.0; // AGL above this = cruise phase candidate
 
@@ -88,7 +92,9 @@ internal static class ScoringConfig
     public const int PenaltyFastLanding       = -10;
     public const int PenaltyHighDescentRate    = -5;   // per occurrence
     public const int PenaltyGearUpLanding      = -25;
-    public const int PenaltySideloadLanding    = -10;
+    public const int PenaltySideloadLanding    = -5;   // was -10; a bit of lateral G on touchdown happens in
+                                                        // ordinary crosswind landings, so it's lighter than the
+                                                        // structural-risk Nose-Wheel-First penalty
     public const int PenaltySystemFlag         = -3;   // per system check failure
     public const int PenaltyTaxiFastSpeed      = -5;
     public const int PenaltyTaxiAggrTurn       = -3;
@@ -111,7 +117,9 @@ internal static class ScoringConfig
     public const int PenaltyNoFlapLanding      = -10;
     public const int PenaltyTakeoffParkingBrake = -5;
 
-    public const int PenaltyEngineOverspeed    = -20;
+    public const int PenaltyEngineOverspeed    = -5;   // was -20; brought in line with the other one-shot per-occurrence
+                                                        // penalties (Overspeed/Stall) after a live King Air 350 flight
+                                                        // showed a brief few-% N1 excursion costing as much as OverG/icing damage
     public const int PenaltyOverGFailure       = -20;
     public const int PenaltyIcingDamage        = -20;
     public const int PenaltySystemFailure      = -10;  // per oil/fuel/hydraulic/voltage event
@@ -210,6 +218,7 @@ public class FlightMonitor
     private bool _prevCrashed;
     private bool _speedLimitTripped;  // Schmitt-trigger latch — see SpeedLimitResetHysteresisKts
     private bool _excursionFlagged;
+    private DateTime? _excursionConditionStart;
 
     // System state checks — one flag per flight
     private bool _pitotFlagged;
@@ -668,13 +677,24 @@ public class FlightMonitor
             {
                 _parkedTime = snap.Timestamp;
 
-                // Runway excursion: off the surface at speed without climbing, or below terrain (lake/ditch)
-                if (!_excursionFlagged && snap.GroundspeedKts > 10
-                    && (!snap.OnGround || snap.AltitudeAglFt < -2))
+                // Runway excursion: off the surface at speed without climbing, or below terrain (lake/ditch).
+                // Require the condition to persist for RunwayExcursionMinDurationSec — a single-tick on_ground
+                // flicker (which reads the nose gear dataref only) from a bounced/firm touchdown otherwise
+                // reads as a false excursion.
+                if (snap.GroundspeedKts > 10 && (!snap.OnGround || snap.AltitudeAglFt < -2))
                 {
-                    LogEvent(FlightEventType.RunwayExcursion, snap.Timestamp, "Runway excursion — off-runway at speed");
-                    logger.Log("EVENT: Runway excursion");
-                    _excursionFlagged = true;
+                    _excursionConditionStart ??= snap.Timestamp;
+                    if (!_excursionFlagged
+                        && (snap.Timestamp - _excursionConditionStart.Value).TotalSeconds >= ScoringConfig.RunwayExcursionMinDurationSec)
+                    {
+                        LogEvent(FlightEventType.RunwayExcursion, snap.Timestamp, "Runway excursion — off-runway at speed");
+                        logger.Log("EVENT: Runway excursion");
+                        _excursionFlagged = true;
+                    }
+                }
+                else
+                {
+                    _excursionConditionStart = null;
                 }
             }
         }

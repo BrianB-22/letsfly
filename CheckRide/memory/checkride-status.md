@@ -24,6 +24,8 @@ Produces a graded JSON report + text log in `[MyDocuments]\CheckRide\` (OneDrive
 All thresholds and weights in `ScoringConfig` static class at top of `FlightMonitor.cs`.
 Scoring version: `xp12-1.20` (const `CheckRideReport.ScoringVersionConst` — bump on any change to detection/penalty behavior)
 - 1.20 (2026-08-13): diversion handling shipped — Engine Fire/Out no longer cost points; landing away from plan after a declared diversion (`DiversionDeclared`, automatic on engine failure or manual via a new status-bar checkbox) logs `DivertedToAlternate` instead of `WrongArrivalAirport`, no penalty. See todo.md CheckRide Scoring section for full detail.
+- 1.22 (2026-08-27, uncommitted): `PenaltyEngineOverspeed` dropped from -20 to -5. It was tied with OverG/icing damage (-20) and, after 1.20, worse than Engine Fire/Out (0 pts) — disproportionate for a brief few-% N1 excursion. Now matches the other one-shot per-occurrence penalties (Overspeed/Stall, -5).
+- 1.23 (2026-08-27, uncommitted): `PenaltySideloadLanding` dropped from -10 to -5. It was tied with `PenaltyNoseWheelFirst` (-10), but a bit of lateral G on touchdown is ordinary in a crosswind landing, whereas nosewheel-first carries real structural risk (prop strike/firewall/gear collapse) — kept `PenaltyNoseWheelFirst` at -10 and lightened sideload instead of raising nose-first.
 
 ## Fixed bugs (scoring re-trigger / false-positive)
 Found 2026-08-10 from real production data (two live user flights, one C-graded one D-graded) pasted by the user, who suspected re-triggers were tanking scores. Confirmed both:
@@ -146,8 +148,35 @@ against any running session:
 - Per-aircraft engine limit config file (for ITT scoring on specific airframes)
 - MSFS support (future)
 
+## Fixed: Event Log highlighting missing most real penalties (2026-08-27, uncommitted)
+`report.html`'s Event Log panel (`renderEvents()`, ~line 671) color-codes entries with its own
+hand-maintained `BAD`/`WARN`/`OK`/`INFO` sets — separate from the complete, correct list of
+scored event types already used elsewhere in the same file for chart dots (`renderMap()` ~745,
+`renderChart()` ~893). The Event Log's list had drifted far out of sync: it was missing most
+real -pt penalties, including big ones like `WrongArrivalAirport` (-30) and `FuelExhausted`
+(-20), plus a typo (`'SystemFlaps'` instead of `SystemFlapsCruise`) that silently broke that
+one system-check highlight. Found via a user report that Anti-ice-off (a real -3 System Check
+Failure) rendered dim/grey instead of yellow — turned out to be one instance of a much bigger
+gap. Fixed by expanding the Event Log's `WARN` set to match every event type with a nonzero
+`Once`/`PerOccurrence` penalty in `FlightMonitor.cs`'s `CalculateScore`. Not deployed — this is
+a static web file (`report.html` at repo root), no build step, just needs to ship.
+Note: didn't touch the chart-dot `BAD` sets (~745, ~893) — those already include a few 0-pt
+event types (`FailureEngineFire`, `FailureEngineOut`, `DiversionDeclared`) intentionally, for
+safety-event visibility on the flight path, so they're a different list by design, not the same
+drifted bug.
+Also fixed: `Touchdown` was always in Event Log's `OK` (green) set regardless of landing
+quality — a "Poor" quality touchdown (hard/sideload/nosewheel-first/gear-up) showed a green
+"Landing — Poor (XXX fpm)" line, contradicting the separate red/yellow penalty line for the
+same landing. `Touchdown`'s description text always carries the Greaser/Smooth/Poor verdict
+(`FlightMonitor.cs:811`), so `renderEvents()` now reads that instead of hardcoding green.
+
 ## TODO
+- **Future: real scoring penalty for Terrified pax comfort** — "PAX COMFORT" (`report.html:316` `calcPassengerComfort()`) is currently display-only on the web report (0-100 score from landing VS/G-force/bank/sideload, labeled Excellent→Terrified); it never touches the actual Score Breakdown or Final Score, which come from `FlightMonitor.cs`. Idea (2026-08-27): add a real -10 penalty line, name **"One-Star Review (Terrified Pax Penalty)"**, when comfort bottoms out at Terrified. Would need the threshold logic ported into the C# scoring engine (not just report.html) so it's a real score, not cosmetic — plus a scoring version bump. Not started.
+- **Real lateral runway-excursion detection** — current `RunwayExcursion` check (`FlightMonitor.cs` ~line 671, fixed 2026-08-24 in scoring `xp12-1.21`) only catches the aircraft's on_ground dataref reading false (or AGL < -2ft) for 2+ sustained seconds while rolling >10kt — it has no concept of lateral position, so it can't tell "off to the side of the runway" from "still on the pavement." It also only guards against the flicker false-positive, not real off-runway events on smooth/level terrain (where on_ground would stay true even off the paved surface). XP12's Web API has no surface-type dataref (asphalt/grass/dirt — exhaustively tested, all 404), so surface reads can't detect this directly.
+  - Feasibility confirmed 2026-08-24: `refdata/airports.json` (bundled, 18MB, currently **not loaded anywhere at runtime** — only per-flight `dep_lat`/`arr_lat` from the SimLetsFly plan are used) has per-runway geometry good enough for this. Example checked live against a real flight: KCRQ runway 06/24 — `width:150` (ft), thresholds `le_lat/le_lon=(33.126999,-117.288002)`, `he_lat/he_lon=(33.129501,-117.272003)`. A real touchdown GPS from that flight's log (33.12889,-117.27611) landed almost exactly on that centerline — confirms the reference data is accurate enough to use for this.
+  - Proposed approach: identify the landing runway (match arrival airport + heading against `le_heading`/`he_heading`), compute cross-track (perpendicular) distance from the aircraft's GPS to the runway centerline segment during ground roll, flag excursion if it exceeds ~half the runway width + a small gear-track buffer.
+  - Non-trivial scope, not done yet: parse/load `airports.json` at startup (mirroring `AircraftDb`/`AircraftVSpeeds` pattern in `Program.cs`), pick the correct runway when an airport has several, and gate the check correctly to ground-roll only (so a normal runway-exit turn onto a taxiway doesn't misfire).
 - **Fix King Air 350 transponder ALT false positive** — `DetectSystemChecks` (FlightMonitor.cs ~line 1039) hardcodes `snap.TransponderMode != 4` for the ALT check, but this addon's 4-position panel (OFF/STBY/ON/ALT, no TEST) writes ALT as `3` instead of the stock `4`. See root-cause writeup above under "Key XP12 / King Air 350 findings." Needs an aircraft-aware fix before this airframe's transponder check is trustworthy again.
 - **Distance/time-to-destination for callouts + UI progress** — idea captured in `CheckRide_Voice_System_Plan.md` under "Route Progress Awareness." Destination is already known (`_expectedArrId` etc., from the SimLetsFly-selected flight plan), so live NM-remaining is just a Haversine against current GPS position — same approach validated manually 2026-08-10 (computed 51.0nm to KNYL live via the Web API + `airports.json`, matched reality). Don't rely on the King Air 350 addon's own FMS distance field for this — confirmed stale/infrequently-updated in testing.
 - **Add full switch/system-settings dump for debugging** (not for scoring) — log a complete snapshot of all switch/system dataref states at three points: (1) session start, (2) just before takeoff roll, (3) on shutdown. Goal: make it much faster to troubleshoot other testers' reports (like the transponder-mode confusion above) by having the raw before/after state on hand instead of having to grep tick-by-tick through the whole log to reconstruct what a switch was doing.
-- **Consider: is `PenaltyEngineOverspeed` (-20) too harsh / threshold too tight?** Observed 2026-08-10 on live King Air 350 flight `checkride_7e99959e_20260810_210239`: N1 sat at 101.9-102.0% for 11+ sustained seconds at Thr=0.99 cruise power, tripping the one-shot flag at the `N1OverspeedPct(100.0) + N1OverspeedBufferPct(2.0)` = 102% line. Not a re-trigger bug (fires once, condition was genuinely sustained, not a blip) — but two things worth reconsidering: (1) the 100%/+2% threshold is labeled "universal %" in code, never verified against this airframe's actual PT6A-60 POH N1 redline the way V-speeds were; (2) -20 pts sits in the same severity tier as Engine Out (-25) and Engine Fire (-30), which seems disproportionate for a few-seconds, few-percent overtorque vs. an actual failure. Not changed yet — just flagging for review.
+- **`PenaltyEngineOverspeed` threshold still unverified.** Fixed the severity mismatch 2026-08-27 (dropped -20 → -5, see Scoring 1.22 above), but the underlying `N1OverspeedPct(100.0) + N1OverspeedBufferPct(2.0)` = 102% threshold is still labeled "universal %" in code and has never been checked against the King Air 350's actual PT6A-60 POH N1 redline the way V-speeds were. Observed 2026-08-10: N1 sat at 101.9-102.0% for 11+ sustained seconds at Thr=0.99 cruise power (not a re-trigger — condition was genuinely sustained). Worth verifying the threshold itself is correct, separate from the point value.
